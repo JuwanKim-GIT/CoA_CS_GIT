@@ -1,0 +1,153 @@
+﻿<UserControl x:Class="CoA_CS.CoARegistryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:CoA_CS"
+             mc:Ignorable="d" 
+             d:DesignHeight="800" d:DesignWidth="1200" Background="#F5F6F8">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1.5*"/>
+            <RowDefinition Height="1.5*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E4E6EF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="15"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="105"/>
+                    <ColumnDefinition Width="105"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Cust Name:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
+                <TextBox x:Name="TxtCust" Grid.Column="1" Height="26" VerticalContentAlignment="Center" Padding="4" Tag="고객사명 입력"/>
+
+                <TextBlock Grid.Column="3" Text="PJT Name:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
+                <TextBox x:Name="TxtPjt" Grid.Column="4" Height="26" VerticalContentAlignment="Center" Padding="4" Tag="프로젝트명 입력"/>
+
+                <TextBlock Grid.Column="6" Text="Language:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                <RadioButton x:Name="RdoEn" Grid.Column="7" Content="영문" IsChecked="True" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RdoKo" Grid.Column="8" Content="한글" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RdoRu" Grid.Column="9" Content="러시아" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RdoJa" Grid.Column="10" Content="일본" Margin="0,0,0,0" VerticalAlignment="Center"/>
+
+                <Button x:Name="BtnClear" Grid.Column="12" Content="Clear" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnClear_Click"/>
+                <Button x:Name="BtnNew" Grid.Column="13" Content="New" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnNew_Click"/>
+                <Button x:Name="BtnRegister" Grid.Column="14" Content="Register" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnRegister_Click"/>
+            </Grid>
+        </Border>
+
+        <DataGrid x:Name="DgInput" Grid.Row="1" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="True"
+                  SelectionMode="Extended"
+                  SelectionUnit="CellOrRowHeader"
+                  GridLinesVisibility="All" 
+                  Background="White" 
+                  Margin="0,0,0,10"
+                  PreviewKeyDown="DgInput_PreviewKeyDown">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="품목코드" Binding="{Binding BaseItemCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                <DataGridTextColumn Header="배치번호" Binding="{Binding BatchNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="130"/>
+                <DataGridTextColumn Header="수량 (QTY)" Binding="{Binding Qty, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                <DataGridTextColumn Header="CHS 코드" Binding="{Binding ChsCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+                <DataGridTextColumn Header="제조일자" Binding="{Binding MfDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+                <DataGridTextColumn Header="컬러코드" Binding="{Binding ColorCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+                <DataGridTextColumn Header="PJT 번호" Binding="{Binding PjtNo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <DataGrid x:Name="TblPreview" Grid.Row="2" 
+                  AutoGenerateColumns="False" 
+                  GridLinesVisibility="All" 
+                  Background="White" 
+                  Margin="0,0,0,10"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  SelectionChanged="TblPreview_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Valid" Binding="{Binding Valid}" Width="60"/>
+                <DataGridTextColumn Header="Error MSG" Binding="{Binding ErrorMsg}" Width="150"/>
+                <DataGridTextColumn Header="Base Item Code" Binding="{Binding BaseItemCode}" Width="110"/>
+                <DataGridTextColumn Header="품명 (Desc)" Binding="{Binding Desc}" Width="250"/>
+                <DataGridTextColumn Header="Batch Number" Binding="{Binding BatchNumber}" Width="120"/>
+                <DataGridTextColumn Header="CHS Code" Binding="{Binding ChsCode}" Width="100"/>
+                <DataGridTextColumn Header="Color Code" Binding="{Binding ColorCode}" Width="90"/>
+                <DataGridTextColumn Header="QTY" Binding="{Binding Qty}" Width="80"/>
+                <DataGridTextColumn Header="LTQTY" Binding="{Binding LtQty, StringFormat={}{0:F2}}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,5,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="MF. Date" Binding="{Binding MfDate}" Width="100"/>
+                <DataGridTextColumn Header="보존기한 (Shelf)" Binding="{Binding Shelf}" Width="100"/>
+                <DataGridTextColumn Header="EXP. Date" Binding="{Binding ExpDate}" Width="100"/>
+                <DataGridTextColumn Header="PJT No" Binding="{Binding PjtNo}" Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <DataGrid x:Name="TblDetail" Grid.Row="3" AutoGenerateColumns="False" GridLinesVisibility="All" Background="White" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="NO" Binding="{Binding No}" Width="50"/>
+                <DataGridTextColumn Header="Characteristic" Binding="{Binding Characteristic}" Width="2*"/>
+                <DataGridTextColumn Header="First Value" Binding="{Binding FirstValue}" Width="1.2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,5,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <DataGridTextColumn Header="Last Value" Binding="{Binding LastValue}" Width="1.2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,5,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="UoM" Binding="{Binding Uom}" Width="1*"/>
+                <DataGridTextColumn Header="LowerLimit" Binding="{Binding LowerLimit}" Width="1.2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,5,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <DataGridTextColumn Header="UpperLimit" Binding="{Binding UpperLimit}" Width="1.2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,5,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="MF Date" Binding="{Binding MfDateDetail}" Width="1.5*"/>
+                <DataGridTextColumn Header="Item Code" Binding="{Binding ItemCode}" Width="1.5*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>
