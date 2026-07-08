@@ -1104,6 +1104,7 @@ namespace CoA_CS
             //// ③ 성적서 정상 발행 알림창 출력
             //MessageBox.Show($"성적서 : {coaMasterNo} 가 정상 발행되었습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
 
+
             // ④ [교정] 화면 UI 싹 비우고 리셋하기
             TxtPjt.Text = "";
 
