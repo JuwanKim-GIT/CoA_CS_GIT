@@ -102,7 +102,6 @@ namespace CoA_CS
                     throw new Exception($"알 수 없는 구조의 CSV 형식입니다.\n인식된 첫 필드명: [{firstField}]");
                 }
 
-
                 // 🎯 [수정] App.ConnectionString을 사용하여 정확한 db_files 내부 경로로 오픈
                 using (var conn = new SqliteConnection(App.ConnectionString))
                 {
