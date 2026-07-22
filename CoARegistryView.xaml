@@ -47,9 +47,9 @@
                 <RadioButton x:Name="RdoRu" Grid.Column="9" Content="러시아" Margin="0,0,10,0" VerticalAlignment="Center"/>
                 <RadioButton x:Name="RdoJa" Grid.Column="10" Content="일본" Margin="0,0,0,0" VerticalAlignment="Center"/>
 
-                <Button x:Name="BtnClear" Grid.Column="12" Content="Clear" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnClear_Click"/>
-                <Button x:Name="BtnNew" Grid.Column="13" Content="New" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnNew_Click"/>
-                <Button x:Name="BtnRegister" Grid.Column="14" Content="Register" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnRegister_Click"/>
+                <Button x:Name="BtnNew" Grid.Column="12" Content="New" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnNew_Click"/>
+                <Button x:Name="BtnRegister" Grid.Column="13" Content="Register" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnRegister_Click"/>
+                <Button x:Name="BtnClear" Grid.Column="14" Content="Clear" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnClear_Click" Margin="10,0,0,0"/>
             </Grid>
         </Border>
 

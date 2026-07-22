@@ -134,12 +134,19 @@ namespace CoA_CS
 
             mainPanel.Children.Add(_dataGrid);
 
-            // 데이터 조회 로직
+            // 데이터 조회 로직 (네트워크 병목 완벽 방어형으로 튜닝 🎯)
             Action ActionSearch = () =>
             {
                 _dtSource = new DataTable();
                 string key1 = txtSearch1.Text.Trim();
                 string key2 = txtSearch2.Text.Trim();
+
+                // 🔒 [보안 및 성능 자물쇠] 네트워크 마비 방지를 위해 검색어가 둘 다 없으면 전체 조회를 막거나 최신순 제한을 둡니다.
+                if (string.IsNullOrEmpty(key1) && string.IsNullOrEmpty(key2))
+                {
+                    MessageBox.Show("네트워크 속도 안정성을 위해 검색어를 입력하신 후 조회를 진행해 주세요.\n(예: batch no, 품번, 검사항목 등)", "검색어 입력 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
                 try
                 {
@@ -174,6 +181,9 @@ namespace CoA_CS
                                                OR qmir_charac LIKE @likeKey2 
                                                OR qmir_part LIKE @likeKey2)");
                         }
+                        
+                        // ⚡ 만약 검색어가 있을 때도 데이터가 너무 많다면 뒤에 
+                        // sql.AppendLine(" ORDER BY qmir_reg_date DESC LIMIT 500"); 처럼 제한을 걸 수도 있어!
 
                         using (var cmd = new SqliteCommand(sql.ToString(), conn))
                         {
