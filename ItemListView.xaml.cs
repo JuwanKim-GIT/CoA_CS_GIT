@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Data;
 using System.Text;
@@ -128,7 +128,7 @@ namespace CoA_CS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         StringBuilder sql = new StringBuilder();
@@ -187,7 +187,7 @@ namespace CoA_CS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         using (var tx = conn.BeginTransaction())

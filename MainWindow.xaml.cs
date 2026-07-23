@@ -24,6 +24,9 @@ namespace CoA_CS
         public MainWindow()
         {
             InitializeComponent();
+            // DB 상태 변경 이벤트 구독 및 초기 상태 반영
+            DatabaseManager.StatusChanged += OnDbStatusChanged;
+            OnDbStatusChanged(DatabaseManager.IsOnline);
         }
 
         // ===================================================================
@@ -104,7 +107,7 @@ namespace CoA_CS
 
 
                 // 🎯 [수정] App.ConnectionString을 사용하여 정확한 db_files 내부 경로로 오픈
-                using (var conn = new SqliteConnection(App.ConnectionString))
+                using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                 {
                     conn.Open();
 
@@ -292,6 +295,38 @@ namespace CoA_CS
         private void Menu_CoaInq_Click(object sender, RoutedEventArgs e)
         {
             AddOrSelectTab("CoA 조회");
+        }
+
+        /// <summary>
+        /// DB 상태 변경 시 호출. Online/Offline에 따라 상태 표시줄과 [DB 체크] 버튼의 가시성을 갱신한다.
+        /// </summary>
+        /// <param name="isOnline">네트워크 DB 접속 가능 여부</param>
+        private void OnDbStatusChanged(bool isOnline)
+        {
+            // UI 스레드에서 실행 보장
+            Dispatcher.Invoke(() =>
+            {
+                if (isOnline)
+                {
+                    TxtDbStatus.Text = "DB Status: Online";
+                    TxtDbStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
+                    BtnDbCheck.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    TxtDbStatus.Text = "DB Status: Offline";
+                    TxtDbStatus.Foreground = System.Windows.Media.Brushes.Tomato;
+                    BtnDbCheck.Visibility = Visibility.Visible;
+                }
+            });
+        }
+
+        /// <summary>
+        /// [DB 체크] 버튼 클릭 시 네트워크 DB 재연결을 시도한다.
+        /// </summary>
+        private void BtnDbCheck_Click(object sender, RoutedEventArgs e)
+        {
+            DatabaseManager.TryReconnectOnline();
         }
     }
 }

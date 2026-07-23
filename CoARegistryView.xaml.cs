@@ -31,11 +31,7 @@ namespace CoA_CS
         public CoARegistryView()
         {
             InitializeComponent();
-
-            // 💡 [여기 확인!] 이 호출문이 빠져있으면 DB를 아무리 지워도 창이 안 떠!
             CheckAndInitStartNumber();
-
-            // 최초 실행 시 입력 그리드에 빈 행을 추가할 수 있도록 바인딩 초기화
             DgInput.ItemsSource = _inputList;
         }
 
@@ -44,11 +40,15 @@ namespace CoA_CS
         /// </summary>
         private void CheckAndInitStartNumber()
         {
+            // Online 모드일 경우 시작번호 팝업을 건너뛰고 바로 리턴 (301번대 사용)
+            if (DatabaseManager.IsOnline)
+                return;
+
             bool hasConfig = false;
 
             try
             {
-                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(App.ConnectionString))
+                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
                 {
                     conn.Open();
 
@@ -239,7 +239,7 @@ namespace CoA_CS
                 // [단계 2] pt2_mstr 대조 진행
                 if (statusVal == "O" && !string.IsNullOrEmpty(cleanItemCode))
                 {
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         string query = "SELECT pt2_desc1, pt2_desc2, pt2_shelf, pt2_conv1, pt2_color_code FROM pt2_mstr WHERE LTRIM(pt2_part, '0') = @ItemCode LIMIT 1;";
@@ -284,7 +284,7 @@ namespace CoA_CS
                 {
                     bool isChsValid = false;
 
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         string zxQuery = @"
@@ -349,7 +349,7 @@ namespace CoA_CS
                     string dbMfDate = "";
                     string rawQmirItem = "";
 
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         // qmir_batch 번호로 데이터가 존재하는지 대조 및 필요한 컬럼 추출
@@ -425,7 +425,7 @@ namespace CoA_CS
 
                             if (!string.IsNullOrEmpty(cleanQmirItem))
                             {
-                                using (var conn = new SqliteConnection(App.ConnectionString))
+                                using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                                 {
                                     conn.Open();
                                     string finiQuery = "SELECT pt2_mfg_part FROM pt2_mstr WHERE LTRIM(pt2_part, '0') = @QmirItem LIMIT 1;";
@@ -533,7 +533,7 @@ namespace CoA_CS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(App.ConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
 
@@ -657,11 +657,11 @@ namespace CoA_CS
             // [2단계] 유저 고유 일련번호(Daily Sequence) 채번
             // ===================================================================
             string todayStr = DateTime.Now.ToString("yyyyMMdd");
-            int nextSeq = 501; // DB 조회 실패 시 작동할 방어용 기본값
+            int nextSeq = DatabaseManager.IsOnline ? 301 : 501; // DB 조회 실패 시 작동할 방어용 기본값 (Online=301)
 
             try
             {
-                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(App.ConnectionString))
+                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
                 {
                     conn.Open();
 
@@ -895,7 +895,7 @@ namespace CoA_CS
                     int startRow = 21;
                     int excelRowOffset = 0;
 
-                    using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(App.ConnectionString))
+                    using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
                         string detailQuery = "SELECT qmir_charac, qmir_first_value, qmir_uom, qmir_ltol, qmir_utol FROM qmir_det WHERE qmir_batch = @BatchNo;";
@@ -1005,7 +1005,7 @@ namespace CoA_CS
             // [5단계] DB 최종 마스터/디테일 저장 및 화면 초기화 (실제 컬럼 스펙 반영)
             // ===================================================================
 
-            using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(App.ConnectionString))
+            using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
             {
                 conn.Open();
                 using (var tx = conn.BeginTransaction())
@@ -1021,13 +1021,14 @@ namespace CoA_CS
                         }
 
                         // ① coa_mstr 마스터 테이블 인서트
+                        string syncFlag = DatabaseManager.IsOnline ? "" : "1";
                         string insertMstrQuery = @"
                                 INSERT INTO coa_mstr (
                                     coa_no, coa_customer, coa_proj_name, coa_proj_no, 
-                                    coa_reg_date, coa_reg_psn, coa_upd_date, coa_upd_psn
+                                    coa_reg_date, coa_reg_psn, coa_upd_date, coa_upd_psn, coa_char4
                                 ) VALUES (
                                     @CoaNo, @CoaCustomer, @CoaProjName, @CoaProjNo, 
-                                    @RegDate, 'System', @UpdDate, 'System'
+                                    @RegDate, 'System', @UpdDate, 'System', @SyncFlag
                                 );";
 
                         using (var mstrCmd = new Microsoft.Data.Sqlite.SqliteCommand(insertMstrQuery, conn, tx))
@@ -1038,6 +1039,7 @@ namespace CoA_CS
                             mstrCmd.Parameters.AddWithValue("@CoaProjNo", masterPjtNo);
                             mstrCmd.Parameters.AddWithValue("@RegDate", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                             mstrCmd.Parameters.AddWithValue("@UpdDate", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            mstrCmd.Parameters.AddWithValue("@SyncFlag", syncFlag);
                             mstrCmd.ExecuteNonQuery();
                         }
                         // 🎯 [여기까지] 기존 라인에 대체해서 덮어쓰면 끝!
@@ -1068,11 +1070,11 @@ namespace CoA_CS
                                     INSERT INTO coad_det (
                                         coad_no, coad_line, coad_part, coad_desc1, 
                                         coad_batch, coad_color_code, coad_qty, coad_ltqty, 
-                                        coad_mf_date, coad_exp_date
+                                        coad_mf_date, coad_exp_date, coad_char4
                                     ) VALUES (
                                         @CoadNo, @CoadLine, @CoadPart, @CoadDesc1, 
                                         @CoadBatch, @CoadColorCode, @CoadQty, @CoadLtQty, 
-                                        @CoadMfDate, @CoadExpDate
+                                        @CoadMfDate, @CoadExpDate, @SyncFlag
                                     );";
 
                             using (var detCmd = new Microsoft.Data.Sqlite.SqliteCommand(insertDetQuery, conn, tx))
@@ -1087,6 +1089,7 @@ namespace CoA_CS
                                 detCmd.Parameters.AddWithValue("@CoadLtQty", Convert.ToDouble(ltqtyStr.Replace("LT", "").Replace(",", "").Trim()));
                                 detCmd.Parameters.AddWithValue("@CoadMfDate", mfDateRaw);
                                 detCmd.Parameters.AddWithValue("@CoadExpDate", expDateRaw);
+                                detCmd.Parameters.AddWithValue("@SyncFlag", syncFlag);
                                 detCmd.ExecuteNonQuery();
                             }
                         }
