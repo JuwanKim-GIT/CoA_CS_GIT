@@ -2,6 +2,13 @@ using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using Microsoft.VisualBasic.FileIO;   // TextFieldParser
+
+
 namespace CoA_CS
 {
     /// <summary>
@@ -489,13 +496,204 @@ namespace CoA_CS
 
                         cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_zx_code_mstr_composite ON zx_code_mstr (zx_code_fldname, zx_code_value);";
                         cmd.ExecuteNonQuery();
-                    }
-                }
+                 }
+             }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"인덱스 주입 실패: {ex.Message}");
             }
         }
-    }
+         // ================================================================
+         // 📥 Data Import 영역 (헤더 기반 칼럼 매핑 + Upsert)
+         // ================================================================
+
+         /// <summary>
+         /// CSV 파일을 읽어 헤더 기반으로 대상 테이블을 자동 판별하고,
+         /// INSERT OR REPLACE 방식으로 Upsert를 수행한다.
+         /// </summary>
+         /// <param name="filePath">임포트할 CSV 파일의 전체 경로</param>
+         /// <exception cref="InvalidOperationException">필수 필드 누락 시 발생</exception>
+         public static void ImportCsvToSqlite(string filePath)
+         {
+             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+             // ── 첫 줄(헤더) 파싱 ──
+             string[] cleanedHeaders;
+             using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+             using (var reader = new StreamReader(stream, System.Text.Encoding.GetEncoding("euc-kr")))
+             {
+                 if (reader.EndOfStream)
+                     return;
+
+                 string firstLine = reader.ReadLine();
+                 if (string.IsNullOrWhiteSpace(firstLine))
+                     return;
+
+                 string[] rawHeaders = firstLine.Split(',');
+                 cleanedHeaders = rawHeaders
+                     .Select(h => h.Replace("#", "").Replace("\"", "").Trim())
+                     .ToArray();
+             }
+
+             // ── 헤더 기반 테이블 판별 (Index 0 고정 검사 제거) ──
+             var (tableName, requiredKeys) = DetectTableFromHeaders(cleanedHeaders);
+
+             // ── 데이터 행 Upsert ──
+             using (var conn = new SqliteConnection(ActiveConnectionString))
+             {
+                 conn.Open();
+
+                 using (var transaction = conn.BeginTransaction())
+                 {
+                     using (var parser = new TextFieldParser(filePath, System.Text.Encoding.GetEncoding("euc-kr")))
+                     {
+                         parser.TextFieldType = FieldType.Delimited;
+                         parser.SetDelimiters(",");
+                         parser.HasFieldsEnclosedInQuotes = true;
+
+                         // 첫 줄(헤더) 건너뛰기
+                         if (!parser.EndOfData)
+                             parser.ReadLine();
+
+                         while (!parser.EndOfData)
+                         {
+                             string[] fields = parser.ReadFields();
+                             if (fields == null || fields.Length == 0)
+                                 continue;
+
+                             ExecuteInsertOrReplace(conn, transaction, tableName, cleanedHeaders, fields);
+                         }
+                     }
+
+                     transaction.Commit();
+                 }
+             }
+         }
+
+         /// <summary>
+         /// 헤더 배열에서 각 테이블별 필수 필드 세트를 검사하여 대상 테이블을 판별한다.
+         /// 필수 필드가 하나라도 누락되면 상세 메시지 박스를 표시하고 예외를 발생시킨다.
+         /// </summary>
+         /// <param name="headers">CSV 첫 줄에서 추출한 헤더 문자열 배열</param>
+         /// <returns>판별된 테이블명과 필수 키 배열</returns>
+         /// <exception cref="InvalidOperationException">어떤 테이블의 필수 필드도 완전히 충족되지 않은 경우</exception>
+         private static (string tableName, string[] requiredKeys) DetectTableFromHeaders(string[] headers)
+         {
+             var headerSet = new HashSet<string>(headers, StringComparer.OrdinalIgnoreCase);
+
+             var tableRequiredFields = new Dictionary<string, string[]>
+             {
+                 { "pt2_mstr",     new[] { "pt2_domain", "pt2_part" } },
+                 { "qmir_det",     new[] { "qmir_batch", "qmir_no" } },
+                 { "zx_code_mstr", new[] { "zx_code_fldname", "zx_code_value" } }
+             };
+
+             // 1차: 모든 필수 필드 만족하는 테이블 찾기
+             foreach (var kvp in tableRequiredFields)
+             {
+                 if (kvp.Value.All(f => headerSet.Contains(f)))
+                     return (kvp.Key, kvp.Value);
+             }
+
+             // 2차: 가장 많이 매칭된 테이블 기준 누락 정보 생성
+             string bestGuessTable = "";
+             string[] bestGuessRequired = Array.Empty<string>();
+             int bestMatchCount = 0;
+
+             foreach (var kvp in tableRequiredFields)
+             {
+                 int matchCount = kvp.Value.Count(f => headerSet.Contains(f));
+                 if (matchCount > bestMatchCount)
+                 {
+                     bestMatchCount = matchCount;
+                     bestGuessTable = kvp.Key;
+                     bestGuessRequired = kvp.Value;
+                 }
+             }
+
+             if (bestMatchCount == 0)
+             {
+                 string allPossibleFields = string.Join(", ",
+                     tableRequiredFields.Values.SelectMany(v => v).Distinct());
+
+                 System.Windows.MessageBox.Show(
+                     $"CSV 헤더에서 인식 가능한 필드를 찾을 수 없습니다.\n\n" +
+                     $"CSV 헤더: {string.Join(", ", headers)}\n\n" +
+                     $"인식 가능한 전체 필수 필드: {allPossibleFields}\n\n" +
+                     $"CSV 파일 형식을 확인해 주세요.",
+                     "데이터 임포트 오류",
+                     MessageBoxButton.OK,
+                     MessageBoxImage.Error);
+
+                 throw new InvalidOperationException(
+                     $"CSV 헤더에서 인식 가능한 필드 없음. 헤더: {string.Join(", ", headers)}");
+             }
+
+             var missingFromBest = bestGuessRequired.Where(f => !headerSet.Contains(f)).ToArray();
+             string allRequired = string.Join(", ", bestGuessRequired);
+             string missingList = string.Join(", ", missingFromBest);
+
+             System.Windows.MessageBox.Show(
+                 $"CSV 헤더에 필수 필드가 누락되었습니다.\n\n" +
+                 $"대상 테이블 (추정): {bestGuessTable}\n" +
+                 $"전체 필수 필드: {allRequired}\n" +
+                 $"누락된 필드: {missingList}\n\n" +
+                 $"CSV 파일을 확인해 주세요.",
+                 "데이터 임포트 오류",
+                 MessageBoxButton.OK,
+                 MessageBoxImage.Error);
+
+             throw new InvalidOperationException(
+                 $"필수 필드 누락 - 테이블: {bestGuessTable}, 전체 필수: [{allRequired}], 누락: [{missingList}]");
+         }
+
+         /// <summary>
+         /// INSERT OR REPLACE 방식으로 Upsert를 실행한다.
+         /// 필수 키 조합(PK)이 이미 존재하면 해당 행을 덮어쓰고, 없으면 새로 삽입한다.
+         /// 헤더 이름 기준으로 칼럼을 매핑하므로 CSV 열 순서는 무관하다.
+         /// </summary>
+         /// <param name="conn">활성 SQLite 연결</param>
+         /// <param name="trans">활성 트랜잭션</param>
+         /// <param name="tableName">대상 테이블명</param>
+         /// <param name="headers">CSV 헤더 배열</param>
+         /// <param name="fields">현재 데이터 행의 필드 값 배열</param>
+         private static void ExecuteInsertOrReplace(
+             SqliteConnection conn,
+             SqliteTransaction trans,
+             string tableName,
+             string[] headers,
+             string[] fields)
+         {
+             int length = Math.Min(headers.Length, fields.Length);
+
+             var columns = new List<string>();
+             var parameters = new List<string>();
+
+             for (int i = 0; i < length; i++)
+             {
+                 if (string.IsNullOrWhiteSpace(headers[i]))
+                     continue;
+
+                 columns.Add(headers[i]);
+                 parameters.Add($"@{headers[i]}");
+             }
+
+             StringBuilder sql = new StringBuilder();
+             sql.AppendLine($"INSERT OR REPLACE INTO {tableName} ({string.Join(", ", columns)})");
+             sql.AppendLine($"VALUES ({string.Join(", ", parameters)});");
+
+             using (var cmd = new SqliteCommand(sql.ToString(), conn, trans))
+             {
+                 for (int i = 0; i < length; i++)
+                 {
+                     if (string.IsNullOrWhiteSpace(headers[i]))
+                         continue;
+
+                     cmd.Parameters.AddWithValue($"@{headers[i]}", fields[i] ?? (object)DBNull.Value);
+                 }
+                 cmd.ExecuteNonQuery();
+              }
+          }
+      }
 }

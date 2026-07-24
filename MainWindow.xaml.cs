@@ -48,8 +48,12 @@ namespace CoA_CS
             {
                 try
                 {
-                    ImportCsvToSqlite(openFileDialog.FileName);
+                    DatabaseManager.ImportCsvToSqlite(openFileDialog.FileName);
                     MessageBox.Show("데이터 임포트가 성공적으로 완료되었습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (InvalidOperationException)
+                {
+                    // DetectTableFromHeaders에서 이미 MessageBox 표시 후 throw 했으므로 추가 처리 불필요
                 }
                 catch (Exception ex)
                 {
@@ -61,136 +65,6 @@ namespace CoA_CS
         private void MenuDataExport_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show("Data Export 기능은 현재 준비 중입니다.", "안내", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void ImportCsvToSqlite(string filePath)
-        {
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
-            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            using (var reader = new StreamReader(stream, System.Text.Encoding.GetEncoding("euc-kr")))
-            {
-                if (reader.EndOfStream) return;
-
-                string firstLine = reader.ReadLine();
-                if (string.IsNullOrWhiteSpace(firstLine)) return;
-
-                string[] rawHeaders = firstLine.Split(',');
-                string[] cleanedHeaders = rawHeaders.Select(h => h.Replace("#", "").Replace("\"", "").Trim()).ToArray();
-
-                string firstField = cleanedHeaders[0].Trim();
-                string tableName = "";
-                List<string> primaryKeys = new List<string>();
-
-                if (firstField.Contains("pt2_part"))
-                {
-                    tableName = "pt2_mstr";
-                    primaryKeys.Add("pt2_domain");
-                    primaryKeys.Add("pt2_part");
-                }
-                else if (firstField.Contains("zx_code_fldname"))
-                {
-                    tableName = "zx_code_mstr";
-                    primaryKeys.Add("zx_code_fldname");
-                    primaryKeys.Add("zx_code_value");
-                }
-                else if (firstField.Contains("qmir_no"))
-                {
-                    tableName = "qmir_det";
-                    primaryKeys.Add("qmir_batch");
-                    primaryKeys.Add("qmir_no");
-                }
-                else
-                {
-                    throw new Exception($"알 수 없는 구조의 CSV 형식입니다.\n인식된 첫 필드명: [{firstField}]");
-                }
-
-
-                // 🎯 [수정] App.ConnectionString을 사용하여 정확한 db_files 내부 경로로 오픈
-                using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
-                {
-                    conn.Open();
-
-                    CreateDynamicTableIfNotExist(conn, tableName, cleanedHeaders, primaryKeys);
-
-                    using (var transaction = conn.BeginTransaction())
-                    {
-                        using (TextFieldParser parser = new TextFieldParser(reader))
-                        {
-                            parser.TextFieldType = FieldType.Delimited;
-                            parser.SetDelimiters(",");
-                            parser.HasFieldsEnclosedInQuotes = true;
-
-                            while (!parser.EndOfData)
-                            {
-                                string[] fields = parser.ReadFields();
-                                if (fields == null || fields.Length == 0) continue;
-
-                                ExecuteUpsert(conn, transaction, tableName, cleanedHeaders, fields, primaryKeys);
-                            }
-                        }
-                        transaction.Commit();
-                    }
-                }
-            }
-        }
-
-        private void CreateDynamicTableIfNotExist(SqliteConnection conn, string tableName, string[] headers, List<string> primaryKeys)
-        {
-            var columnDefinitions = new List<string>();
-
-            foreach (var header in headers)
-            {
-                columnDefinitions.Add($"{header} TEXT");
-            }
-
-            string pkConstraint = $"PRIMARY KEY ({string.Join(", ", primaryKeys)})";
-            columnDefinitions.Add(pkConstraint);
-
-            StringBuilder sql = new StringBuilder();
-            sql.AppendLine($"CREATE TABLE IF NOT EXISTS {tableName} (");
-            sql.AppendLine(string.Join(",\n", columnDefinitions));
-            sql.AppendLine(");");
-
-            using (var cmd = new SqliteCommand(sql.ToString(), conn))
-            {
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        private void ExecuteUpsert(SqliteConnection conn, SqliteTransaction trans, string tableName, string[] headers, string[] fields, List<string> keys)
-        {
-            int length = Math.Min(headers.Length, fields.Length);
-
-            var columns = new List<string>();
-            var parameters = new List<string>();
-            var updates = new List<string>();
-
-            for (int i = 0; i < length; i++)
-            {
-                columns.Add(headers[i]);
-                parameters.Add($"@{headers[i]}");
-
-                if (!keys.Contains(headers[i]))
-                {
-                    updates.Add($"{headers[i]} = EXCLUDED.{headers[i]}");
-                }
-            }
-
-            StringBuilder sql = new StringBuilder();
-            sql.AppendLine($"INSERT INTO {tableName} ({string.Join(", ", columns)})");
-            sql.AppendLine($"VALUES ({string.Join(", ", parameters)})");
-            sql.AppendLine($"ON CONFLICT ({string.Join(", ", keys)}) DO UPDATE SET");
-            sql.AppendLine(string.Join(", ", updates));
-
-            using (var cmd = new SqliteCommand(sql.ToString(), conn, trans))
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    cmd.Parameters.AddWithValue($"@{headers[i]}", fields[i] ?? (object)DBNull.Value);
-                }
-                cmd.ExecuteNonQuery();
-            }
         }
 
         // ===================================================================
