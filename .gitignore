@@ -361,3 +361,18 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+
+# ==========================================
+# User Custom Data & Document Folders
+# ==========================================
+*.db
+*.csv
+*.xlsx
+!zx_code_mstr-add.xlsx
+*.xltm
+
+CoA_csv/
+CoA_db/
+CoA_Docs/
+CoA_xltm/

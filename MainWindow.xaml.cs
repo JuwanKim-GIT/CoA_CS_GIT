@@ -308,14 +308,16 @@ namespace CoA_CS
             {
                 if (isOnline)
                 {
-                    TxtDbStatus.Text = "DB Status: Online";
+                    TxtDbStatus.Text = $"Online ({DatabaseManager.ActiveDbPath})";
                     TxtDbStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
+                    DbStatusIndicator.Fill = System.Windows.Media.Brushes.DodgerBlue;
                     BtnDbCheck.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    TxtDbStatus.Text = "DB Status: Offline";
+                    TxtDbStatus.Text = $"Offline ({DatabaseManager.ActiveDbPath})";
                     TxtDbStatus.Foreground = System.Windows.Media.Brushes.Tomato;
+                    DbStatusIndicator.Fill = System.Windows.Media.Brushes.Tomato;
                     BtnDbCheck.Visibility = Visibility.Visible;
                 }
             });

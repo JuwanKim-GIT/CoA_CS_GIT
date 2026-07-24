@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
@@ -13,10 +13,17 @@ namespace CoA_CS
     {
         // ── 상수 ────────────────────────────────────────
 
-        /// <summary>네트워크 공유 DB 파일 전체 경로</summary>
-        public const string NetworkDbPath = @"\\zcnpo0317vn0001\IPK_DBs\db_files\coa_cs.db";
+        /// <summary>부트스트랩용 기본 로컬 DB 폴더명</summary>
+        private const string DefaultLocalDbFolder = "CoA_db";
+        /// <summary>부트스트랩용 기본 로컬 DB 파일명</summary>
+        private const string DefaultLocalDbFile = "coa_cs.db";
 
         // ── 정적 필드 ────────────────────────────────────
+
+        /// <summary>zx_code_mstr에서 조회한 Online DB 경로</summary>
+        private static string _onlineDbPath = string.Empty;
+        /// <summary>zx_code_mstr에서 조회한 Offline DB 경로 (없으면 기본 경로)</summary>
+        private static string _offlineDbPath = string.Empty;
 
         private static string _localDbPath = string.Empty;
         private static string _activeConnectionString = string.Empty;
@@ -26,6 +33,9 @@ namespace CoA_CS
 
         /// <summary>현재 활성 DB 연결문자열. 모든 View는 이 값을 사용하여 DB에 접속한다.</summary>
         public static string ActiveConnectionString => _activeConnectionString;
+
+        /// <summary>현재 활성 DB 파일의 절대 경로</summary>
+        public static string ActiveDbPath => _isOnline ? _onlineDbPath : _offlineDbPath;
 
         /// <summary>로컬 DB 파일 전체 경로 (실행폴더\CoA_db\coa_cs.db)</summary>
         public static string LocalDbPath => _localDbPath;
@@ -79,57 +89,106 @@ namespace CoA_CS
         /// </summary>
         public static void Initialize()
         {
-            // 1. 로컬 DB 경로 계산 (실행폴더\CoA_db\coa_cs.db)
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string localDbFolder = Path.Combine(baseDir, "CoA_db");
-            _localDbPath = Path.Combine(localDbFolder, "coa_cs.db");
 
-            // 2. 로컬 DB 폴더 없으면 생성
-            if (!Directory.Exists(localDbFolder))
-            {
-                Directory.CreateDirectory(localDbFolder);
-            }
+            // 1. 부트스트랩: 고정 로컬 DB (실행폴더\CoA_db\coa_cs.db)
+            string bootstrapFolder = Path.Combine(baseDir, DefaultLocalDbFolder);
+            string bootstrapDbPath = Path.Combine(bootstrapFolder, DefaultLocalDbFile);
+            if (!Directory.Exists(bootstrapFolder))
+                Directory.CreateDirectory(bootstrapFolder);
 
-            // 3. 네트워크 DB 접속 시도
-            //    네트워크 폴더가 없으면 먼저 생성 시도 (기존 로직 유지)
-            string networkFolder = Path.GetDirectoryName(NetworkDbPath);
-            if (!string.IsNullOrEmpty(networkFolder) && !Directory.Exists(networkFolder))
+            string bootstrapConnStr = $"Data Source={bootstrapDbPath};Default Timeout=10;Pooling=False;";
+            if (!File.Exists(bootstrapDbPath))
+                InitializeTables(bootstrapConnStr);
+            else
+                CreateIndicesForce(bootstrapConnStr);
+
+            // 2. zx_code_mstr에서 CoA_CS_db_path 조회
+            _onlineDbPath = string.Empty;
+            string offlineFromDb = string.Empty;
+            try
             {
-                try
+                using (var conn = new SqliteConnection(bootstrapConnStr))
                 {
-                    Directory.CreateDirectory(networkFolder);
-                }
-                catch
-                {
-                    // 네트워크 폴더 생성 실패 → 바로 로컬 fallback
+                    conn.Open();
+                    using (var cmd = new SqliteCommand(
+                        "SELECT zx_code_value, zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_db_path';", conn))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string codeType = reader.GetString(0).Trim();
+                                string codePath = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
+                                if (codeType.Equals("Online", StringComparison.OrdinalIgnoreCase))
+                                    _onlineDbPath = codePath;
+                                else if (codeType.Equals("Offline", StringComparison.OrdinalIgnoreCase))
+                                    offlineFromDb = codePath;
+                            }
+                        }
+                    }
                 }
             }
+            catch { /* zx_code_mstr 없으면 fallback 진행 */ }
 
-            if (TestConnection(NetworkDbPath))
+            // 3. Offline DB 경로 결정 (zx_code_mstr에 없으면 기본 경로)
+            if (string.IsNullOrEmpty(offlineFromDb))
             {
-                // 네트워크 접속 성공 → 온라인 모드
-                _activeConnectionString = $"Data Source={NetworkDbPath};Default Timeout=10;Pooling=True;";
-                _isOnline = true;
+                _offlineDbPath = bootstrapDbPath;
+            }
+            else if (Path.IsPathRooted(offlineFromDb))
+            {
+                _offlineDbPath = offlineFromDb;
             }
             else
             {
-                // 네트워크 접속 실패 → 로컬 DB로 fallback
-                _activeConnectionString = $"Data Source={_localDbPath};Default Timeout=10;Pooling=True;";
-                _isOnline = false;
+                _offlineDbPath = Path.Combine(baseDir, offlineFromDb);
+            }
+            _localDbPath = _offlineDbPath; // 동기화 시 사용
+
+            // 4. Offline DB 폴더 및 테이블 보장 (부트스트랩과 다를 경우)
+            if (!string.Equals(_offlineDbPath, bootstrapDbPath, StringComparison.OrdinalIgnoreCase))
+            {
+                string offlineFolder = Path.GetDirectoryName(_offlineDbPath);
+                if (!string.IsNullOrEmpty(offlineFolder) && !Directory.Exists(offlineFolder))
+                    Directory.CreateDirectory(offlineFolder);
+
+                string offlineConnStr = $"Data Source={_offlineDbPath};Default Timeout=10;Pooling=False;";
+                if (!File.Exists(_offlineDbPath))
+                    InitializeTables(offlineConnStr);
+                else
+                    CreateIndicesForce(offlineConnStr);
             }
 
-            // 4. 활성 DB에 테이블 및 인덱스 초기화
-            if (!File.Exists(_isOnline ? NetworkDbPath : _localDbPath))
+            // 5. Online DB 연결 시도
+            if (!string.IsNullOrEmpty(_onlineDbPath))
             {
-                InitializeTables(_activeConnectionString);
-            }
-            else
-            {
-                // 이미 DB 파일이 존재하면 인덱스만 보완 생성
-                CreateIndicesForce(_activeConnectionString);
+                string onlineFolder = Path.GetDirectoryName(_onlineDbPath);
+                if (!string.IsNullOrEmpty(onlineFolder) && !Directory.Exists(onlineFolder))
+                {
+                    try { Directory.CreateDirectory(onlineFolder); }
+                    catch { }
+                }
+
+                if (TestConnection(_onlineDbPath))
+                {
+                    // Online DB 테이블 보장
+                    string onlineConnStr = $"Data Source={_onlineDbPath};Default Timeout=10;Pooling=True;";
+                    if (!File.Exists(_onlineDbPath))
+                        InitializeTables(onlineConnStr);
+                    else
+                        CreateIndicesForce(onlineConnStr);
+
+                    _activeConnectionString = onlineConnStr;
+                    _isOnline = true;
+                    StatusChanged?.Invoke(_isOnline);
+                    return;
+                }
             }
 
-            // 5. 상태 변경 알림 (MainWindow UI 갱신)
+            // 6. Offline 모드로 실행
+            _activeConnectionString = $"Data Source={_offlineDbPath};Default Timeout=10;Pooling=True;";
+            _isOnline = false;
             StatusChanged?.Invoke(_isOnline);
         }
 
@@ -144,10 +203,10 @@ namespace CoA_CS
                 return;
 
             // 1. 네트워크 DB 접속 가능 여부 확인
-            if (!TestConnection(NetworkDbPath))
+            if (string.IsNullOrEmpty(_onlineDbPath) || !TestConnection(_onlineDbPath))
             {
                 System.Windows.MessageBox.Show(
-                    "네트워크 DB에 아직 연결할 수 없습니다.\n네트워크 상태를 확인 후 다시 시도해 주세요.",
+                    "네트워크 DB 경로가 설정되지 않았거나 연결할 수 없습니다.\n관리자에게 문의하여 zx_code_mstr에 'CoA_CS_db_path'를 등록해 주세요.",
                     "연결 실패",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Warning);
@@ -155,8 +214,8 @@ namespace CoA_CS
             }
 
             // 2. 네트워크 DB에 테이블/인덱스 보장 (없으면 생성)
-            string networkConnStr = $"Data Source={NetworkDbPath};Default Timeout=10;Pooling=True;";
-            if (!File.Exists(NetworkDbPath))
+            string networkConnStr = $"Data Source={_onlineDbPath};Default Timeout=10;Pooling=True;";
+            if (!File.Exists(_onlineDbPath))
             {
                 InitializeTables(networkConnStr);
             }

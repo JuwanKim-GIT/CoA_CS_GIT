@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -202,6 +202,80 @@ namespace CoA_CS
             {
                 MessageBox.Show("입력 그리드에 데이터가 존재하지 않습니다.", "경고", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
+            }
+
+            // [0단계] CoA No 생성 (TxtCoaNo.Text가 비어있을 때만 채번)
+            if (string.IsNullOrEmpty(TxtCoaNo.Text))
+            {
+                string todayStr = DateTime.Now.ToString("yyyyMMdd");
+                string startNum = string.Empty;
+
+                // 1. CoA_CS_Start_Num 조회
+                using (var conn0 = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                {
+                    conn0.Open();
+                    string query0 = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Start_Num' LIMIT 1;";
+                    using (var cmd0 = new SqliteCommand(query0, conn0))
+                    {
+                        var result0 = cmd0.ExecuteScalar();
+                        if (result0 != null && result0 != DBNull.Value)
+                            startNum = result0.ToString().Trim();
+                    }
+                }
+                if (string.IsNullOrEmpty(startNum)) startNum = "501"; // 방어
+
+                // [매일 초기화] 오늘 날짜의 coa_no 레코드가 없으면 Next_Num을 Start_Num으로 리셋
+                string startDigit = startNum.Length > 0 ? startNum[0].ToString() : "5";
+                string todayPrefix = $"CoA-{todayStr}-{startDigit}";
+                using (var connReset = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                {
+                    connReset.Open();
+                    string checkToday = "SELECT COUNT(*) FROM coa_mstr WHERE coa_no LIKE @Prefix || '%';";
+                    using (var cmdCheck = new SqliteCommand(checkToday, connReset))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@Prefix", todayPrefix);
+                        long todayCount = (long)cmdCheck.ExecuteScalar();
+                        if (todayCount == 0)
+                        {
+                            // 오늘 발행된 CoA가 없음 → Next_Num을 Start_Num으로 초기화
+                            string resetNext = "UPDATE zx_code_mstr SET zx_code_cmmt = @StartVal WHERE zx_code_fldname = 'CoA_CS_Next_Num';";
+                            using (var cmdReset = new SqliteCommand(resetNext, connReset))
+                            {
+                                cmdReset.Parameters.AddWithValue("@StartVal", startNum);
+                                cmdReset.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+
+                int coaSeq;
+                using (var conn2 = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                {
+                    conn2.Open();
+
+                    // 2. CoA_CS_Next_Num 조회 (항상 현재 값 사용, 없으면 Start_Num으로 fallback)
+                    string selectNext = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Next_Num' LIMIT 1;";
+                    using (var cmd2 = new SqliteCommand(selectNext, conn2))
+                    {
+                        var result2 = cmd2.ExecuteScalar();
+                        if (result2 != null && result2 != DBNull.Value && int.TryParse(result2.ToString().Trim(), out int nextVal))
+                            coaSeq = nextVal;
+                        else
+                            coaSeq = int.Parse(startNum); // Next_Num 없으면 Start_Num으로 fallback
+                    }
+
+                    // 3. Next_Num +1 갱신 (항상 UPDATE만, 신규 INSERT 금지)
+                    string updateNext = "UPDATE zx_code_mstr SET zx_code_cmmt = @NextVal WHERE zx_code_fldname = 'CoA_CS_Next_Num';";
+                    using (var cmd2 = new SqliteCommand(updateNext, conn2))
+                    {
+                        cmd2.Parameters.AddWithValue("@NextVal", (coaSeq + 1).ToString());
+                        cmd2.ExecuteNonQuery();
+                    }
+                }
+
+                // 4. TextBox에 표시
+                string coaNoForDisplay = $"CoA-{todayStr}-{coaSeq:D3}";
+                TxtCoaNo.Text = coaNoForDisplay;
             }
 
             // 하단 결과 그리드 리셋
@@ -653,78 +727,12 @@ namespace CoA_CS
                 return; // 프로세스 즉시 중단 (방어벽 작동)
             }
 
-            // ===================================================================
-            // [2단계] 유저 고유 일련번호(Daily Sequence) 채번
-            // ===================================================================
-            string todayStr = DateTime.Now.ToString("yyyyMMdd");
-            int nextSeq = DatabaseManager.IsOnline ? 301 : 501; // DB 조회 실패 시 작동할 방어용 기본값 (Online=301)
-
-            try
+            string coaMasterNo = TxtCoaNo.Text.Trim();
+            if (string.IsNullOrEmpty(coaMasterNo))
             {
-                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
-                {
-                    conn.Open();
-
-                    // ① coa_mstr 테이블에서 오늘 날짜 패턴("yyyyMMdd-%")으로 발행된 마지막 성적서 번호 조회
-                    string seqQuery = @"
-                        SELECT coa_no FROM coa_mstr 
-                        WHERE coa_no LIKE @TodayPattern 
-                        ORDER BY coa_no DESC LIMIT 1;";
-
-                    using (var seqCmd = new Microsoft.Data.Sqlite.SqliteCommand(seqQuery, conn))
-                    {
-                        seqCmd.Parameters.AddWithValue("@TodayPattern", $"CoA-{todayStr}-%");
-                        var lastCoaNo = seqCmd.ExecuteScalar();
-
-                        // ② 오늘 이미 발행한 내역이 존재한다면? -> 맨 마지막 토큰(순번)을 잘라서 +1
-                        if (lastCoaNo != null && lastCoaNo != DBNull.Value)
-                        {
-                            string[] tokens = lastCoaNo.ToString().Split('-');
-                            // 🎯 토큰 배열의 가장 마지막 요소(인덱스: Length - 1)를 가져와야 501이 파싱됨
-                            if (tokens.Length >= 3 && int.TryParse(tokens[tokens.Length - 1], out int lastSeq))
-                            {
-                                nextSeq = lastSeq + 1; // 기존 번호에서 카운트 업! (501 -> 502)
-                            }
-                            else if (tokens.Length == 2 && int.TryParse(tokens[1], out int altSeq))
-                            {
-                                // 방어 코드: 만약 구조가 다를 경우를 대비
-                                nextSeq = altSeq + 1;
-                            }
-                        }
-                        // ③ 오늘 자 내역이 하나도 없다면 (오늘 첫 발행) -> zx_code_mstr에서 와니의 고유 시작 번호 추출
-                        else
-                        {
-                            string configQuery = @"
-                                SELECT zx_code_cmmt 
-                                FROM zx_code_mstr 
-                                WHERE zx_code_fldname = 'CoA_CS_Start_Num' 
-                                LIMIT 1;";
-
-                            using (var configCmd = new Microsoft.Data.Sqlite.SqliteCommand(configQuery, conn))
-                            using (var configReader = configCmd.ExecuteReader())
-                            {
-                                if (configReader.Read() && configReader["zx_code_cmmt"] != DBNull.Value)
-                                {
-                                    string cmmtVal = configReader["zx_code_cmmt"].ToString().Trim();
-                                    if (int.TryParse(cmmtVal, out int parsedStart))
-                                    {
-                                        nextSeq = parsedStart; // 저장해 둔 601 등 고유 번호 할당
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                MessageBox.Show("CoA 번호가 생성되지 않았습니다. 먼저 New 버튼을 눌러주세요.", "경고", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"일련번호(Sequence) 채번 중 오류가 발생했습니다:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                return; // 프로세스 중단
-            }
-
-            // 최종 마스터 성적서 번호 확정 (예: CoA-20260706-501)
-            string coaMasterNo = $"CoA-{todayStr}-{nextSeq:D3}";
-
             // ❌ (알림창은 5단계 최종 완료 구역으로 이동하므로 여기서는 삭제!)
 
 
@@ -736,16 +744,35 @@ namespace CoA_CS
             else if (RdoRu.IsChecked == true) templateFile = "New_CoA_form_Rus.xltm";
             else if (RdoJa.IsChecked == true) templateFile = "New_CoA_form_Jpn.xltm";
 
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string templatePath = System.IO.Path.Combine(baseDir, "xltm_files", templateFile).Replace("/", "\\");
-
-            if (!System.IO.File.Exists(templatePath))
+            // zx_code_mstr에서 CoA_CS_xltm_path 조회 (없으면 등록 요청)
+            string xltmBaseDir = null;
+            using (var connPath = new SqliteConnection(DatabaseManager.ActiveConnectionString))
             {
-                MessageBox.Show($"템플릿 파일이 없습니다:\n{templatePath}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                connPath.Open();
+                string queryPath = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_xltm_path' LIMIT 1;";
+                using (var cmdPath = new SqliteCommand(queryPath, connPath))
+                {
+                    var resultPath = cmdPath.ExecuteScalar();
+                    if (resultPath != null && resultPath != DBNull.Value && !string.IsNullOrEmpty(resultPath.ToString().Trim()))
+                        xltmBaseDir = resultPath.ToString().Trim();
+                }
+            }
+
+            if (string.IsNullOrEmpty(xltmBaseDir))
+            {
+                MessageBox.Show("zx_code_mstr에 'CoA_CS_xltm_path'가 등록되지 않았습니다.\n관리자에게 문의하여 등록해 주세요.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            string docsDir = System.IO.Path.Combine(baseDir, "CoA_Docs");
+            string templatePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, xltmBaseDir, templateFile).Replace("/", "\\");
+
+            if (!System.IO.File.Exists(templatePath))
+            {
+                MessageBox.Show($"서식파일이 존재하지 않습니다:\n{templatePath}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string docsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CoA_Docs");
             if (!System.IO.Directory.Exists(docsDir))
             {
                 System.IO.Directory.CreateDirectory(docsDir);
@@ -1109,7 +1136,9 @@ namespace CoA_CS
 
 
             // ④ [교정] 화면 UI 싹 비우고 리셋하기
+            TxtCust.Text = "";
             TxtPjt.Text = "";
+            TxtCoaNo.Text = "";
 
             // 🎯 와니 아이디어 반영! 1층 입력, 2층 프리뷰, 3층 상세까지 통째로 올킬 청소
             BtnClear_Click(null, null);
@@ -1131,6 +1160,7 @@ namespace CoA_CS
             // 하단 결과 그리드들도 깨끗하게 초기화
             TblPreview.ItemsSource = null;
             TblDetail.ItemsSource = null;
+            TxtCoaNo.Text = "";
         }
 
         /// <summary>
