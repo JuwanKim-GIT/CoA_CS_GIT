@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -334,6 +334,21 @@ namespace CoA_CS
                                     if (string.IsNullOrEmpty(colorCodeVal) || colorCodeVal == "-")
                                     {
                                         colorCodeVal = mstrColor;
+                                    }
+
+                                    // pt2_shelf 유효성 검증 (Wrong Shelf) → statusVal은 'O' 유지
+                                    bool isShelfOk = int.TryParse(shelfVal, out int shelfCheck) && shelfCheck > 0;
+                                    if (!isShelfOk)
+                                    {
+                                        msgVal = "Wrong Shelf";
+                                    }
+
+                                    // pt2_conv1 유효성 검증 (Wrong QTY) → statusVal을 'X'로 처리
+                                    bool isConv1Ok = double.TryParse(conv1Val, out double conv1Check) && conv1Check > 0;
+                                    if (!isConv1Ok)
+                                    {
+                                        statusVal = "X";
+                                        msgVal = "Wrong QTY";
                                     }
                                 }
                                 else

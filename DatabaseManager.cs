@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.VisualBasic.FileIO;   // TextFieldParser
 
@@ -25,11 +26,26 @@ namespace CoA_CS
         /// <summary>부트스트랩용 기본 로컬 DB 파일명</summary>
         private const string DefaultLocalDbFile = "coa_cs.db";
 
+        // ── JSON 설정 모델 ────────────────────────────────
+
+        /// <summary>dbconfig.json 파일의 루트 모델</summary>
+        private class DbConfig
+        {
+            public DatabaseSettings? Database { get; set; }
+        }
+
+        /// <summary>DB 경로 설정</summary>
+        private class DatabaseSettings
+        {
+            public string OnlinePath { get; set; } = string.Empty;
+            public string OfflinePath { get; set; } = string.Empty;
+        }
+
         // ── 정적 필드 ────────────────────────────────────
 
-        /// <summary>zx_code_mstr에서 조회한 Online DB 경로</summary>
+        /// <summary>dbconfig.json에서 조회한 Online DB 경로</summary>
         private static string _onlineDbPath = string.Empty;
-        /// <summary>zx_code_mstr에서 조회한 Offline DB 경로 (없으면 기본 경로)</summary>
+        /// <summary>dbconfig.json에서 조회한 Offline DB 경로</summary>
         private static string _offlineDbPath = string.Empty;
 
         private static string _localDbPath = string.Empty;
@@ -91,83 +107,44 @@ namespace CoA_CS
         }
 
         /// <summary>
-        /// 앱 시작 시 1회 호출한다. 네트워크 DB 접속을 시도하고,
-        /// 실패 시 로컬 DB로 fallback한 후 테이블을 초기화한다.
+        /// 앱 시작 시 1회 호출한다. dbconfig.json에서 DB 경로를 읽고,
+        /// 네트워크 DB 접속을 시도하며, 실패 시 로컬 DB로 fallback한다.
         /// </summary>
         public static void Initialize()
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
-            // 1. 부트스트랩: 고정 로컬 DB (실행폴더\CoA_db\coa_cs.db)
-            string bootstrapFolder = Path.Combine(baseDir, DefaultLocalDbFolder);
-            string bootstrapDbPath = Path.Combine(bootstrapFolder, DefaultLocalDbFile);
-            if (!Directory.Exists(bootstrapFolder))
-                Directory.CreateDirectory(bootstrapFolder);
+            // 1. dbconfig.json에서 DB 경로 로드 (없으면 기본값으로 자동 생성)
+            var (onlinePath, offlinePath) = LoadOrCreateDbConfig();
+            _onlineDbPath = onlinePath;
 
-            string bootstrapConnStr = $"Data Source={bootstrapDbPath};Default Timeout=10;Pooling=False;";
-            if (!File.Exists(bootstrapDbPath))
-                InitializeTables(bootstrapConnStr);
-            else
-                CreateIndicesForce(bootstrapConnStr);
-
-            // 2. zx_code_mstr에서 CoA_CS_db_path 조회
-            _onlineDbPath = string.Empty;
-            string offlineFromDb = string.Empty;
-            try
+            // 2. Offline DB 경로 결정 (상대경로 → 절대경로)
+            if (string.IsNullOrEmpty(offlinePath))
             {
-                using (var conn = new SqliteConnection(bootstrapConnStr))
-                {
-                    conn.Open();
-                    using (var cmd = new SqliteCommand(
-                        "SELECT zx_code_value, zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_db_path';", conn))
-                    {
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string codeType = reader.GetString(0).Trim();
-                                string codePath = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
-                                if (codeType.Equals("Online", StringComparison.OrdinalIgnoreCase))
-                                    _onlineDbPath = codePath;
-                                else if (codeType.Equals("Offline", StringComparison.OrdinalIgnoreCase))
-                                    offlineFromDb = codePath;
-                            }
-                        }
-                    }
-                }
+                _offlineDbPath = Path.Combine(baseDir, DefaultLocalDbFolder, DefaultLocalDbFile);
             }
-            catch { /* zx_code_mstr 없으면 fallback 진행 */ }
-
-            // 3. Offline DB 경로 결정 (zx_code_mstr에 없으면 기본 경로)
-            if (string.IsNullOrEmpty(offlineFromDb))
+            else if (Path.IsPathRooted(offlinePath))
             {
-                _offlineDbPath = bootstrapDbPath;
-            }
-            else if (Path.IsPathRooted(offlineFromDb))
-            {
-                _offlineDbPath = offlineFromDb;
+                _offlineDbPath = offlinePath;
             }
             else
             {
-                _offlineDbPath = Path.Combine(baseDir, offlineFromDb);
+                _offlineDbPath = Path.Combine(baseDir, offlinePath);
             }
-            _localDbPath = _offlineDbPath; // 동기화 시 사용
+            _localDbPath = _offlineDbPath;
 
-            // 4. Offline DB 폴더 및 테이블 보장 (부트스트랩과 다를 경우)
-            if (!string.Equals(_offlineDbPath, bootstrapDbPath, StringComparison.OrdinalIgnoreCase))
-            {
-                string offlineFolder = Path.GetDirectoryName(_offlineDbPath);
-                if (!string.IsNullOrEmpty(offlineFolder) && !Directory.Exists(offlineFolder))
-                    Directory.CreateDirectory(offlineFolder);
+            // 3. Offline DB 폴더 및 테이블 보장
+            string offlineFolder = Path.GetDirectoryName(_offlineDbPath);
+            if (!string.IsNullOrEmpty(offlineFolder) && !Directory.Exists(offlineFolder))
+                Directory.CreateDirectory(offlineFolder);
 
-                string offlineConnStr = $"Data Source={_offlineDbPath};Default Timeout=10;Pooling=False;";
-                if (!File.Exists(_offlineDbPath))
-                    InitializeTables(offlineConnStr);
-                else
-                    CreateIndicesForce(offlineConnStr);
-            }
+            string offlineConnStr = $"Data Source={_offlineDbPath};Default Timeout=10;Pooling=False;";
+            if (!File.Exists(_offlineDbPath))
+                InitializeTables(offlineConnStr);
+            else
+                CreateIndicesForce(offlineConnStr);
 
-            // 5. Online DB 연결 시도
+            // 4. Online DB 연결 시도
             if (!string.IsNullOrEmpty(_onlineDbPath))
             {
                 string onlineFolder = Path.GetDirectoryName(_onlineDbPath);
@@ -193,7 +170,7 @@ namespace CoA_CS
                 }
             }
 
-            // 6. Offline 모드로 실행
+            // 5. Offline 모드로 실행
             _activeConnectionString = $"Data Source={_offlineDbPath};Default Timeout=10;Pooling=True;";
             _isOnline = false;
             StatusChanged?.Invoke(_isOnline);
@@ -209,11 +186,16 @@ namespace CoA_CS
             if (_isOnline)
                 return;
 
+            // dbconfig.json에서 최신 Online 경로 재조회 (관리자가 파일을 수정했을 수 있음)
+            var (onlinePath, _) = LoadOrCreateDbConfig();
+            if (!string.IsNullOrEmpty(onlinePath))
+                _onlineDbPath = onlinePath;
+
             // 1. 네트워크 DB 접속 가능 여부 확인
             if (string.IsNullOrEmpty(_onlineDbPath) || !TestConnection(_onlineDbPath))
             {
                 System.Windows.MessageBox.Show(
-                    "네트워크 DB 경로가 설정되지 않았거나 연결할 수 없습니다.\n관리자에게 문의하여 zx_code_mstr에 'CoA_CS_db_path'를 등록해 주세요.",
+                    "네트워크 DB 경로가 설정되지 않았거나 연결할 수 없습니다.\n실행 폴더의 dbconfig.json 파일에서 Database.OnlinePath를 확인해 주세요.",
                     "연결 실패",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Warning);
@@ -249,6 +231,57 @@ namespace CoA_CS
         }
 
         // ── 내부 메서드 ──────────────────────────────────
+
+        /// <summary>
+        /// 실행 폴더의 dbconfig.json 파일에서 DB 경로를 읽는다.
+        /// 파일이 없거나 파싱에 실패하면 기본값으로 새 파일을 생성한다.
+        /// </summary>
+        /// <returns>(onlinePath, offlinePath) 튜플</returns>
+        private static (string onlinePath, string offlinePath) LoadOrCreateDbConfig()
+        {
+            string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dbconfig.json");
+
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(configPath);
+                    var config = JsonSerializer.Deserialize<DbConfig>(json);
+                    if (config?.Database != null)
+                    {
+                        return (config.Database.OnlinePath ?? string.Empty,
+                                config.Database.OfflinePath ?? string.Empty);
+                    }
+                }
+                catch { /* 파싱 실패 시 기본값으로 새로 생성 */ }
+            }
+
+            // JSON 파일이 없거나 파싱 실패 → 기본값으로 새로 생성
+            var defaultConfig = new DbConfig
+            {
+                Database = new DatabaseSettings
+                {
+                    OnlinePath = string.Empty,
+                    OfflinePath = ".\\CoA_db\\coa_cs.db"
+                }
+            };
+
+            try
+            {
+                string defaultJson = JsonSerializer.Serialize(defaultConfig,
+                    new JsonSerializerOptions { WriteIndented = true });
+                string configDir = Path.GetDirectoryName(configPath);
+                if (!string.IsNullOrEmpty(configDir) && !Directory.Exists(configDir))
+                    Directory.CreateDirectory(configDir);
+                File.WriteAllText(configPath, defaultJson, System.Text.Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"dbconfig.json 생성 실패: {ex.Message}");
+            }
+
+            return (string.Empty, ".\\CoA_db\\coa_cs.db");
+        }
 
         /// <summary>
         /// 로컬 DB의 coa_mstr, coad_det 테이블에서 coa_char4/coad_char4 = '1' 인
