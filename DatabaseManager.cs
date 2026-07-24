@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.VisualBasic.FileIO;   // TextFieldParser
+using ExcelDataReader;
 
 
 namespace CoA_CS
@@ -537,6 +538,71 @@ namespace CoA_CS
                 System.Diagnostics.Debug.WriteLine($"인덱스 주입 실패: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Excel 파일(.xlsx/.xls)의 첫 번째 시트를 읽어 헤더 기반으로 대상 테이블을 자동 판별하고,
+        /// INSERT OR REPLACE 방식으로 Upsert를 수행한다.
+        /// </summary>
+        /// <param name="filePath">임포트할 Excel 파일의 전체 경로</param>
+        /// <exception cref="InvalidOperationException">필수 필드 누락 시 발생</exception>
+        public static void ImportExcelToSqlite(string filePath)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            string[] cleanedHeaders;
+            var allRows = new List<string[]>();
+
+            using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var reader = ExcelReaderFactory.CreateReader(stream))
+            {
+                if (!reader.Read())
+                    return;
+
+                int colCount = reader.FieldCount;
+                cleanedHeaders = new string[colCount];
+                for (int col = 0; col < colCount; col++)
+                {
+                    string rawHeader = reader.GetValue(col)?.ToString() ?? "";
+                    cleanedHeaders[col] = rawHeader.Replace("#", "").Replace("\"", "").Trim();
+                }
+
+                while (reader.Read())
+                {
+                    string[] fields = new string[colCount];
+                    bool hasData = false;
+
+                    for (int col = 0; col < colCount; col++)
+                    {
+                        string fieldValue = reader.GetValue(col)?.ToString() ?? "";
+                        fields[col] = fieldValue;
+                        if (!string.IsNullOrEmpty(fieldValue))
+                            hasData = true;
+                    }
+
+                    if (hasData)
+                        allRows.Add(fields);
+                }
+            }
+
+            if (allRows.Count == 0)
+                return;
+
+            var (tableName, requiredKeys) = DetectTableFromHeaders(cleanedHeaders);
+
+            using (var conn = new SqliteConnection(ActiveConnectionString))
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    foreach (var fields in allRows)
+                    {
+                        ExecuteInsertOrReplace(conn, transaction, tableName, cleanedHeaders, fields);
+                    }
+                    transaction.Commit();
+                }
+            }
+        }
+
          // ================================================================
          // 📥 Data Import 영역 (헤더 기반 칼럼 매핑 + Upsert)
          // ================================================================

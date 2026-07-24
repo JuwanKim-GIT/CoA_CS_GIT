@@ -416,16 +416,17 @@ namespace CoA_CS
             return mainPanel;
         }
 
-        // 🎯 [핵심 기능] Ctrl+V 포착 복합키(batch no + no) 중복 방어형 엑셀 붙여넣기 구역
+        // 🎯 [핵심 기능] 시작 열(Column) 인덱스 추적 및 단일/대량 복사-붙여넣기 완벽 대응
         private void DataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.V && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
             {
-                e.Handled = true; // WPF 순정 붙여넣기 차단막 가동
+                e.Handled = true; // WPF 순정 붙여넣기 차단
 
                 string clipboardText = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(clipboardText)) return;
 
+                // 1. 현재 선택된 행(Row) 및 열(Column) 시작 위치 추적
                 int startRowIndex = _dataGrid.SelectedIndex;
                 if (startRowIndex < 0 && _dataGrid.CurrentItem != null)
                 {
@@ -433,21 +434,26 @@ namespace CoA_CS
                 }
                 if (startRowIndex < 0) startRowIndex = _dtSource.Rows.Count;
 
+                int startColumnIndex = 0;
+                if (_dataGrid.CurrentCell != null && _dataGrid.CurrentCell.Column != null)
+                {
+                    startColumnIndex = _dataGrid.CurrentCell.Column.DisplayIndex;
+                }
+
+                // 2. 클립보드 줄바꿈 처리
                 string[] lines = clipboardText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
                 for (int i = 0; i < lines.Length; i++)
                 {
                     string line = lines[i];
-                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    if (string.IsNullOrWhiteSpace(line) && i == lines.Length - 1) continue; // 마지막 빈 줄 방어
 
                     string[] cells = line.Split('\t');
                     int targetRowIndex = startRowIndex + i;
 
-                    string excelBatch = cells.Length > 0 ? cells[0].Trim() : "";
-                    string excelNo = cells.Length > 1 ? cells[1].Trim() : "";
-
                     DataRow targetRow = null;
 
+                    // Target 행 찾기 또는 새 행 생성
                     if (targetRowIndex < _dtSource.Rows.Count)
                     {
                         targetRow = _dtSource.Rows[targetRowIndex];
@@ -455,32 +461,22 @@ namespace CoA_CS
                     }
                     else
                     {
-                        // 🔒 [치명적인 약점 격파] 복합키 중복이 있는지 캐시단에서 정밀 검사 수행
-                        DataRow[] duplicateRows = _dtSource.Select($"[batch no] = '{excelBatch}' AND [no] = '{excelNo}'");
-
-                        if (duplicateRows.Length > 0)
-                        {
-                            targetRow = duplicateRows[0]; // 중복 발생 시 새 행을 파지 않고 기존 행 덮어쓰기로 우회!
-                            if (targetRow.RowState == DataRowState.Deleted) continue;
-                        }
-                        else
-                        {
-                            targetRow = _dtSource.NewRow();
-                            _dtSource.Rows.Add(targetRow);
-                        }
+                        targetRow = _dtSource.NewRow();
+                        _dtSource.Rows.Add(targetRow);
                     }
 
-                    // 정석 필드 매싱 분출 (총 10개 컬럼 스펙 순서 일치)
-                    if (cells.Length > 0) targetRow["batch no"] = excelBatch;
-                    if (cells.Length > 1) targetRow["no"] = excelNo;
-                    if (cells.Length > 2) targetRow["Characteristic"] = cells[2].Trim();
-                    if (cells.Length > 3) targetRow["First Value"] = cells[3].Trim();
-                    if (cells.Length > 4) targetRow["Last Value"] = cells[4].Trim();
-                    if (cells.Length > 5) targetRow["Lower Limit"] = cells[5].Trim();
-                    if (cells.Length > 6) targetRow["Upper Limit"] = cells[6].Trim();
-                    if (cells.Length > 7) targetRow["UoM"] = cells[7].Trim();
-                    if (cells.Length > 8) targetRow["part"] = cells[8].Trim();
-                    if (cells.Length > 9) targetRow["mfdate"] = cells[9].Trim();
+                    // 3. 선택한 열 위치부터 순서대로 매핑하여 붙여넣기
+                    for (int j = 0; j < cells.Length; j++)
+                    {
+                        int targetColumnIndex = startColumnIndex + j;
+
+                        // DataTable 컬럼 범위를 벗어나지 않도록 방어
+                        if (targetColumnIndex < _dtSource.Columns.Count)
+                        {
+                            string colName = _dtSource.Columns[targetColumnIndex].ColumnName;
+                            targetRow[colName] = cells[j].Trim();
+                        }
+                    }
                 }
             }
         }

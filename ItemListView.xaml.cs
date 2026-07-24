@@ -400,16 +400,17 @@ namespace CoA_CS
             return mainPanel;
         }
 
-        // 🎯 [수정] 품목 목록 복합키(pt2_domain + pt2_part) 중복 방어형 엑셀 붙여넣기 구역
+        // 🎯 [핵심 기능] 시작 열(Column) 인덱스 추적 및 단일/대량 복사-붙여넣기 완벽 대응
         private void DataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.V && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
             {
-                e.Handled = true;
+                e.Handled = true; // WPF 순정 기본 셀 붙여넣기 차단
 
                 string clipboardText = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(clipboardText)) return;
 
+                // 1. 현재 선택된 행(Row) 및 열(Column) 시작 위치 추적
                 int startRowIndex = _dataGrid.SelectedIndex;
                 if (startRowIndex < 0 && _dataGrid.CurrentItem != null)
                 {
@@ -417,25 +418,26 @@ namespace CoA_CS
                 }
                 if (startRowIndex < 0) startRowIndex = _dtSource.Rows.Count;
 
+                int startColumnIndex = 0;
+                if (_dataGrid.CurrentCell != null && _dataGrid.CurrentCell.Column != null)
+                {
+                    startColumnIndex = _dataGrid.CurrentCell.Column.DisplayIndex;
+                }
+
+                // 2. 클립보드 줄바꿈 처리
                 string[] lines = clipboardText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
                 for (int i = 0; i < lines.Length; i++)
                 {
                     string line = lines[i];
-                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    if (string.IsNullOrWhiteSpace(line) && i == lines.Length - 1) continue; // 마지막 빈 줄 방어
 
                     string[] cells = line.Split('\t');
                     int targetRowIndex = startRowIndex + i;
 
-                    // 🎯 엑셀의 1번째 열을 도메인, 2번째 열을 파트코드로 인지하도록 구성 변경 (그리드 헤더 순서 일치)
-                    string excelDomain = cells.Length > 0 ? cells[0].Trim() : "";
-                    string excelPart = cells.Length > 1 ? cells[1].Trim() : "";
-
-                    // 💡 방어벽: 만약 엑셀에 도메인이 누락되어 공백으로 들어오면 무조건 기본 'KOR'로 강제 마킹해서 에러 원천 차단!
-                    if (string.IsNullOrEmpty(excelDomain)) excelDomain = "KOR";
-
                     DataRow targetRow = null;
 
+                    // Target 행 찾기 또는 새 행 생성
                     if (targetRowIndex < _dtSource.Rows.Count)
                     {
                         targetRow = _dtSource.Rows[targetRowIndex];
@@ -443,34 +445,22 @@ namespace CoA_CS
                     }
                     else
                     {
-                        // 🔒 [복합키 격파] pt2_domain과 pt2_part가 모두 일치하는 행이 캐시단에 이미 있는지 확인!
-                        DataRow[] duplicateRows = _dtSource.Select($"pt2_domain = '{excelDomain}' AND pt2_part = '{excelPart}'");
-
-                        if (duplicateRows.Length > 0)
-                        {
-                            targetRow = duplicateRows[0]; // 중복 존재 시 새 행을 파지 않고 덮어쓰기 처리!
-                            if (targetRow.RowState == DataRowState.Deleted) continue;
-                        }
-                        else
-                        {
-                            targetRow = _dtSource.NewRow();
-                            _dtSource.Rows.Add(targetRow);
-                        }
+                        targetRow = _dtSource.NewRow();
+                        _dtSource.Rows.Add(targetRow);
                     }
 
-                    // 필드 순서 매싱 분출 (복합 키 스펙 반영 주입)
-                    if (cells.Length > 0) targetRow["pt2_domain"] = excelDomain;
-                    if (cells.Length > 1) targetRow["pt2_part"] = excelPart;
-                    if (cells.Length > 2) targetRow["pt2_part_type"] = cells[2].Trim();
-                    if (cells.Length > 3) targetRow["pt2_desc1"] = cells[3].Trim();
-                    if (cells.Length > 4) targetRow["pt2_desc2"] = cells[4].Trim();
-                    if (cells.Length > 5) targetRow["pt2_color_code"] = cells[5].Trim();
-                    if (cells.Length > 6) targetRow["pt2_um"] = cells[6].Trim();
-                    if (cells.Length > 7) targetRow["pt2_alt_um1"] = cells[7].Trim();
-                    if (cells.Length > 8) targetRow["pt2_conv1"] = cells[8].Trim();
-                    if (cells.Length > 9) targetRow["pt2_shelf"] = cells[9].Trim();
-                    if (cells.Length > 10) targetRow["pt2_mfg_part"] = cells[10].Trim();
-                    if (cells.Length > 11) targetRow["pt2_prod_line"] = cells[11].Trim();
+                    // 3. 선택한 열 위치부터 순서대로 매핑하여 붙여넣기
+                    for (int j = 0; j < cells.Length; j++)
+                    {
+                        int targetColumnIndex = startColumnIndex + j;
+
+                        // DataTable 컬럼 범위를 벗어나지 않도록 방어
+                        if (targetColumnIndex < _dtSource.Columns.Count)
+                        {
+                            string colName = _dtSource.Columns[targetColumnIndex].ColumnName;
+                            targetRow[colName] = cells[j].Trim();
+                        }
+                    }
                 }
             }
         }

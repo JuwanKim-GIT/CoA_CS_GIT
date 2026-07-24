@@ -40,15 +40,20 @@ namespace CoA_CS
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 InitialDirectory = currentFolder,
-                Filter = "CSV 파일 (*.csv)|*.csv|모든 파일 (*.*)|*.*",
-                Title = "IBIS 덤프 CSV 파일 선택"
+                Filter = "데이터 파일 (*.csv;*.xlsx;*.xls)|*.csv;*.xlsx;*.xls|CSV 파일 (*.csv)|*.csv|Excel 파일 (*.xlsx;*.xls)|*.xlsx;*.xls|모든 파일 (*.*)|*.*",
+                Title = "데이터 임포트 파일 선택"
             };
 
             if (openFileDialog.ShowDialog() == true)
             {
                 try
                 {
-                    DatabaseManager.ImportCsvToSqlite(openFileDialog.FileName);
+                    string ext = Path.GetExtension(openFileDialog.FileName).ToLower();
+                    if (ext == ".xlsx" || ext == ".xls")
+                        DatabaseManager.ImportExcelToSqlite(openFileDialog.FileName);
+                    else
+                        DatabaseManager.ImportCsvToSqlite(openFileDialog.FileName);
+
                     MessageBox.Show("데이터 임포트가 성공적으로 완료되었습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (InvalidOperationException)
