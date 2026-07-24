@@ -175,7 +175,11 @@ namespace CoA_CS
                     // 와니의 규칙: zx_code_value는 빈 값, zx_code_cmmt에 입력값 주입
                     string insertQuery = @"
                         INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt, zx_code_desc1, zx_code_desc2)
-                        VALUES ('CoA_CS_Start_Num', '', @UserValue, '오프라인 유저 구분 시작번호', '');";
+                        VALUES ('CoA_CS_Start_Num', '', @UserValue, '오프라인 유저 구분 시작번호', '');
+
+                        INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt, zx_code_desc1, zx_code_desc2)
+                        VALUES ('CoA_CS_Next_Num', '', @UserValue, '다음 CoA 발행 순번', '');";
+
 
                     using (var insertCmd = new Microsoft.Data.Sqlite.SqliteCommand(insertQuery, conn))
                     {
@@ -242,9 +246,19 @@ namespace CoA_CS
                             using (var cmdReset = new SqliteCommand(resetNext, connReset))
                             {
                                 cmdReset.Parameters.AddWithValue("@StartVal", startNum);
-                                cmdReset.ExecuteNonQuery();
+                                int affected = cmdReset.ExecuteNonQuery();
+                                // 레코드가 없으면 INSERT로 생성
+                                if (affected == 0)
+                                {
+                                    string insertReset = "INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt) VALUES ('CoA_CS_Next_Num', 'CoA_CS_Next_Num', @StartVal);";
+                                    using (var cmdInsert = new SqliteCommand(insertReset, connReset))
+                                    {
+                                        cmdInsert.Parameters.AddWithValue("@StartVal", startNum);
+                                        cmdInsert.ExecuteNonQuery();
                             }
                         }
+                    }
+                }
                     }
                 }
 
@@ -269,13 +283,23 @@ namespace CoA_CS
                     using (var cmd2 = new SqliteCommand(updateNext, conn2))
                     {
                         cmd2.Parameters.AddWithValue("@NextVal", (coaSeq + 1).ToString());
-                        cmd2.ExecuteNonQuery();
+                        int affected = cmd2.ExecuteNonQuery();
+                        // 레코드가 없으면 INSERT로 생성 (최초 실행 시 fallback)
+                        if (affected == 0)
+                        {
+                            string insertNext = "INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt) VALUES ('CoA_CS_Next_Num', 'CoA_CS_Next_Num', @NextVal);";
+                            using (var cmdInsert = new SqliteCommand(insertNext, conn2))
+                            {
+                                cmdInsert.Parameters.AddWithValue("@NextVal", (coaSeq + 1).ToString());
+                                cmdInsert.ExecuteNonQuery();
                     }
                 }
+                    }
 
                 // 4. TextBox에 표시
                 string coaNoForDisplay = $"CoA-{todayStr}-{coaSeq:D3}";
                 TxtCoaNo.Text = coaNoForDisplay;
+                }
             }
 
             // 하단 결과 그리드 리셋
