@@ -143,12 +143,12 @@ namespace CoA_CS
                 string key1 = txtSearch1.Text.Trim();
                 string key2 = txtSearch2.Text.Trim();
 
-                // 🔒 [보안 및 성능 자물쇠] 네트워크 마비 방지를 위해 검색어가 둘 다 없으면 전체 조회를 막거나 최신순 제한을 둡니다.
-                if (string.IsNullOrEmpty(key1) && string.IsNullOrEmpty(key2))
-                {
-                    MessageBox.Show("네트워크 속도 안정성을 위해 검색어를 입력하신 후 조회를 진행해 주세요.\n(예: batch no, 품번, 검사항목 등)", "검색어 입력 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
+                //// 🔒 [보안 및 성능 자물쇠] 네트워크 마비 방지를 위해 검색어가 둘 다 없으면 전체 조회를 막거나 최신순 제한을 둡니다.
+                //if (string.IsNullOrEmpty(key1) && string.IsNullOrEmpty(key2))
+                //{
+                //    MessageBox.Show("네트워크 속도 안정성을 위해 검색어를 입력하신 후 조회를 진행해 주세요.\n(예: batch no, 품번, 검사항목 등)", "검색어 입력 필요", MessageBoxButton.OK, MessageBoxImage.Warning);
+                //    return;
+                //}
 
                 try
                 {
