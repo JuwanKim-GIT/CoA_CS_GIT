@@ -98,6 +98,8 @@ namespace CoA_CS
                 Background = System.Windows.Media.Brushes.White,
                 ColumnWidth = new DataGridLength(1, DataGridLengthUnitType.Auto),
 
+                RowHeaderWidth = 22,
+
                 SelectionMode = DataGridSelectionMode.Extended,
                 SelectionUnit = DataGridSelectionUnit.CellOrRowHeader,
                 ClipboardCopyMode = DataGridClipboardCopyMode.ExcludeHeader

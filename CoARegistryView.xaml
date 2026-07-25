@@ -64,6 +64,7 @@
                   CanUserAddRows="True"
                   SelectionMode="Extended"
                   SelectionUnit="CellOrRowHeader"
+                  RowHeaderWidth="22"
                   GridLinesVisibility="All" 
                   Background="White" 
                   Margin="0,0,0,10"
