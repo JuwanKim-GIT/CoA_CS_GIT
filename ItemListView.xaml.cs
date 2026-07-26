@@ -5,6 +5,8 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 
+using DataFormats = System.Windows.DataFormats;
+
 // 🎯 [WPF 전용 매싱 완벽 잠금] MessageBox와 Clipboard 별칭 최종 추가
 using UserControl = System.Windows.Controls.UserControl;
 using TextBox = System.Windows.Controls.TextBox;
@@ -402,17 +404,36 @@ namespace CoA_CS
             return mainPanel;
         }
 
-        // 🎯 [핵심 기능] 시작 열(Column) 인덱스 추적 및 단일/대량 복사-붙여넣기 완벽 대응
+        // 🎯 [핵심 기능] 시작 열(Column) 인덱스 추적 및 메일 HTML/일반 TSV 복사-붙여넣기 완벽 대응
         private void DataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.V && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
             {
                 e.Handled = true; // WPF 순정 기본 셀 붙여넣기 차단
 
-                string clipboardText = Clipboard.GetText();
-                if (string.IsNullOrWhiteSpace(clipboardText)) return;
+                List<List<string>> parsedTable = null;
 
-                // 1. 현재 선택된 행(Row) 및 열(Column) 시작 위치 추적
+                // 1. 아웃룩/웹메일 HTML 표 우선 파싱
+                if (Clipboard.ContainsData(DataFormats.Html))
+                {
+                    string htmlText = Clipboard.GetData(DataFormats.Html) as string;
+                    if (!string.IsNullOrEmpty(htmlText))
+                    {
+                        parsedTable = ParseHtmlTable(htmlText);
+                    }
+                }
+
+                // 2. HTML 실패 시 일반 텍스트(TSV) 파싱
+                if (parsedTable == null || parsedTable.Count == 0)
+                {
+                    string clipboardText = Clipboard.GetText();
+                    if (string.IsNullOrWhiteSpace(clipboardText)) return;
+                    parsedTable = ParseTsvWithQuotes(clipboardText);
+                }
+
+                if (parsedTable == null || parsedTable.Count == 0) return;
+
+                // 3. 현재 선택된 행(Row) 및 열(Column) 시작 위치 추적
                 int startRowIndex = _dataGrid.SelectedIndex;
                 if (startRowIndex < 0 && _dataGrid.CurrentItem != null)
                 {
@@ -426,15 +447,10 @@ namespace CoA_CS
                     startColumnIndex = _dataGrid.CurrentCell.Column.DisplayIndex;
                 }
 
-                // 2. 클립보드 줄바꿈 처리
-                string[] lines = clipboardText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-                for (int i = 0; i < lines.Length; i++)
+                // 4. 추적된 셀 위치부터 데이터 매핑
+                for (int i = 0; i < parsedTable.Count; i++)
                 {
-                    string line = lines[i];
-                    if (string.IsNullOrWhiteSpace(line) && i == lines.Length - 1) continue; // 마지막 빈 줄 방어
-
-                    string[] cells = line.Split('\t');
+                    List<string> rowCells = parsedTable[i];
                     int targetRowIndex = startRowIndex + i;
 
                     DataRow targetRow = null;
@@ -451,20 +467,120 @@ namespace CoA_CS
                         _dtSource.Rows.Add(targetRow);
                     }
 
-                    // 3. 선택한 열 위치부터 순서대로 매핑하여 붙여넣기
-                    for (int j = 0; j < cells.Length; j++)
+                    // 5. 선택한 열 위치부터 순서대로 매핑하여 붙여넣기
+                    for (int j = 0; j < rowCells.Count; j++)
                     {
                         int targetColumnIndex = startColumnIndex + j;
 
-                        // DataTable 컬럼 범위를 벗어나지 않도록 방어
                         if (targetColumnIndex < _dtSource.Columns.Count)
                         {
                             string colName = _dtSource.Columns[targetColumnIndex].ColumnName;
-                            targetRow[colName] = cells[j].Trim();
+                            string cellVal = rowCells[j].Replace(" ", "").Trim();
+                            targetRow[colName] = cellVal;
                         }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 🎯 메일/웹 HTML 표 구조(tr, td)를 직접 추출하는 파서
+        /// </summary>
+        private List<List<string>> ParseHtmlTable(string html)
+        {
+            var table = new List<List<string>>();
+
+            try
+            {
+                var trMatches = System.Text.RegularExpressions.Regex.Matches(
+                    html, @"<tr[^>]*>(.*?)</tr>", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                foreach (System.Text.RegularExpressions.Match trMatch in trMatches)
+                {
+                    var row = new List<string>();
+                    var tdMatches = System.Text.RegularExpressions.Regex.Matches(
+                        trMatch.Groups[1].Value, @"<t[dh][^>]*>(.*?)</t[dh]>", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    foreach (System.Text.RegularExpressions.Match tdMatch in tdMatches)
+                    {
+                        string cellHtml = tdMatch.Groups[1].Value;
+                        string cellText = System.Text.RegularExpressions.Regex.Replace(cellHtml, @"<[^>]+>", "").Trim();
+                        cellText = System.Net.WebUtility.HtmlDecode(cellText);
+                        cellText = System.Text.RegularExpressions.Regex.Replace(cellText, @"\s+", " ").Trim();
+                        row.Add(cellText);
+                    }
+
+                    if (row.Count > 0 && row.Exists(s => !string.IsNullOrEmpty(s)))
+                    {
+                        table.Add(row);
+                    }
+                }
+            }
+            catch { }
+
+            return table;
+        }
+
+        /// <summary>
+        /// 🎯 일반 TSV(텍스트) 파서 (쌍따옴표 내 줄바꿈 보존)
+        /// </summary>
+        private List<List<string>> ParseTsvWithQuotes(string text)
+        {
+            var result = new List<List<string>>();
+            var currentRow = new List<string>();
+            var currentCell = new System.Text.StringBuilder();
+            bool inQuotes = false;
+
+            string normalized = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            for (int i = 0; i < normalized.Length; i++)
+            {
+                char c = normalized[i];
+
+                if (c == '"')
+                {
+                    if (inQuotes && i + 1 < normalized.Length && normalized[i + 1] == '"')
+                    {
+                        currentCell.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (c == '\t' && !inQuotes)
+                {
+                    currentRow.Add(currentCell.ToString().Trim());
+                    currentCell.Clear();
+                }
+                else if (c == '\n' && !inQuotes)
+                {
+                    currentRow.Add(currentCell.ToString().Trim());
+                    currentCell.Clear();
+
+                    if (currentRow.Exists(s => !string.IsNullOrWhiteSpace(s)))
+                    {
+                        result.Add(currentRow);
+                    }
+                    currentRow = new List<string>();
+                }
+                else
+                {
+                    currentCell.Append(c);
+                }
+            }
+
+            if (currentCell.Length > 0 || currentRow.Count > 0)
+            {
+                currentRow.Add(currentCell.ToString().Trim());
+                if (currentRow.Exists(s => !string.IsNullOrWhiteSpace(s)))
+                {
+                    result.Add(currentRow);
+                }
+            }
+
+            return result;
         }
     }
 }
