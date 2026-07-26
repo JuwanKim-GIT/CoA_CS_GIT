@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
+using DataFormats = System.Windows.DataFormats;
+
 // 🎯 [WPF 전용 매싱 강제 지정] 남은 28개 에러를 격파하기 위한 별칭 추가
 using MessageBox = System.Windows.MessageBox;
 using UserControl = System.Windows.Controls.UserControl;
