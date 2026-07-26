@@ -1203,112 +1203,84 @@ namespace CoA_CS
         }
 
         /// <summary>
-        /// 입력 그리드에서 Ctrl+V를 누를 때 단일 셀 복사/붙여넣기 및 행 단위 붙여넣기를 모두 지원하는 메서드
+        /// 입력 그리드에서 Ctrl+V 키 입력 시 현재 커서가 위치한 열부터 단일/복수 셀 및 다중 행을 붙여넣는 이벤트 핸들러
         /// </summary>
         private void DgInput_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
-                e.Handled = true; // WPF 기본 붙여넣기 차단
+                e.Handled = true; // WPF 기본 붙여넣기 동작 차단
 
                 string clipboardText = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(clipboardText)) return;
 
-                // 💡 클립보드 데이터가 탭이나 줄바꿈이 없는 완전한 '단일 텍스트'인 경우 단일 셀 수정 처리
-                if (!clipboardText.Contains("\t") && !clipboardText.Contains("\n") && !clipboardText.Contains("\r"))
-                {
-                    if (DgInput.CurrentCell != null && DgInput.CurrentCell.Item is PreviewItem currentItem)
-                    {
-                        // 🎯 [수정] 현재 진행 중인 DataGrid의 편집 모드를 안전하게 커밋하여 종료
-                        DgInput.CommitEdit(DataGridEditingUnit.Cell, true);
-                        DgInput.CommitEdit(DataGridEditingUnit.Row, true);
+                // 편집 진행 중인 셀/행 커밋
+                DgInput.CommitEdit(DataGridEditingUnit.Cell, true);
+                DgInput.CommitEdit(DataGridEditingUnit.Row, true);
 
-                        string cleanValue = clipboardText.Trim();
-                        string header = DgInput.CurrentCell.Column.Header.ToString();
-
-                        switch (header)
-                        {
-                            case "품목코드": currentItem.BaseItemCode = cleanValue; break;
-                            case "배치번호": currentItem.BatchNumber = cleanValue; break;
-                            case "수량 (QTY)": currentItem.Qty = cleanValue; break;
-                            case "CHS 코드": currentItem.ChsCode = cleanValue; break;
-                            case "제조일자": currentItem.MfDate = cleanValue; break;
-                            case "컬러코드": currentItem.ColorCode = cleanValue; break;
-                            case "PJT 번호": currentItem.PjtNo = cleanValue; break;
-                        }
-
-                        // 🎯 [변경] 트랜잭션 충돌을 방지하기 위해 Items.Refresh() 대신 
-                        // 소스 바인딩을 리프레시하거나 뷰를 강제 갱신하는 안전한 방법 가동
-                        var selectedIndex = DgInput.SelectedIndex;
-                        DgInput.ItemsSource = null;
-                        DgInput.ItemsSource = _inputList;
-                        DgInput.SelectedIndex = selectedIndex;
-
-                        return; // 단일 셀 처리 끝났으므로 탈출!
-                    }
-                }
-
-                // -------------------------------------------------------------
-                // 이 아래는 기존 대량/행 단위 복사 붙여넣기 로직 그대로 유지
-                // -------------------------------------------------------------
-                string[] lines = clipboardText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-                int startRowIndex = 0;
-                if (DgInput.CurrentCell != null && DgInput.CurrentCell.Item != null)
+                // 1. 선택한 행(Row) 시작 위치 계산
+                int startRowIndex = DgInput.SelectedIndex;
+                if (startRowIndex < 0 && DgInput.CurrentCell != null && DgInput.CurrentCell.Item != null)
                 {
                     startRowIndex = DgInput.Items.IndexOf(DgInput.CurrentCell.Item);
-                    if (startRowIndex < 0) startRowIndex = 0;
                 }
+                if (startRowIndex < 0) startRowIndex = _inputList.Count;
+
+                // 2. 선택한 열(Column) 시작 위치 추적
+                int startColumnIndex = 0;
+                if (DgInput.CurrentCell != null && DgInput.CurrentCell.Column != null)
+                {
+                    startColumnIndex = DgInput.CurrentCell.Column.DisplayIndex;
+                }
+
+                // 3. 클립보드 행 분할
+                string[] lines = clipboardText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
                 for (int i = 0; i < lines.Length; i++)
                 {
                     string line = lines[i];
-                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    if (string.IsNullOrWhiteSpace(line) && i == lines.Length - 1) continue; // 마지막 빈 줄은 무시
 
                     string[] cells = line.Split('\t');
-                    if (cells.Length < 2) continue;
-
-                    // 🎯 [교정] 빈 값("")을 하이픈("-")으로 강제 치환하던 독소 로직 해제
-                    string baseItemCode = cells.Length > 0 ? cells[0].Trim() : "";
-                    string batchNumber = cells.Length > 1 ? cells[1].Trim() : "";
-                    string qty = cells.Length > 2 ? cells[2].Trim() : "0";
-
-                    // 비어있으면 하이픈이 아니라 빈 값("")이 유지되도록 수정
-                    string chsCode = cells.Length > 3 && !string.IsNullOrEmpty(cells[3]) ? cells[3].Trim() : "";
-                    string mfDate = cells.Length > 4 && !string.IsNullOrEmpty(cells[4]) ? cells[4].Trim() : "";
-                    string colorCode = cells.Length > 5 && !string.IsNullOrEmpty(cells[5]) ? cells[5].Trim() : "";
-                    string pjtNo = cells.Length > 6 && !string.IsNullOrEmpty(cells[6]) ? cells[6].Trim() : "";
-
                     int targetRowIndex = startRowIndex + i;
 
+                    PreviewItem targetItem = null;
+
+                    // 기존 행 업데이트 또는 부족 시 신규 행 생성
                     if (targetRowIndex < _inputList.Count)
                     {
-                        var existingItem = _inputList[targetRowIndex];
-                        existingItem.BaseItemCode = baseItemCode;
-                        existingItem.BatchNumber = batchNumber;
-                        existingItem.Qty = qty;
-                        existingItem.ChsCode = chsCode;
-                        existingItem.MfDate = mfDate;
-                        existingItem.ColorCode = colorCode;
-                        existingItem.PjtNo = pjtNo;
+                        targetItem = _inputList[targetRowIndex];
                     }
                     else
                     {
-                        PreviewItem newItem = new PreviewItem
+                        targetItem = new PreviewItem();
+                        _inputList.Add(targetItem);
+                    }
+
+                    // 선택된 열 인덱스부터 순서대로 셀 데이터 바인딩
+                    for (int j = 0; j < cells.Length; j++)
+                    {
+                        int targetColumnIndex = startColumnIndex + j;
+                        string cleanVal = cells[j].Trim();
+
+                        switch (targetColumnIndex)
                         {
-                            BaseItemCode = baseItemCode,
-                            BatchNumber = batchNumber,
-                            Qty = qty,
-                            ChsCode = chsCode,
-                            MfDate = mfDate,
-                            ColorCode = colorCode,
-                            PjtNo = pjtNo
-                        };
-                        _inputList.Add(newItem);
+                            case 0: targetItem.BaseItemCode = cleanVal; break; // 품목코드
+                            case 1: targetItem.BatchNumber = cleanVal; break;  // 배치번호
+                            case 2: targetItem.Qty = cleanVal; break;          // 수량 (QTY)
+                            case 3: targetItem.ChsCode = cleanVal; break;      // CHS 코드
+                            case 4: targetItem.MfDate = cleanVal; break;       // 제조일자
+                            case 5: targetItem.ColorCode = cleanVal; break;    // 컬러코드
+                            case 6: targetItem.PjtNo = cleanVal; break;        // PJT 번호
+                        }
                     }
                 }
 
-                DgInput.Items.Refresh();
+                // 뷰 강제 리프레시 (UI 갱신)
+                var selectedIndex = DgInput.SelectedIndex;
+                DgInput.ItemsSource = null;
+                DgInput.ItemsSource = _inputList;
+                DgInput.SelectedIndex = selectedIndex;
             }
         }
     }
