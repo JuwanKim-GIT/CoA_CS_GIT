@@ -1275,7 +1275,9 @@ namespace CoA_CS
                     for (int j = 0; j < rowCells.Count; j++)
                     {
                         int targetColumnIndex = startColumnIndex + j;
-                        string cleanVal = rowCells[j].Replace(" ", "").Trim();
+                        string rawVal = rowCells[j].Trim();
+                        // 🎯 "-" 값이나 빈 텍스트가 들어오면 깔끔하게 공백("")으로 처리
+                        string cleanVal = (rawVal == "-" || string.IsNullOrEmpty(rawVal)) ? "" : rawVal;
 
                         switch (targetColumnIndex)
                         {
@@ -1405,18 +1407,18 @@ namespace CoA_CS
     public class PreviewItem
     {
         public string Valid { get; set; } = "OK";
-        public string ErrorMsg { get; set; } = "-";
+        public string ErrorMsg { get; set; } = "";
         public string BaseItemCode { get; set; } = "";
-        public string Desc { get; set; } = "-";
+        public string Desc { get; set; } = "";
         public string BatchNumber { get; set; } = "";
-        public string ChsCode { get; set; } = "-";
-        public string ColorCode { get; set; } = "-";
+        public string ChsCode { get; set; } = "";
+        public string ColorCode { get; set; } = "";
         public string Qty { get; set; } = "0";
-        public string LtQty { get; set; } = "-";
-        public string MfDate { get; set; } = "-";
-        public string Shelf { get; set; } = "-";
-        public string ExpDate { get; set; } = "-";
-        public string PjtNo { get; set; } = "-";
+        public string LtQty { get; set; } = "";
+        public string MfDate { get; set; } = "";
+        public string Shelf { get; set; } = "";
+        public string ExpDate { get; set; } = "";
+        public string PjtNo { get; set; } = "";
     }
 
     /// <summary>
