@@ -19,7 +19,7 @@ using Clipboard = System.Windows.Clipboard;               // ◀ 추가 (Clipboa
 
 using Excel = NetOffice.ExcelApi;
 
-namespace CoA_CS
+namespace QCS
 {
     public partial class TestResultListView : UserControl
     {

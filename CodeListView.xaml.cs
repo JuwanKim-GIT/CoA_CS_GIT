@@ -18,7 +18,7 @@ using Orientation = System.Windows.Controls.Orientation; // ◀ 추가 (Orientat
 
 using Excel = NetOffice.ExcelApi;
 
-namespace CoA_CS
+namespace QCS
 {
     public partial class CodeListView : UserControl
     {

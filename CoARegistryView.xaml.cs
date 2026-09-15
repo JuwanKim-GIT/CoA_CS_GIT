@@ -20,7 +20,7 @@ using Orientation = System.Windows.Controls.Orientation; // Orientation 레이�
 
 using Excel = NetOffice.ExcelApi;
 
-namespace CoA_CS
+namespace QCS
 {
     /// <summary>
     /// Interaction logic for CoARegistryView.xaml

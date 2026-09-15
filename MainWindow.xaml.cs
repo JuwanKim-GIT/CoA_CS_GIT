@@ -17,7 +17,7 @@ using System.Data;
 using MessageBox = System.Windows.MessageBox;
 using Button = System.Windows.Controls.Button;
 
-namespace CoA_CS
+namespace QCS
 {
     public partial class MainWindow : Window
     {

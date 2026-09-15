@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace CoA_CS
+namespace QCS
 {
     public partial class App : System.Windows.Application
     {

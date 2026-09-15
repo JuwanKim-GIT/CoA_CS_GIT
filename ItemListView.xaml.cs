@@ -18,7 +18,7 @@ using Clipboard = System.Windows.Clipboard;             // ◀ 추가 (Clipboard
 
 using Excel = NetOffice.ExcelApi;
 
-namespace CoA_CS
+namespace QCS
 {
     public partial class ItemListView : UserControl
     {
