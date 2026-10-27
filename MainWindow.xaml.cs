@@ -24,9 +24,7 @@ namespace QCS
         public MainWindow()
         {
             InitializeComponent();
-            // DB 상태 변경 이벤트 구독 및 초기 상태 반영
-            DatabaseManager.StatusChanged += OnDbStatusChanged;
-            OnDbStatusChanged(DatabaseManager.IsOnline);
+
         }
 
         // ===================================================================
@@ -150,25 +148,25 @@ namespace QCS
         private void Menu_Item_Click(object sender, RoutedEventArgs e)
         {
             ItemListView itemListView = new ItemListView();
-            AddOrSelectTab("아이템 목록", itemListView);
+            AddOrSelectTab("아이템 목록 관리", itemListView);
         }
 
         private void Menu_Test_Click(object sender, RoutedEventArgs e)
         {
             TestResultListView testListView = new TestResultListView();
-            AddOrSelectTab("테스트결과 목록", testListView);
+            AddOrSelectTab("Test Result 목록 관리", testListView);
         }
 
         private void Menu_Code_Click(object sender, RoutedEventArgs e)
         {
             CodeListView codeListView = new CodeListView();
-            AddOrSelectTab("코드 목록", codeListView);
+            AddOrSelectTab("공통코드 관리", codeListView);
         }
 
         private void Menu_CoaReg_Click(object sender, RoutedEventArgs e)
         {
             CoARegistryView registryView = new CoARegistryView();
-            AddOrSelectTab("CoA 발행 등록", registryView);
+            AddOrSelectTab("CoA 발행", registryView);
         }
 
         private void Menu_CoaInq_Click(object sender, RoutedEventArgs e)
@@ -176,38 +174,54 @@ namespace QCS
             AddOrSelectTab("CoA 조회");
         }
 
-        /// <summary>
-        /// DB 상태 변경 시 호출. Online/Offline에 따라 상태 표시줄과 [DB 체크] 버튼의 가시성을 갱신한다.
-        /// </summary>
-        /// <param name="isOnline">네트워크 DB 접속 가능 여부</param>
-        private void OnDbStatusChanged(bool isOnline)
+        // =====================================================
+        // MSDS 메뉴
+        // =====================================================
+
+        private void Menu_MsdsReg_Click(object sender, RoutedEventArgs e)
         {
-            // UI 스레드에서 실행 보장
-            Dispatcher.Invoke(() =>
-            {
-                if (isOnline)
-                {
-                    TxtDbStatus.Text = $"Online ({DatabaseManager.ActiveDbPath})";
-                    TxtDbStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
-                    DbStatusIndicator.Fill = System.Windows.Media.Brushes.DodgerBlue;
-                    BtnDbCheck.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    TxtDbStatus.Text = $"Offline ({DatabaseManager.ActiveDbPath})";
-                    TxtDbStatus.Foreground = System.Windows.Media.Brushes.Tomato;
-                    DbStatusIndicator.Fill = System.Windows.Media.Brushes.Tomato;
-                    BtnDbCheck.Visibility = Visibility.Visible;
-                }
-            });
+            AddOrSelectTab("MSDS 등록");
         }
 
-        /// <summary>
-        /// [DB 체크] 버튼 클릭 시 네트워크 DB 재연결을 시도한다.
-        /// </summary>
-        private void BtnDbCheck_Click(object sender, RoutedEventArgs e)
+        private void Menu_MsdsManage_Click(object sender, RoutedEventArgs e)
         {
-            DatabaseManager.TryReconnectOnline();
+            AddOrSelectTab("MSDS 조회/관리");
         }
+
+        private void Menu_RmInventory_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("대장 출력");
+        }
+
+        private void Menu_MsdsReference_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("참조자료 관리");
+        }
+
+
+        // =====================================================
+        // 시스템 메뉴
+        // =====================================================
+
+        private void Menu_UserManage_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("사용자 관리");
+        }
+
+        private void Menu_AccessManage_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("프로그램 접근 권한 관리");
+        }
+
+        private void Menu_AdminManage_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("Admin 관리");
+        }
+
+        private void Menu_SwitchUser_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("사용자 전환");
+        }
+
     }
 }

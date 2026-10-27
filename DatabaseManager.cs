@@ -11,13 +11,14 @@ using ExcelDataReader;
 namespace QCS
 {
     /// <summary>
-    /// 로컬 SQLite DB(QCS_db\qcs.db) 접속·초기화·데이터 임포트를 총괄하는 정적 서비스 클래스.
+    /// QCS SQLite DB 연결 및 데이터 Import를 관리하는 정적 서비스 클래스.
     /// </summary>
     public static class DatabaseManager
     {
         // ── 상수 ────────────────────────────────────────
-        private const string LocalDbFolder = "QCS_db";
-        private const string LocalDbFile = "qcs.db";
+        //private const string LocalDbFolder = "QCS_db";
+        //private const string LocalDbFile = "qcs.db";
+        private const string NetworkDbPath = @"\\zcnpo0317vn0001\IPK_DBs\SQL_DBs\QCS\qcs.db";
 
         // ── 정적 필드 ────────────────────────────────────
         private static string _localDbPath = string.Empty;
@@ -74,23 +75,36 @@ namespace QCS
         /// </summary>
         public static void Initialize()
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            _localDbPath = Path.Combine(baseDir, LocalDbFolder, LocalDbFile);
+            // 1. 네트워크 DB 경로 설정
+            _localDbPath = NetworkDbPath;
 
-            // DB 저장 폴더 생성 보장
-            string folder = Path.GetDirectoryName(_localDbPath)!;
-            if (!Directory.Exists(folder))
-                Directory.CreateDirectory(folder);
-
-            _activeConnectionString = $"Data Source={_localDbPath};Default Timeout=10;Pooling=True;";
-
-            // 파일 없으면 테이블 생성, 있으면 인덱스 확인
+            // 2. DB 파일 존재 여부 확인 (자동 생성 금지)
             if (!File.Exists(_localDbPath))
-                InitializeTables(_activeConnectionString);
-            else
-                CreateIndicesForce(_activeConnectionString);
+            {
+                throw new FileNotFoundException(
+                    $"SQLite DB 파일을 찾을 수 없습니다.\n경로: {_localDbPath}",
+                    _localDbPath);
+            }
 
-            StatusChanged?.Invoke(false);
+            // 3. DB 연결 문자열 설정
+            _activeConnectionString =
+                $"Data Source={_localDbPath};Mode=ReadWrite;Default Timeout=10;Pooling=True;";
+
+            // 4. 실제 DB 연결 확인
+            using (var conn = new SqliteConnection(_activeConnectionString))
+            {
+                conn.Open();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT 1;";
+                cmd.ExecuteScalar();
+            }
+
+            // 5. 기존 DB 인덱스 확인
+            CreateIndicesForce(_activeConnectionString);
+
+            // 6. 연결 상태 알림 (기존 동작 유지)
+            StatusChanged?.Invoke(true);
         }
 
         /// <summary>
@@ -106,95 +120,6 @@ namespace QCS
         }
 
         // ── 내부 메서드 ──────────────────────────────────
-
-        /// <summary>
-        /// 기본 5개 테이블을 생성하고 인덱스를 빌드한다.
-        /// </summary>
-        private static void InitializeTables(string connStr)
-        {
-            using (var conn = new SqliteConnection(connStr))
-            {
-                conn.Open();
-                using (var cmd = new SqliteCommand())
-                {
-                    cmd.Connection = conn;
-
-                    // [1] pt2_mstr
-                    cmd.CommandText = @"
-                        CREATE TABLE IF NOT EXISTS pt2_mstr (
-                            pt2_domain TEXT, pt2_part TEXT, pt2_desc1 TEXT, pt2_desc2 TEXT,
-                            pt2_um TEXT DEFAULT 'EA', pt2_prod_line TEXT, pt2_part_type TEXT,
-                            pt2_status TEXT, pt2_bulk TEXT, pt2_blk_enduse TEXT,
-                            pt2_macost REAL DEFAULT 0, pt2_rmcost REAL DEFAULT 0, pt2_rdcost REAL DEFAULT 0,
-                            pt2_ohcost REAL DEFAULT 0, pt2_ovcost REAL DEFAULT 0, pt2_sucost REAL DEFAULT 0,
-                            pt2_lbcost REAL DEFAULT 0, pt2__dec01 REAL DEFAULT 0, pt2_mfg_part TEXT,
-                            pt2_cst_mat REAL DEFAULT 0, pt2_cst_ovh REAL DEFAULT 0, pt2_cst_oth REAL DEFAULT 0,
-                            pt2_created TEXT, pt2_updated TEXT, pt2_cst_tot REAL DEFAULT 0,
-                            pt2_cst_VMM REAL DEFAULT 0, pt2_sta TEXT, pt2_pr TEXT,
-                            pt2_lot_size REAL DEFAULT 0, pt2_alt_um TEXT, pt2_conv REAL DEFAULT 0,
-                            pt2_alt_um1 TEXT, pt2_conv1 REAL DEFAULT 0, pt2_shelf INTEGER DEFAULT 0,
-                            pt2_char1 TEXT, pt2_char2 TEXT, pt2_char3 TEXT, pt2_char4 TEXT,
-                            pt2_deci1 REAL DEFAULT 0, pt2_deci2 REAL DEFAULT 0, pt2_deci3 REAL DEFAULT 0,
-                            pt2_deci4 REAL DEFAULT 0, pt2_color_code TEXT,
-                            PRIMARY KEY (pt2_domain, pt2_part)
-                        );";
-                    cmd.ExecuteNonQuery();
-
-                    // [2] zx_code_mstr
-                    cmd.CommandText = @"
-                        CREATE TABLE IF NOT EXISTS zx_code_mstr (
-                            zx_code_fldname TEXT, zx_code_value TEXT, zx_code_value_up TEXT,
-                            zx_code_cmmt TEXT, zx_code_desc1 TEXT, zx_code_desc2 TEXT,
-                            zx_code_rmk TEXT, zx_code_char1 TEXT, zx_code_char2 TEXT,
-                            zx_code_num1 INTEGER DEFAULT 0, zx_code_num2 INTEGER DEFAULT 0,
-                            PRIMARY KEY (zx_code_fldname, zx_code_value)
-                        );";
-                    cmd.ExecuteNonQuery();
-
-                    // [3] qmir_det
-                    cmd.CommandText = @"
-                        CREATE TABLE IF NOT EXISTS qmir_det (
-                            qmir_no TEXT, qmir_charac TEXT, qmir_uom TEXT, qmir_batch TEXT,
-                            qmir_first_value REAL DEFAULT 0, qmir_last_value REAL DEFAULT 0,
-                            qmir_ltol REAL DEFAULT 0, qmir_utol REAL DEFAULT 0,
-                            qmir_char1 TEXT, qmir_char2 TEXT, qmir_char3 TEXT, qmir_char4 TEXT,
-                            qmir_deci1 REAL DEFAULT 0, qmir_deci2 REAL DEFAULT 0, qmir_deci3 REAL DEFAULT 0,
-                            qmir_deci4 REAL DEFAULT 0, qmir_upd_date TEXT, qmir_upd_psn TEXT,
-                            qmir_reg_date TEXT, qmir_reg_psn TEXT, qmir_part TEXT, qmir_mf_date TEXT,
-                            PRIMARY KEY (qmir_no, qmir_batch)
-                        );";
-                    cmd.ExecuteNonQuery();
-
-                    // [4] coa_mstr
-                    cmd.CommandText = @"
-                        CREATE TABLE IF NOT EXISTS coa_mstr (
-                            coa_sdno TEXT, coa_proj_no TEXT, coa_proj_name TEXT, coa_customer TEXT,
-                            coa_char1 TEXT, coa_char2 TEXT, coa_char3 TEXT, coa_char4 TEXT,
-                            coa_deci1 REAL DEFAULT 0, coa_deci2 REAL DEFAULT 0, coa_deci3 REAL DEFAULT 0,
-                            coa_deci4 REAL DEFAULT 0, coa_upd_date TEXT, coa_upd_psn TEXT,
-                            coa_reg_date TEXT, coa_reg_psn TEXT, coa_no TEXT PRIMARY KEY
-                        );";
-                    cmd.ExecuteNonQuery();
-
-                    // [5] coad_det
-                    cmd.CommandText = @"
-                        CREATE TABLE IF NOT EXISTS coad_det (
-                            coad_sdno TEXT, coad_alt_um1 TEXT, coad_conv1 REAL DEFAULT 0,
-                            coad_qty REAL DEFAULT 0, coad_ltqty REAL DEFAULT 0, coad_part TEXT,
-                            coad_desc1 TEXT, coad_mf_date TEXT, coad_shelf REAL DEFAULT 0,
-                            coad_exp_date TEXT, coad_line INTEGER DEFAULT 0, coad_char1 TEXT,
-                            coad_char2 TEXT, coad_char3 TEXT, coad_char4 TEXT,
-                            coad_deci1 REAL DEFAULT 0, coad_deci2 REAL DEFAULT 0, coad_deci3 REAL DEFAULT 0,
-                            coad_deci4 REAL DEFAULT 0, coad_no TEXT, coad_batch TEXT, coad_color_code TEXT,
-                            PRIMARY KEY (coad_no, coad_line)
-                        );";
-                    cmd.ExecuteNonQuery();
-                }
-            }
-
-            CreateIndicesForce(connStr);
-        }
-
         /// <summary>
         /// 기본 인덱스를 생성한다.
         /// </summary>

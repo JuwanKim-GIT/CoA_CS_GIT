@@ -14,10 +14,67 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Remove="QCS_MSDS_7개테이블_추가.sql" />
+	  <None Remove="Resources\Icons\coa_create.png" />
+	  <None Remove="Resources\Icons\coa_search.png" />
+	  <None Remove="Resources\Icons\common_code.png" />
+	  <None Remove="Resources\Icons\data_export.png" />
+	  <None Remove="Resources\Icons\data_import.png" />
+	  <None Remove="Resources\Icons\inventory_print.png" />
+	  <None Remove="Resources\Icons\item_list.png" />
+	  <None Remove="Resources\Icons\msds_register.png" />
+	  <None Remove="Resources\Icons\msds_search.png" />
+	  <None Remove="Resources\Icons\reference_manage.png" />
+	  <None Remove="Resources\Icons\test_result.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="QCS_MSDS_7개테이블_추가.sql">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
 		<PackageReference Include="NetOfficeFw.Excel" Version="1.9.10" />
     <PackageReference Include="ExcelDataReader" Version="3.7.0" />
     <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="Resources\Icons\coa_create.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\coa_search.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\common_code.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\data_export.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\data_import.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\inventory_print.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\item_list.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\msds_register.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\msds_search.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\reference_manage.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\test_result.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
 	</ItemGroup>
 
 </Project>
