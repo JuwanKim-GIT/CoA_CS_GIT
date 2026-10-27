@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QCS // TODO: 실제 WPF 프로젝트의 네임스페이스로 변경
 {

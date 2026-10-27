@@ -180,7 +180,7 @@ namespace QCS
 
         private void Menu_MsdsReg_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("MSDS 등록");
+            AddOrSelectTab("MSDS 등록", new MsdsRegistrationView());
         }
 
         private void Menu_MsdsManage_Click(object sender, RoutedEventArgs e)
