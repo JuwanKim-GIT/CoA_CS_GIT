@@ -1,4 +1,4 @@
-// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -190,12 +190,12 @@ namespace QCS
 
         private void Menu_RmInventory_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("대장 출력");
+            AddOrSelectTab("MSDS 대장출력", new MsdsInventoryExportView());
         }
 
         private void Menu_MsdsReference_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("참조자료 관리");
+            AddOrSelectTab("참조자료 관리", new ReferenceDataView());
         }
 
 
@@ -205,23 +205,27 @@ namespace QCS
 
         private void Menu_UserManage_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("사용자 관리");
+            AddOrSelectTab("사용자 관리", new UserManagementView());
         }
 
         private void Menu_AccessManage_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("프로그램 접근 권한 관리");
+            AddOrSelectTab("프로그램 접근 권한 관리", new AccessPermissionView());
         }
 
         private void Menu_AdminManage_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("Admin 관리");
+            AddOrSelectTab("Admin 관리", new AdminManagementView());
         }
 
         private void Menu_SwitchUser_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("사용자 전환");
+            AddOrSelectTab("사용자 전환", new UserSwitchView());
         }
 
+        private void Menu_DatabaseSchema_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("DB 스키마 조회", new DatabaseSchemaView());
+        }
     }
 }

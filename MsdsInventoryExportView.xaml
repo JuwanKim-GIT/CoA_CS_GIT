@@ -1,0 +1,100 @@
+﻿<UserControl x:Class="QCS.MsdsInventoryExportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F4F7FB">
+ <UserControl.Resources>
+  <Style TargetType="Button">
+   <Setter Property="Padding" Value="14,7"/>
+   <Setter Property="Margin" Value="3,0"/>
+   <Setter Property="MinHeight" Value="32"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="MinHeight" Value="30"/>
+   <Setter Property="Padding" Value="7,4"/>
+   <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+ </UserControl.Resources>
+ <Grid Margin="15">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <DockPanel Margin="0,0,0,12">
+   <StackPanel DockPanel.Dock="Left">
+    <TextBlock Text="RM Inventory 대장 출력" FontSize="22" FontWeight="Bold" Foreground="#172B4D"/>
+    <TextBlock Text="등록된 MSDS를 검색하고 대장 출력 대상을 검토합니다." Foreground="#64748B" Margin="0,4,0,0"/>
+   </StackPanel>
+   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+    <Button Content="새로고침" Click="Refresh_Click"/>
+    <Button Content="Excel 대장 출력 (후속 구현)" IsEnabled="False"
+            ToolTip="원본 양식의 42열 매핑 및 참조정보 연결 검증 후 활성화됩니다."/>
+   </StackPanel>
+  </DockPanel>
+  <Border Grid.Row="1" Background="White" CornerRadius="6" Padding="12" Margin="0,0,0,10" BorderBrush="#DCE4ED" BorderThickness="1">
+   <Grid>
+    <Grid.ColumnDefinitions>
+     <ColumnDefinition Width="Auto"/><ColumnDefinition Width="180"/>
+     <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+     <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
+    <TextBlock Text="Graco Code / 제품명" VerticalAlignment="Center" Margin="0,0,9,0"/>
+    <TextBox x:Name="SearchBox" Grid.Column="1" KeyDown="SearchBox_KeyDown"/>
+    <TextBlock Text="공급업체" Grid.Column="2" VerticalAlignment="Center" Margin="18,0,9,0"/>
+    <TextBox x:Name="SupplierBox" Grid.Column="3" KeyDown="SearchBox_KeyDown"/>
+    <CheckBox x:Name="LatestOnly" Grid.Column="4" Content="최신 MSDS만" IsChecked="True" VerticalAlignment="Center" Margin="14,0"/>
+    <Button Grid.Column="5" Content="검색" Click="Search_Click"/>
+   </Grid>
+  </Border>
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="2.3*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="1*"/>
+   </Grid.ColumnDefinitions>
+   <Border BorderBrush="#DCE4ED" BorderThickness="1" Background="White" CornerRadius="6">
+    <DockPanel>
+     <DockPanel DockPanel.Dock="Top" Margin="12,10">
+      <TextBlock x:Name="CountText" Text="MSDS 목록" FontSize="15" FontWeight="SemiBold"/>
+      <TextBlock Text="※ 체크 항목은 향후 선택 출력 대상" Foreground="#64748B" HorizontalAlignment="Right"/>
+     </DockPanel>
+     <DataGrid x:Name="InventoryGrid" AutoGenerateColumns="False" IsReadOnly="True"
+               CanUserAddRows="False" SelectionMode="Extended" HeadersVisibility="Column"
+               SelectionChanged="InventoryGrid_SelectionChanged" Margin="8,0,8,8">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="ID" Binding="{Binding [msds_msds_id]}" Width="60"/>
+       <DataGridTextColumn Header="Graco Code" Binding="{Binding [msds_graco_code]}" Width="120"/>
+       <DataGridTextColumn Header="제품명" Binding="{Binding [msds_product_name]}" Width="2*"/>
+       <DataGridTextColumn Header="공급업체" Binding="{Binding [msds_supplier_name]}" Width="*"/>
+       <DataGridTextColumn Header="개정일" Binding="{Binding [msds_revision_date]}" Width="110"/>
+       <DataGridTextColumn Header="최신" Binding="{Binding [msds_is_latest]}" Width="50"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </DockPanel>
+   </Border>
+   <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#E2E8F0"/>
+   <Border Grid.Column="2" BorderBrush="#DCE4ED" BorderThickness="1" Background="White" CornerRadius="6" Padding="14">
+    <DockPanel>
+     <TextBlock DockPanel.Dock="Top" Text="출력 전 점검" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,14"/>
+     <StackPanel>
+      <TextBlock Text="선택 MSDS" Foreground="#64748B"/>
+      <TextBlock x:Name="SelectedName" Text="선택된 항목 없음" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4,0,16"/>
+      <TextBlock Text="구성성분 건수" Foreground="#64748B"/>
+      <TextBlock x:Name="IngredientCount" Text="-" FontSize="18" Margin="0,4,0,16"/>
+      <TextBlock Text="점검 메시지" Foreground="#64748B"/>
+      <TextBlock x:Name="WarningText" Text="MSDS를 선택하면 기본 검증 결과가 표시됩니다."
+                 TextWrapping="Wrap" Margin="0,5,0,0"/>
+      <Separator Margin="0,18,0,14"/>
+      <TextBlock Text="출력 정책 (확정 요구사항)" FontWeight="SemiBold"/>
+      <TextBlock Text="• 원료별 최신 MSDS만 출력&#10;• 원본 Excel 42열 및 서식 유지&#10;• 참조 시트 보존&#10;• 원본 파일 변경 없이 별도 저장"
+                 TextWrapping="Wrap" Margin="0,10,0,0" LineHeight="23"/>
+      <TextBlock Text="현재 단계는 조회·선택·누락 점검 프로토타입입니다. Excel 출력은 열 매핑 검증 후 연결합니다."
+                 Foreground="#9A5A16" TextWrapping="Wrap" Margin="0,22,0,0"/>
+     </StackPanel>
+    </DockPanel>
+   </Border>
+  </Grid>
+  <Border Grid.Row="3" Background="#E9EFF6" Padding="10,7" Margin="0,10,0,0">
+   <TextBlock x:Name="StatusText" Text="대기" Foreground="#475569" TextTrimming="CharacterEllipsis"/>
+  </Border>
+ </Grid>
+</UserControl>

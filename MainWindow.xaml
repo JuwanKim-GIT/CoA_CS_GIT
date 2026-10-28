@@ -1,4 +1,4 @@
-<Window x:Class="QCS.MainWindow"
+﻿<Window x:Class="QCS.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="QCS Studio" Height="800" Width="1200"
@@ -50,7 +50,7 @@
                 <MenuItem Header="MSDS 등록" Click="Menu_MsdsReg_Click"/>
                 <MenuItem Header="MSDS 조회/관리" Click="Menu_MsdsManage_Click"/>
                 <Separator/>
-                <MenuItem Header="대장 출력" Click="Menu_RmInventory_Click"/>
+                <MenuItem Header="MSDS 대장출력" Click="Menu_RmInventory_Click"/>
                 <Separator/>
                 <MenuItem Header="참조자료 관리" Click="Menu_MsdsReference_Click"/>
             </MenuItem>
@@ -59,6 +59,7 @@
                 <MenuItem Header="사용자 관리" Click="Menu_UserManage_Click"/>
                 <MenuItem Header="프로그램 접근 권한 관리" Click="Menu_AccessManage_Click"/>
                 <MenuItem Header="Admin 관리" Click="Menu_AdminManage_Click"/>
+                <MenuItem Header="DB 스키마 조회" Click="Menu_DatabaseSchema_Click"/>
                 <Separator/>
                 <MenuItem Header="Data Import" Click="MenuDataImport_Click"/>
                 <MenuItem Header="Data Export" Click="MenuDataExport_Click"/>
@@ -113,10 +114,10 @@
                                    TextAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
-                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="대장 출력" Click="Menu_RmInventory_Click">
+                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="MSDS 대장출력" Click="Menu_RmInventory_Click">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                         <Image Source="/Resources/Icons/inventory_print.png" Width="36" Height="36" Stretch="Uniform"/>
-                        <TextBlock Text="대장 출력" FontSize="10" Foreground="#334155"
+                        <TextBlock Text="MSDS 대장출력" FontSize="10" Foreground="#334155"
                                    TextAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
