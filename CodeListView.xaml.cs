@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Data;
 using System.Text;
@@ -189,6 +189,10 @@ namespace QCS
             // 데이터 일괄 저장 (CUD 통합 처리) 로직
             Action ActionSave = () =>
             {
+                // 셀 편집 내용을 먼저 확정
+                _dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+
+                // 행 편집 내용을 확정
                 _dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
                 int updateCount = 0;
@@ -206,14 +210,16 @@ namespace QCS
                             {
                                 if (row.RowState == DataRowState.Deleted)
                                 {
-                                    string deleteQuery = "DELETE FROM zx_code_mstr WHERE zx_code_fldname = @FieldName AND zx_code_value = @CodeValue;";
+                                    string deleteQuery = "DELETE FROM zx_code_mstr WHERE zx_code_fldname = @FieldName AND COALESCE(zx_code_value, '') = @CodeValue;";
                                     using (var cmd = new SqliteCommand(deleteQuery, conn, tx))
                                     {
                                         cmd.Parameters.AddWithValue("@FieldName", row["Field Name", DataRowVersion.Original]);
-                                        cmd.Parameters.AddWithValue("@CodeValue", row["Code Value", DataRowVersion.Original]);
-                                        cmd.ExecuteNonQuery();
+                                        cmd.Parameters.AddWithValue("@CodeValue", row["Code Value", DataRowVersion.Original] == DBNull.Value ? "" : row["Code Value", DataRowVersion.Original]);
+                                        int affectedRows = cmd.ExecuteNonQuery();
+                                        if (affectedRows != 1)
+                                            throw new InvalidOperationException($"코드 삭제 대상이 정확히 1건이 아닙니다. 대상: {affectedRows}건");
+                                        deleteCount += affectedRows;
                                     }
-                                    deleteCount++;
                                 }
                                 else if (row.RowState == DataRowState.Modified)
                                 {
@@ -224,7 +230,7 @@ namespace QCS
                                             zx_code_desc2 = @Desc2,
                                             zx_code_char1 = @Char1,
                                             zx_code_char2 = @Char2
-                                        WHERE zx_code_fldname = @FieldName AND zx_code_value = @CodeValue;";
+                                        WHERE zx_code_fldname = @FieldName AND COALESCE(zx_code_value, '') = @CodeValue;";
 
                                     using (var cmd = new SqliteCommand(updateQuery, conn, tx))
                                     {
@@ -234,10 +240,12 @@ namespace QCS
                                         cmd.Parameters.AddWithValue("@Char1", row["Char#1"] ?? DBNull.Value);
                                         cmd.Parameters.AddWithValue("@Char2", row["Char#2"] ?? DBNull.Value);
                                         cmd.Parameters.AddWithValue("@FieldName", row["Field Name", DataRowVersion.Original]);
-                                        cmd.Parameters.AddWithValue("@CodeValue", row["Code Value", DataRowVersion.Original]);
-                                        cmd.ExecuteNonQuery();
+                                        cmd.Parameters.AddWithValue("@CodeValue", row["Code Value", DataRowVersion.Original] == DBNull.Value ? "" : row["Code Value", DataRowVersion.Original]);
+                                        int affectedRows = cmd.ExecuteNonQuery();
+                                        if (affectedRows != 1)
+                                            throw new InvalidOperationException($"코드 수정 대상이 정확히 1건이 아닙니다. 대상: {affectedRows}건, Field Name: {row["Field Name"]}, Code Value: {row["Code Value"]}");
+                                        updateCount += affectedRows;
                                     }
-                                    updateCount++;
                                 }
                                 else if (row.RowState == DataRowState.Added)
                                 {

@@ -1,4 +1,4 @@
-﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -185,7 +185,7 @@ namespace QCS
 
         private void Menu_MsdsManage_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("MSDS 조회/관리");
+            AddOrSelectTab("MSDS 조회/관리", new MsdsManagementView());
         }
 
         private void Menu_RmInventory_Click(object sender, RoutedEventArgs e)

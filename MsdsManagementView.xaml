@@ -1,0 +1,32 @@
+<UserControl x:Class="QCS.MsdsManagementView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        MinHeight="400" MinWidth="650"
+        FontFamily="Malgun Gothic" FontSize="12" Background="#F3F6FA">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="선택 레코드 삭제" Padding="18,7" Margin="0,0,8,0"
+                        Click="DeleteSelected_Click" Background="#FEE2E2" Foreground="#991B1B"/>
+                <Button Content="새로고침" Padding="18,7" Click="Refresh_Click"/>
+            </StackPanel>
+            <TextBlock Text="MSDS 등록 데이터" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <TextBlock Grid.Row="1" x:Name="MasterCount" Text="기본정보 (0건)" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <DataGrid x:Name="MasterGrid" Grid.Row="2" IsReadOnly="True" AutoGenerateColumns="True"
+                  SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="MasterGrid_SelectionChanged"
+                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="All"/>
+        <TextBlock Grid.Row="3" x:Name="DetailCount" Text="구성성분 (0건)" FontWeight="SemiBold" Margin="0,14,0,6"/>
+        <DataGrid x:Name="DetailGrid" Grid.Row="4" IsReadOnly="True" AutoGenerateColumns="True"
+                  CanUserAddRows="False" CanUserDeleteRows="False"/>
+        <TextBlock Grid.Row="5" x:Name="StatusText" Foreground="#475569" Margin="0,9,0,0" TextWrapping="Wrap"/>
+    </Grid>
+</UserControl>
