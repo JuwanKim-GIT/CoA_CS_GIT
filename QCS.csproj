@@ -15,6 +15,11 @@
 
 	<ItemGroup>
 	  <None Remove="Analysis\FieldRules.json" />
+	  <None Remove="CoA_xltm\New_CoA_Form_Eng.xltm" />
+	  <None Remove="CoA_xltm\New_CoA_Form_Jpn-old.xltm" />
+	  <None Remove="CoA_xltm\New_CoA_Form_Jpn.xltm" />
+	  <None Remove="CoA_xltm\New_CoA_Form_Kor.xltm" />
+	  <None Remove="CoA_xltm\New_CoA_form_Rus.xltm" />
 	  <None Remove="QCS_MSDS_7개테이블_추가.sql" />
 	  <None Remove="Resources\Icons\coa_create.png" />
 	  <None Remove="Resources\Icons\coa_search.png" />
@@ -31,6 +36,21 @@
 
 	<ItemGroup>
 	  <Content Include="Analysis\FieldRules.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="CoA_xltm\New_CoA_Form_Eng.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="CoA_xltm\New_CoA_Form_Jpn-old.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="CoA_xltm\New_CoA_Form_Jpn.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="CoA_xltm\New_CoA_Form_Kor.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="CoA_xltm\New_CoA_form_Rus.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	  <Content Include="QCS_MSDS_7개테이블_추가.sql">

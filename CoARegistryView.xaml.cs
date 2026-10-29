@@ -1,10 +1,12 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+
+using System.Windows.Controls.Primitives;
 
 using DataFormats = System.Windows.DataFormats;
 
@@ -29,6 +31,7 @@ namespace QCS
     {
         // 입력용 그리드와 연동될 동적 컬렉션
         private ObservableCollection<PreviewItem> _inputList = new ObservableCollection<PreviewItem>();
+        private bool _syncingGridSelection;
 
         public CoARegistryView()
         {
@@ -68,37 +71,6 @@ namespace QCS
                     // 3. 설정값이 없으면 올바른 값을 입력받기 위한 입력창 가동
                     string userInput = "";
                     List<string> validInputs = new List<string> { "501", "601", "701", "801", "901" };
-
-                    //while (true)
-                    //{
-                    //    // Microsoft.VisualBasic 참조를 활용한 순정 InputBox 호출
-                    //    userInput = Microsoft.VisualBasic.Interaction.InputBox(
-                    //        "오프라인 사용자 구분을 위한 고유 시작 번호를 입력해 주세요.\n\n[입력 가능 값]: 501, 601, 701, 801, 901",
-                    //        "최초 실행 설정 (User Configuration)",
-                    //        "501"
-                    //    ).Trim();
-
-                    //    // 💡 취소 버튼을 누르거나 빈 값을 넣었을 때
-                    //    if (string.IsNullOrEmpty(userInput))
-                    //    {
-                    //        MessageBox.Show("초기 설정 없이는 CoA 발행 기능을 이용할 수 없습니다.\n조회 및 발행 기능이 비활성화됩니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
-
-                    //        // 🎯 그리드를 건드리지 않고, 핵심 기능 버튼만 정밀 타격해서 비활성화!
-                    //        this.IsEnabled = false;
-                    //        return;
-                    //    }
-
-                    //    // 입력값 유효성 검사 (5가지 중 하나라면 루프 탈출)
-                    //    if (validInputs.Contains(userInput))
-                    //    {
-                    //        break;
-                    //    }
-
-                    //    MessageBox.Show("잘못된 입력입니다!\n시작 번호는 반드시 501, 601, 701, 801, 901 중 하나여야만 합니다.", "경고", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    //}
-
-
-
 
                     while (true)
                     {
@@ -202,6 +174,75 @@ namespace QCS
         /// <summary>
         /// New 버튼 클릭 이벤트 핸들러 (마스터, 수량, 크로마스칸, 배치 및 날짜/만료일 통합 검증)
         /// </summary>
+        private string ReserveCoaNumber()
+        {
+            string today = DateTime.Now.ToString("yyyyMMdd");
+            using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+            {
+                conn.Open();
+                using (var busy = new SqliteCommand("PRAGMA busy_timeout = 10000;", conn)) busy.ExecuteNonQuery();
+                // BEGIN IMMEDIATE: 다른 사용자가 동일한 Next_Num을 읽지 못하도록 먼저 쓰기 잠금을 확보한다.
+                using (var begin = new SqliteCommand("BEGIN IMMEDIATE;", conn)) begin.ExecuteNonQuery();
+                try
+                {
+                    string ReadCode(string name)
+                    {
+                        using (var cmd = new SqliteCommand("SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = @Name LIMIT 1;", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Name", name);
+                            return cmd.ExecuteScalar()?.ToString()?.Trim() ?? "";
+                        }
+                    }
+                    void WriteCode(string name, string value)
+                    {
+                        using (var cmd = new SqliteCommand("UPDATE zx_code_mstr SET zx_code_cmmt = @Value WHERE zx_code_fldname = @Name;", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Value", value);
+                            cmd.Parameters.AddWithValue("@Name", name);
+                            if (cmd.ExecuteNonQuery() > 0) return;
+                        }
+                        using (var cmd = new SqliteCommand("INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt) VALUES (@Name, @Name, @Value);", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Name", name);
+                            cmd.Parameters.AddWithValue("@Value", value);
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    string startText = ReadCode("CoA_CS_Start_Num");
+                    if (!int.TryParse(startText, out int start) || start < 0)
+                        throw new InvalidOperationException("CoA_CS_Start_Num 설정값이 올바르지 않습니다.");
+                    string prefix = $"CoA-{today}-{startText[0]}";
+                    string markerName = "CoA_CS_Last_Reserve_Date";
+                    string lastDate = ReadCode(markerName);
+                    string nextText = ReadCode("CoA_CS_Next_Num");
+                    if (!int.TryParse(nextText, out int next)) next = start;
+                    if (lastDate != today)
+                    {
+                        // 기존 발행번호가 있는 경우 가장 큰 번호 이후로 이어서 예약한다.
+                        using (var cmd = new SqliteCommand("SELECT coa_no FROM coa_mstr WHERE coa_no LIKE @Prefix || '%' ORDER BY coa_no DESC LIMIT 1;", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Prefix", prefix);
+                            string latest = cmd.ExecuteScalar()?.ToString() ?? "";
+                            string suffix = latest.Length > 0 ? latest.Substring(latest.LastIndexOf('-') + 1) : "";
+                            if (int.TryParse(suffix, out int lastIssued)) next = Math.Max(start, lastIssued + 1);
+                            else if (lastDate.Length == 0 && next > start) { /* 기존 당일 미발행 예약을 보호 */ }
+                            else next = start;
+                        }
+                        WriteCode(markerName, today);
+                    }
+                    int reserved = next;
+                    WriteCode("CoA_CS_Next_Num", checked(reserved + 1).ToString());
+                    using (var commit = new SqliteCommand("COMMIT;", conn)) commit.ExecuteNonQuery();
+                    return $"CoA-{today}-{reserved:D3}";
+                }
+                catch
+                {
+                    using (var rollback = new SqliteCommand("ROLLBACK;", conn)) rollback.ExecuteNonQuery();
+                    throw;
+                }
+            }
+        }
+
         private void BtnNew_Click(object sender, RoutedEventArgs e)
         {
             if (_inputList.Count == 0)
@@ -210,97 +251,17 @@ namespace QCS
                 return;
             }
 
-            // [0단계] CoA No 생성 (TxtCoaNo.Text가 비어있을 때만 채번)
+            // 번호는 New 클릭 시 예약한다. SQLite 쓰기 트랜잭션으로 동시 예약을 직렬화한다.
             if (string.IsNullOrEmpty(TxtCoaNo.Text))
             {
-                string todayStr = DateTime.Now.ToString("yyyyMMdd");
-                string startNum = string.Empty;
-
-                // 1. CoA_CS_Start_Num 조회
-                using (var conn0 = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                try
                 {
-                    conn0.Open();
-                    string query0 = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Start_Num' LIMIT 1;";
-                    using (var cmd0 = new SqliteCommand(query0, conn0))
-                    {
-                        var result0 = cmd0.ExecuteScalar();
-                        if (result0 != null && result0 != DBNull.Value)
-                            startNum = result0.ToString().Trim();
-                    }
+                    TxtCoaNo.Text = ReserveCoaNumber();
                 }
-                if (string.IsNullOrEmpty(startNum)) startNum = "501"; // 방어
-
-                // [매일 초기화] 오늘 날짜의 coa_no 레코드가 없으면 Next_Num을 Start_Num으로 리셋
-                string startDigit = startNum.Length > 0 ? startNum[0].ToString() : "5";
-                string todayPrefix = $"CoA-{todayStr}-{startDigit}";
-                using (var connReset = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                catch (Exception ex)
                 {
-                    connReset.Open();
-                    string checkToday = "SELECT COUNT(*) FROM coa_mstr WHERE coa_no LIKE @Prefix || '%';";
-                    using (var cmdCheck = new SqliteCommand(checkToday, connReset))
-                    {
-                        cmdCheck.Parameters.AddWithValue("@Prefix", todayPrefix);
-                        long todayCount = (long)cmdCheck.ExecuteScalar();
-                        if (todayCount == 0)
-                        {
-                            // 오늘 발행된 CoA가 없음 → Next_Num을 Start_Num으로 초기화
-                            string resetNext = "UPDATE zx_code_mstr SET zx_code_cmmt = @StartVal WHERE zx_code_fldname = 'CoA_CS_Next_Num';";
-                            using (var cmdReset = new SqliteCommand(resetNext, connReset))
-                            {
-                                cmdReset.Parameters.AddWithValue("@StartVal", startNum);
-                                int affected = cmdReset.ExecuteNonQuery();
-                                // 레코드가 없으면 INSERT로 생성
-                                if (affected == 0)
-                                {
-                                    string insertReset = "INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt) VALUES ('CoA_CS_Next_Num', 'CoA_CS_Next_Num', @StartVal);";
-                                    using (var cmdInsert = new SqliteCommand(insertReset, connReset))
-                                    {
-                                        cmdInsert.Parameters.AddWithValue("@StartVal", startNum);
-                                        cmdInsert.ExecuteNonQuery();
-                            }
-                        }
-                    }
-                }
-                    }
-                }
-
-                int coaSeq;
-                using (var conn2 = new SqliteConnection(DatabaseManager.ActiveConnectionString))
-                {
-                    conn2.Open();
-
-                    // 2. CoA_CS_Next_Num 조회 (항상 현재 값 사용, 없으면 Start_Num으로 fallback)
-                    string selectNext = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Next_Num' LIMIT 1;";
-                    using (var cmd2 = new SqliteCommand(selectNext, conn2))
-                    {
-                        var result2 = cmd2.ExecuteScalar();
-                        if (result2 != null && result2 != DBNull.Value && int.TryParse(result2.ToString().Trim(), out int nextVal))
-                            coaSeq = nextVal;
-                        else
-                            coaSeq = int.Parse(startNum); // Next_Num 없으면 Start_Num으로 fallback
-                    }
-
-                    // 3. Next_Num +1 갱신 (항상 UPDATE만, 신규 INSERT 금지)
-                    string updateNext = "UPDATE zx_code_mstr SET zx_code_cmmt = @NextVal WHERE zx_code_fldname = 'CoA_CS_Next_Num';";
-                    using (var cmd2 = new SqliteCommand(updateNext, conn2))
-                    {
-                        cmd2.Parameters.AddWithValue("@NextVal", (coaSeq + 1).ToString());
-                        int affected = cmd2.ExecuteNonQuery();
-                        // 레코드가 없으면 INSERT로 생성 (최초 실행 시 fallback)
-                        if (affected == 0)
-                        {
-                            string insertNext = "INSERT INTO zx_code_mstr (zx_code_fldname, zx_code_value, zx_code_cmmt) VALUES ('CoA_CS_Next_Num', 'CoA_CS_Next_Num', @NextVal);";
-                            using (var cmdInsert = new SqliteCommand(insertNext, conn2))
-                            {
-                                cmdInsert.Parameters.AddWithValue("@NextVal", (coaSeq + 1).ToString());
-                                cmdInsert.ExecuteNonQuery();
-                    }
-                }
-                    }
-
-                // 4. TextBox에 표시
-                string coaNoForDisplay = $"CoA-{todayStr}-{coaSeq:D3}";
-                TxtCoaNo.Text = coaNoForDisplay;
+                    MessageBox.Show($"CoA 번호 예약 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
             }
 
@@ -310,9 +271,12 @@ namespace QCS
 
             List<PreviewItem> previewList = new List<PreviewItem>();
 
-            // 1. 입력받은 라인별로 루프를 돌린다.
-            foreach (var inputItem in _inputList)
+            // 전체 검증에 하나의 읽기 연결을 재사용한다.
+            using (var validationConn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
             {
+                validationConn.Open();
+                foreach (var inputItem in _inputList)
+                {
                 // 🎯 [수정] 기본값 초기화 구역
                 string statusVal = "O";
                 string msgVal = "Valid";
@@ -333,15 +297,14 @@ namespace QCS
                 }
 
                 // 앞자리 0을 제거한 청정 품목코드 생성
-                string itemCode = inputItem.BaseItemCode.Trim();
+                string itemCode = (inputItem.BaseItemCode ?? "").Trim();
                 string cleanItemCode = itemCode.TrimStart('0');
 
                 // [단계 2] pt2_mstr 대조 진행
                 if (statusVal == "O" && !string.IsNullOrEmpty(cleanItemCode))
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
-                        conn.Open();
+                        var conn = validationConn;
                         string query = "SELECT pt2_desc1, pt2_desc2, pt2_shelf, pt2_conv1, pt2_color_code FROM pt2_mstr WHERE LTRIM(pt2_part, '0') = @ItemCode LIMIT 1;";
 
                         using (var cmd = new SqliteCommand(query, conn))
@@ -399,9 +362,8 @@ namespace QCS
                 {
                     bool isChsValid = false;
 
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
-                        conn.Open();
+                        var conn = validationConn;
                         string zxQuery = @"
                             SELECT zx_code_cmmt, zx_code_desc2 
                             FROM zx_code_mstr 
@@ -464,9 +426,8 @@ namespace QCS
                     string dbMfDate = "";
                     string rawQmirItem = "";
 
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
-                        conn.Open();
+                        var conn = validationConn;
                         // qmir_batch 번호로 데이터가 존재하는지 대조 및 필요한 컬럼 추출
                         string qmirQuery = "SELECT qmir_mf_date, qmir_part FROM qmir_det WHERE qmir_batch = @BatchNo LIMIT 1;";
 
@@ -540,9 +501,8 @@ namespace QCS
 
                             if (!string.IsNullOrEmpty(cleanQmirItem))
                             {
-                                using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                                 {
-                                    conn.Open();
+                                    var conn = validationConn;
                                     string finiQuery = "SELECT pt2_mfg_part FROM pt2_mstr WHERE LTRIM(pt2_part, '0') = @QmirItem LIMIT 1;";
                                     using (var finiCmd = new SqliteCommand(finiQuery, conn))
                                     {
@@ -622,6 +582,8 @@ namespace QCS
                 previewList.Add(item);
             }
 
+            }
+
             // 하단 2층 프리뷰 그리드에 소스 적용하여 화면 갱신
             TblPreview.ItemsSource = previewList;
         }
@@ -629,11 +591,53 @@ namespace QCS
         /// <summary>
         /// 2층 그리드에서 행을 선택하면 실행되는 감지기 (FullRow 매칭 버전)
         /// </summary>
+        // 1층 선택은 2층에 영향을 주지 않는다. 2층 -> 1층 연동만 유지한다.
+        private bool _inputRowHeaderSelected;
+
+        private void DgInput_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var source = e.OriginalSource as DependencyObject;
+            while (source != null && source != DgInput)
+            {
+                if (source is DataGridRowHeader)
+                {
+                    _inputRowHeaderSelected = true;
+                    return;
+                }
+                if (source is DataGridCell)
+                {
+                    _inputRowHeaderSelected = false;
+                    return;
+                }
+                source = System.Windows.Media.VisualTreeHelper.GetParent(source);
+            }
+            _inputRowHeaderSelected = false;
+        }
+
         private void TblPreview_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // 행 단위 선택 모드에서 현재 선택된 아이템을 안전하게 캐스팅
             if (TblPreview.SelectedItem is PreviewItem selectedItem)
             {
+                // 검증 결과와 입력 목록은 New 처리 시 동일한 순서로 생성된다.
+                // Batch No가 중복될 수 있으므로 값 검색이 아닌 행 인덱스로 연결한다.
+                int previewRowIndex = TblPreview.SelectedIndex;
+                if (previewRowIndex >= 0 && previewRowIndex < _inputList.Count)
+                {
+                    // CellOrRowHeader 모드를 변경하지 않고 해당 입력 행을 선택/표시한다.
+                    if (!_syncingGridSelection)
+                    {
+                        try
+                        {
+                            _syncingGridSelection = true;
+                            _inputRowHeaderSelected = false;
+                            DgInput.SelectedIndex = previewRowIndex;
+                            DgInput.ScrollIntoView(_inputList[previewRowIndex]);
+                        }
+                        finally { _syncingGridSelection = false; }
+                    }
+                }
+
                 string batchNo = selectedItem.BatchNumber != null
                     ? selectedItem.BatchNumber.Replace("\r", "").Replace("\n", "").Trim()
                     : "";
@@ -645,18 +649,21 @@ namespace QCS
                 }
 
                 List<DetailItem> detailList = new List<DetailItem>();
+                var perf = System.Diagnostics.Stopwatch.StartNew();
+                long openedMs = 0, queriedMs = 0, boundMs = 0;
 
                 try
                 {
                     using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
+                        openedMs = perf.ElapsedMilliseconds;
 
                         string query = @"
                             SELECT qmir_no, qmir_charac, qmir_first_value, qmir_last_value, 
                                    qmir_uom, qmir_ltol, qmir_utol, qmir_mf_date, qmir_part 
                             FROM qmir_det 
-                            WHERE TRIM(qmir_batch) = @BatchNo;";
+                            WHERE qmir_batch = @BatchNo;";
 
                         using (var cmd = new SqliteCommand(query, conn))
                         {
@@ -692,11 +699,14 @@ namespace QCS
                         }
                     }
 
+                    queriedMs = perf.ElapsedMilliseconds;
                     TblDetail.ItemsSource = detailList;
+                    boundMs = perf.ElapsedMilliseconds;
+                    System.Diagnostics.Debug.WriteLine($"[CoA 품질조회] Batch={batchNo}, DB연결={openedMs}ms, SQL/읽기={queriedMs-openedMs}ms, 바인딩={boundMs-queriedMs}ms, 총={boundMs}ms, 행수={detailList.Count}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"3층 상세 조회 에러: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"3층 상세 조회 에러 ({perf.ElapsedMilliseconds}ms): {ex}");
                 }
             }
         }
@@ -743,13 +753,7 @@ namespace QCS
                     // 와니의 순정 PreviewItem 클래스 모델 바인딩 구조에 맞춰 Valid 속성 추출
                     if (rowData is PreviewItem previewItem)
                     {
-                        statusVal = previewItem.Valid?.ToString().Trim() ?? "";
-                    }
-                    else
-                    {
-                        // 예방 차원의 리플렉션 방어 코드
-                        var prop = rowData.GetType().GetProperty("Valid") ?? rowData.GetType().GetProperty("valid");
-                        statusVal = prop?.GetValue(rowData)?.ToString().Trim() ?? "";
+                        statusVal = previewItem.Valid?.Trim() ?? "";
                     }
 
                     // 정상 발행 가능한 라인이 하나라도 있다면 패스!
@@ -843,12 +847,7 @@ namespace QCS
 
                     if (rowData is PreviewItem previewItem)
                     {
-                        statusVal = previewItem.Valid?.ToString().Trim() ?? "";
-                    }
-                    else
-                    {
-                        var prop = rowData.GetType().GetProperty("Valid") ?? rowData.GetType().GetProperty("valid");
-                        statusVal = prop?.GetValue(rowData)?.ToString().Trim() ?? "";
+                        statusVal = previewItem.Valid?.Trim() ?? "";
                     }
 
                     if (statusVal != "O") continue;
@@ -1044,9 +1043,11 @@ namespace QCS
                 // 🎯 NetOffice 규칙에 맞춰 파일 포맷 번호(51 = xlsx) 지정 및 소괄호 마감
                 wb.SaveAs(savePath, 51);
                 wb.Close(false);
+                wb.Dispose();
                 wb = null;
 
                 excelApp.Quit();
+                excelApp.Dispose();
                 excelApp = null;
 
                 // 🎯 4단계 완료 시점에서 생성된 엑셀 파일 바로 화면에 열어주기!
@@ -1064,8 +1065,8 @@ namespace QCS
             }
             finally
             {
-                if (wb != null) { wb.Close(false); wb = null; }
-                if (excelApp != null) { excelApp.Quit(); excelApp = null; }
+                if (wb != null) { try { wb.Close(false); } finally { wb.Dispose(); wb = null; } }
+                if (excelApp != null) { try { excelApp.Quit(); } finally { excelApp.Dispose(); excelApp = null; } }
             }
 
 
@@ -1084,8 +1085,8 @@ namespace QCS
                         string masterPjtNo = "";
                         if (rowCount > 0)
                         {
-                            dynamic firstRow = TblPreview.Items[0];
-                            masterPjtNo = firstRow.PjtNo ?? "";
+                            if (TblPreview.Items[0] is PreviewItem firstRow)
+                                masterPjtNo = firstRow.PjtNo ?? "";
                         }
 
                         // ① coa_mstr 마스터 테이블 인서트
@@ -1119,8 +1120,8 @@ namespace QCS
                         for (int idx = 0; idx < rowCount; idx++)
                         {
                             var rowData = TblPreview.Items[idx];
-                            dynamic dynamicRow = rowData;
-                            string statusVal = dynamicRow.Valid?.ToString().Trim() ?? "";
+                            if (rowData is not PreviewItem dynamicRow) continue;
+                            string statusVal = dynamicRow.Valid?.Trim() ?? "";
 
                             if (statusVal != "O") continue;
                             detLineSeq++; // 1부터 시작하는 라인 순번 (coad_line)
@@ -1209,6 +1210,41 @@ namespace QCS
         /// </summary>
         private void DgInput_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Delete && !DgInput.IsReadOnly)
+            {
+                // 명시적으로 행 헤더를 선택한 경우에만 기본 행 삭제 허용.
+                if (_inputRowHeaderSelected && DgInput.SelectedItems.Count > 0)
+                    return;
+
+                // 셀 선택 시에는 행을 삭제하지 않고 선택된 셀 값만 비운다.
+                e.Handled = true;
+                var cells = new List<DataGridCellInfo>(DgInput.SelectedCells);
+                if (cells.Count == 0 && DgInput.CurrentCell.Item != null && DgInput.CurrentCell.Column != null)
+                    cells.Add(DgInput.CurrentCell);
+
+                foreach (var cell in cells)
+                {
+                    if (cell.Item is not PreviewItem item || cell.Column == null) continue;
+                    switch (cell.Column.DisplayIndex)
+                    {
+                        case 0: item.BaseItemCode = ""; break;
+                        case 1: item.BatchNumber = ""; break;
+                        case 2: item.Qty = ""; break;
+                        case 3: item.ChsCode = ""; break;
+                        case 4: item.MfDate = ""; break;
+                        case 5: item.ColorCode = ""; break;
+                        case 6: item.PjtNo = ""; break;
+                    }
+                }
+                // 현재 셀 및 행 편집 트랜잭션 종료
+                DgInput.CommitEdit(DataGridEditingUnit.Cell, true);
+                DgInput.CommitEdit(DataGridEditingUnit.Row, true);
+
+                // 데이터 갱신
+                DgInput.Items.Refresh();
+                return;
+            }
+
             if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 e.Handled = true; // WPF 기본 붙여넣기 동작 차단

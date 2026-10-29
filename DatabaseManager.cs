@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 using System.Collections.Generic;
@@ -18,7 +18,46 @@ namespace QCS
         // ── 상수 ────────────────────────────────────────
         //private const string LocalDbFolder = "QCS_db";
         //private const string LocalDbFile = "qcs.db";
-        private const string NetworkDbPath = @"\\zcnpo0317vn0001\IPK_DBs\SQL_DBs\QCS\qcs.db";
+        private const string NetworkDbFolder = @"\\zcnpo0317vn0001\IPK_DBs\SQL_DBs\QCS";
+        private static readonly Dictionary<string, string> DbFiles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["msds"] = "qcs_msds.db", ["coa"] = "qcs_coa.db",
+            ["quality"] = "qcs_quality.db", ["reference"] = "qcs_reference.db",
+            ["common"] = "qcs_common.db", ["message"] = "qcs_message.db"
+        };
+        public static string GetDbPath(string module) => Path.Combine(NetworkDbFolder, DbFiles[module]);
+        public static string GetConnectionString(string module) =>
+            new SqliteConnectionStringBuilder { DataSource = GetDbPath(module), Mode = SqliteOpenMode.ReadWrite,
+                DefaultTimeout = 10, Pooling = true }.ToString();
+
+        /// <summary>모듈 DB를 기본 DB로 열고 나머지 DB를 ATTACH한다. 호출자가 using으로 닫아야 한다.</summary>
+        public static SqliteConnection OpenConnection(string module)
+        {
+            if (!DbFiles.ContainsKey(module)) throw new ArgumentException($"알 수 없는 DB 모듈: {module}");
+            var conn = new SqliteConnection(GetConnectionString(module));
+            try
+            {
+                conn.Open();
+                foreach (var item in DbFiles)
+                {
+                    if (item.Key.Equals(module, StringComparison.OrdinalIgnoreCase)) continue;
+                    using var cmd = conn.CreateCommand();
+                    // ATTACH의 별칭은 고정된 내부 키만 사용한다.
+                    cmd.CommandText = $"ATTACH DATABASE $path AS \"{item.Key}\";";
+                    cmd.Parameters.AddWithValue("$path", GetDbPath(item.Key));
+                    cmd.ExecuteNonQuery();
+                }
+                return conn;
+            }
+            catch { conn.Dispose(); throw; }
+        }
+
+        private static string ModuleForTable(string tableName) => tableName switch
+        {
+            "pt2_mstr" or "cas_ref_mstr" => "reference",
+            "qmir_det" => "quality", "zx_code_mstr" => "common", "msg_mstr" => "message",
+            "coa_mstr" or "coad_det" => "coa", _ => "msds"
+        };
 
         // ── 정적 필드 ────────────────────────────────────
         private static string _localDbPath = string.Empty;
@@ -75,35 +114,21 @@ namespace QCS
         /// </summary>
         public static void Initialize()
         {
-            // 1. 네트워크 DB 경로 설정
-            _localDbPath = NetworkDbPath;
-
-            // 2. DB 파일 존재 여부 확인 (자동 생성 금지)
-            if (!File.Exists(_localDbPath))
+            foreach (var item in DbFiles)
             {
-                throw new FileNotFoundException(
-                    $"SQLite DB 파일을 찾을 수 없습니다.\n경로: {_localDbPath}",
-                    _localDbPath);
+                if (!File.Exists(GetDbPath(item.Key)))
+                    throw new FileNotFoundException($"SQLite DB 파일을 찾을 수 없습니다: {GetDbPath(item.Key)}");
             }
-
-            // 3. DB 연결 문자열 설정
-            _activeConnectionString =
-                $"Data Source={_localDbPath};Mode=ReadWrite;Default Timeout=10;Pooling=True;";
-
-            // 4. 실제 DB 연결 확인
-            using (var conn = new SqliteConnection(_activeConnectionString))
+            // 구형 UI의 ActiveConnectionString 호환용. 이 문자열만으로는 ATTACH가 수행되지 않는다.
+            _localDbPath = GetDbPath("coa");
+            _activeConnectionString = GetConnectionString("coa");
+            using (var conn = OpenConnection("coa"))
+            using (var cmd = conn.CreateCommand())
             {
-                conn.Open();
-
-                using var cmd = conn.CreateCommand();
                 cmd.CommandText = "SELECT 1;";
                 cmd.ExecuteScalar();
             }
-
-            // 5. 기존 DB 인덱스 확인
-            CreateIndicesForce(_activeConnectionString);
-
-            // 6. 연결 상태 알림 (기존 동작 유지)
+            CreateIndicesForce();
             StatusChanged?.Invoke(true);
         }
 
@@ -113,7 +138,7 @@ namespace QCS
         public static void TryReconnectOnline()
         {
             System.Windows.MessageBox.Show(
-                "현재 단일 로컬 DB(QCS_db\\qcs.db) 모드로 동작 중입니다.",
+                "현재 네트워크 공유폴더의 6개 SQLite DB를 사용합니다.",
                 "DB 상태",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Information);
@@ -123,29 +148,28 @@ namespace QCS
         /// <summary>
         /// 기본 인덱스를 생성한다.
         /// </summary>
-        private static void CreateIndicesForce(string connStr)
+        private static void CreateIndicesForce()
         {
-            try
+            var indexes = new (string module, string sql)[]
             {
-                using (var conn = new SqliteConnection(connStr))
+                ("reference", "CREATE INDEX IF NOT EXISTS idx_pt2_mstr_part ON pt2_mstr (pt2_part);"),
+                ("quality", "CREATE INDEX IF NOT EXISTS idx_qmir_det_batch ON qmir_det (qmir_batch);"),
+                ("common", "CREATE INDEX IF NOT EXISTS idx_zx_code_mstr_composite ON zx_code_mstr (zx_code_fldname, zx_code_value);")
+            };
+            foreach (var (module, sql) in indexes)
+            {
+                try
                 {
+                    using var conn = new SqliteConnection(GetConnectionString(module));
                     conn.Open();
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_pt2_mstr_part ON pt2_mstr (pt2_part);";
-                        cmd.ExecuteNonQuery();
-
-                        cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_qmir_det_batch ON qmir_det (qmir_batch);";
-                        cmd.ExecuteNonQuery();
-
-                        cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_zx_code_mstr_composite ON zx_code_mstr (zx_code_fldname, zx_code_value);";
-                        cmd.ExecuteNonQuery();
-                    }
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"인덱스 생성 실패: {ex.Message}");
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"{module} 인덱스 생성 실패: {ex.Message}");
+                }
             }
         }
 
@@ -197,7 +221,7 @@ namespace QCS
 
             var (tableName, _) = DetectTableFromHeaders(cleanedHeaders);
 
-            using (var conn = new SqliteConnection(ActiveConnectionString))
+            using (var conn = new SqliteConnection(GetConnectionString(ModuleForTable(tableName))))
             {
                 conn.Open();
                 using (var transaction = conn.BeginTransaction())
@@ -234,7 +258,7 @@ namespace QCS
 
             var (tableName, _) = DetectTableFromHeaders(cleanedHeaders);
 
-            using (var conn = new SqliteConnection(ActiveConnectionString))
+            using (var conn = new SqliteConnection(GetConnectionString(ModuleForTable(tableName))))
             {
                 conn.Open();
                 using (var transaction = conn.BeginTransaction())

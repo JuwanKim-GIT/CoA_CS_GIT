@@ -1,78 +1,43 @@
-<UserControl x:Class="QCS.CoARegistryView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:QCS"
-             mc:Ignorable="d" 
-             d:DesignHeight="800" d:DesignWidth="1200" Background="#F5F6F8">
+<?xml version='1.0' encoding='utf-8'?>
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:local="clr-namespace:QCS" x:Class="QCS.CoARegistryView" mc:Ignorable="d" d:DesignHeight="800" d:DesignWidth="1200" Background="#F2F5FA">
 
-    <Grid Margin="15">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="1.5*"/>
-            <RowDefinition Height="1.5*"/>
-        </Grid.RowDefinitions>
+    <UserControl.Resources><Style TargetType="{x:Type DataGrid}" x:Key="DenseGrid"><Setter Property="RowHeight" Value="21"/><Setter Property="ColumnHeaderHeight" Value="27"/><Setter Property="FontSize" Value="11"/><Setter Property="HeadersVisibility" Value="Column"/><Setter Property="BorderThickness" Value="0"/><Setter Property="GridLinesVisibility" Value="Horizontal"/><Setter Property="HorizontalGridLinesBrush" Value="#E8EDF4"/><Setter Property="VerticalGridLinesBrush" Value="#E8EDF4"/><Setter Property="RowBackground" Value="#FFFFFF"/><Setter Property="AlternatingRowBackground" Value="#F7F9FD"/><Setter Property="AlternationCount" Value="2"/><Setter Property="CanUserResizeColumns" Value="True"/><Setter Property="CanUserSortColumns" Value="True"/><Setter Property="EnableRowVirtualization" Value="True"/><Setter Property="EnableColumnVirtualization" Value="True"/><Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/></Style><Style TargetType="{x:Type DataGridColumnHeader}" x:Key="DenseHeader"><Setter Property="Background" Value="#DCE7F5"/><Setter Property="Foreground" Value="#1D3C61"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="11"/><Setter Property="Padding" Value="7,3,5,3"/><Setter Property="BorderBrush" Value="#D6E0ED"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style><Style TargetType="{x:Type Button}" x:Key="ActionButton"><Setter Property="Height" Value="31"/><Setter Property="MinWidth" Value="90"/><Setter Property="Padding" Value="14,3"/><Setter Property="Margin" Value="5,0,0,0"/><Setter Property="Background" Value="#FFFFFF"/><Setter Property="Foreground" Value="#2B4668"/><Setter Property="BorderBrush" Value="#CAD7E7"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="12"/><Setter Property="Cursor" Value="Hand"/></Style><Style TargetType="{x:Type DataGridRow}" x:Key="CoASelectionRow">
+<Setter Property="SnapsToDevicePixels" Value="True"/>
+<Style.Triggers>
+<Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#CFE5FF"/><Setter Property="Foreground" Value="#163C65"/></Trigger>
+<MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/><Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Background" Value="#1766B3"/><Setter Property="Foreground" Value="White"/></MultiDataTrigger>
+</Style.Triggers></Style><Style TargetType="{x:Type DataGridRow}" x:Key="CoAValidationRow" BasedOn="{StaticResource CoASelectionRow}"><Style.Triggers><DataTrigger Binding="{Binding Valid}" Value="X"><Setter Property="Background" Value="#FCE8E8"/></DataTrigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#CFE5FF"/><Setter Property="Foreground" Value="#163C65"/></Trigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/><Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Background" Value="#1766B3"/><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style>
+<Style TargetType="{x:Type DataGridCell}" x:Key="CoASelectionCell"><Setter Property="BorderThickness" Value="0"/><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}"/><Setter Property="BorderBrush" Value="Transparent"/></Trigger></Style.Triggers></Style><Style TargetType="{x:Type DataGridCell}" x:Key="CoAInputSelectionCell" BasedOn="{StaticResource CoASelectionCell}">
+    <Style.Triggers>
+        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True">
+            <Setter Property="Background" Value="#1766B3"/>
+            <Setter Property="Foreground" Value="White"/>
+        </DataTrigger>
+        <Trigger Property="IsSelected" Value="True">
+            <Setter Property="Background" Value="#1766B3"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Trigger>
+    </Style.Triggers>
+</Style>
+</UserControl.Resources><Grid Margin="12,10,12,10"><Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="9"/><RowDefinition Height="4*" MinHeight="0"/><RowDefinition Height="9"/><RowDefinition Height="4*" MinHeight="0"/><RowDefinition Height="9"/><RowDefinition Height="4*" MinHeight="0"/></Grid.RowDefinitions><Border Grid.Row="0" Background="White" BorderBrush="#D8E2EF" BorderThickness="1" CornerRadius="6" Padding="12,7"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Grid.Row="0" Text="CoA 발행  /  기본정보" FontSize="12" FontWeight="Bold" Foreground="#1E4C88"/><Grid Grid.Row="1" Grid.Column="0" Margin="0,4,14,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="14"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="125"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Cust Name" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#42566F" Margin="0,0,6,0"/><TextBlock Grid.Column="3" Text="PJT Name" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#42566F" Margin="0,0,6,0"/><TextBlock Grid.Column="6" Text="Language" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#42566F" Margin="0,0,6,0"/><TextBlock Grid.Column="12" Text="CoA No" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#42566F" Margin="0,0,6,0"/><TextBox x:Name="TxtCust" Grid.Column="1" Height="28" VerticalContentAlignment="Center" Padding="4" Tag="고객사명 입력" FontSize="12" BorderBrush="#C8D5E5" Margin="0"/>
 
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E4E6EF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="1.5*"/>
-                    <ColumnDefinition Width="15"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="1.5*"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="15"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="130"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="105"/>
-                    <ColumnDefinition Width="105"/>
-                    <ColumnDefinition Width="100"/>
-                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtPjt" Grid.Column="4" Height="28" VerticalContentAlignment="Center" Padding="4" Tag="프로젝트명 입력" FontSize="12" BorderBrush="#C8D5E5" Margin="0"/>
 
-                <TextBlock Grid.Column="0" Text="Cust Name:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtCust" Grid.Column="1" Height="26" VerticalContentAlignment="Center" Padding="4" Tag="고객사명 입력"/>
+                <TextBox x:Name="TxtCoaNo" Grid.Column="13" Height="28" VerticalContentAlignment="Center" Padding="4" IsReadOnly="True" Background="#F0F0F0" Tag="발행될 CoA 번호" FontSize="12" BorderBrush="#C8D5E5" Margin="0"/>
 
-                <TextBlock Grid.Column="3" Text="PJT Name:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtPjt" Grid.Column="4" Height="26" VerticalContentAlignment="Center" Padding="4" Tag="프로젝트명 입력"/>
+                <RadioButton x:Name="RdoEn" Grid.Column="7" Content="영문" IsChecked="True" Margin="0,0,9,0" VerticalAlignment="Center" FontSize="11"/>
+                <RadioButton x:Name="RdoKo" Grid.Column="8" Content="한글" Margin="0,0,9,0" VerticalAlignment="Center" FontSize="11"/>
+                <RadioButton x:Name="RdoRu" Grid.Column="9" Content="러시아" Margin="0,0,9,0" VerticalAlignment="Center" FontSize="11"/>
+                <RadioButton x:Name="RdoJa" Grid.Column="10" Content="일본" Margin="0,0,9,0" VerticalAlignment="Center" FontSize="11"/>
 
-                <TextBlock Grid.Column="6" Text="Language:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
-                <RadioButton x:Name="RdoEn" Grid.Column="7" Content="영문" IsChecked="True" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <RadioButton x:Name="RdoKo" Grid.Column="8" Content="한글" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <RadioButton x:Name="RdoRu" Grid.Column="9" Content="러시아" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <RadioButton x:Name="RdoJa" Grid.Column="10" Content="일본" Margin="0,0,0,0" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Column="12" Text="CoA No:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtCoaNo" Grid.Column="13" Height="26" VerticalContentAlignment="Center" Padding="4" IsReadOnly="True" Background="#F0F0F0" Tag="발행될 CoA 번호"/>
-
-                <Button x:Name="BtnNew" Grid.Column="15" Content="New" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnNew_Click"/>
-                <Button x:Name="BtnRegister" Grid.Column="16" Content="Register" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnRegister_Click"/>
-                <Button x:Name="BtnClear" Grid.Column="17" Content="Clear" Height="26" Width="100" HorizontalAlignment="Left" Background="#FFFFFF" BorderBrush="#E4E6EF" Click="BtnClear_Click" Margin="10,0,0,0"/>
-            </Grid>
-        </Border>
-
-        <DataGrid x:Name="DgInput" Grid.Row="1" 
-                  AutoGenerateColumns="False" 
-                  CanUserAddRows="True"
-                  SelectionMode="Extended"
-                  SelectionUnit="CellOrRowHeader"
-                  RowHeaderWidth="22"
-                  GridLinesVisibility="All" 
-                  Background="White" 
-                  Margin="0,0,0,10"
-                  PreviewKeyDown="DgInput_PreviewKeyDown">
+                </Grid><StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center"><Button x:Name="BtnNew" Content="New" Click="BtnNew_Click" Style="{StaticResource ActionButton}" Margin="5,0,0,0"/>
+                <Button x:Name="BtnRegister" Content="Register" Click="BtnRegister_Click" Style="{StaticResource ActionButton}" Margin="5,0,0,0" Background="#1766C1" Foreground="White" BorderBrush="#1766C1"/>
+                <Button x:Name="BtnClear" Content="Clear" Click="BtnClear_Click" Margin="5,0,0,0" Style="{StaticResource ActionButton}"/>
+            </StackPanel></Grid></Border><Border Grid.Row="2" Background="White" BorderBrush="#D8E2EF" BorderThickness="1" CornerRadius="6"><Grid><Grid.RowDefinitions><RowDefinition Height="31"/><RowDefinition Height="*"/></Grid.RowDefinitions><Border Grid.Row="0" Background="#EDF3FA" BorderBrush="#D8E2EF" BorderThickness="0,0,0,1" Padding="10,0"><DockPanel LastChildFill="True"><TextBlock Text="CoA 발행 대상" FontWeight="Bold" FontSize="12" Foreground="#193D66" VerticalAlignment="Center" Margin="0,0,12,0"/><TextBlock Text="복사 · 붙여넣기 입력  |  Ctrl+V  |  여러 행 일괄 처리" FontSize="11" Foreground="#607995" VerticalAlignment="Center"/></DockPanel></Border><DataGrid x:Name="DgInput" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" HeadersVisibility="All" SelectionMode="Extended" SelectionUnit="CellOrRowHeader" RowHeaderWidth="22" GridLinesVisibility="All" Background="White" Margin="0" PreviewKeyDown="DgInput_PreviewKeyDown" PreviewMouseLeftButtonDown="DgInput_PreviewMouseLeftButtonDown" Style="{StaticResource DenseGrid}" ColumnHeaderStyle="{StaticResource DenseHeader}" RowHeight="21" ColumnHeaderHeight="27" RowStyle="{StaticResource CoASelectionRow}" RowBackground="#F8FBFF" AlternatingRowBackground="#EFF5FC" CellStyle="{StaticResource CoAInputSelectionCell}">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="품목코드" Binding="{Binding BaseItemCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
                 <DataGridTextColumn Header="배치번호" Binding="{Binding BatchNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="130"/>
-                <DataGridTextColumn Header="수량 (QTY)" Binding="{Binding Qty, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                <DataGridTextColumn Header="수량 (QTY)" Binding="{Binding Qty, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="90"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/><Setter Property="Padding" Value="3,0,6,0"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
                 <DataGridTextColumn Header="CHS 코드" Binding="{Binding ChsCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
                 <DataGridTextColumn Header="제조일자" Binding="{Binding MfDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
                 <DataGridTextColumn Header="컬러코드" Binding="{Binding ColorCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
@@ -80,48 +45,40 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <DataGrid x:Name="TblPreview" Grid.Row="2" 
-                  AutoGenerateColumns="False" 
-                  GridLinesVisibility="All" 
-                  Background="White" 
-                  Margin="0,0,0,10"
-                  IsReadOnly="True"
-                  SelectionMode="Single"
-                  SelectionUnit="FullRow"
-                  SelectionChanged="TblPreview_SelectionChanged">
+        </Grid></Border><Border Grid.Row="4" Background="White" BorderBrush="#D8E2EF" BorderThickness="1" CornerRadius="6"><Grid><Grid.RowDefinitions><RowDefinition Height="31"/><RowDefinition Height="*"/></Grid.RowDefinitions><Border Grid.Row="0" Background="#EDF3FA" BorderBrush="#D8E2EF" BorderThickness="0,0,0,1" Padding="10,0"><DockPanel LastChildFill="True"><TextBlock Text="데이터 검증 결과" FontWeight="Bold" FontSize="12" Foreground="#193D66" VerticalAlignment="Center" Margin="0,0,12,0"/><TextBlock Text="주요 작업 영역  |  유효성 및 오류 메시지 확인  |  행 선택 시 아래 시험 결과 조회" FontSize="11" Foreground="#607995" VerticalAlignment="Center"/></DockPanel></Border><DataGrid x:Name="TblPreview" Grid.Row="1" AutoGenerateColumns="False" GridLinesVisibility="All" Background="White" Margin="0" IsReadOnly="True" SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="TblPreview_SelectionChanged" Style="{StaticResource DenseGrid}" ColumnHeaderStyle="{StaticResource DenseHeader}" RowHeight="21" ColumnHeaderHeight="27" RowStyle="{StaticResource CoAValidationRow}" CellStyle="{StaticResource CoASelectionCell}">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Valid" Binding="{Binding Valid}" Width="60"/>
-                <DataGridTextColumn Header="Error MSG" Binding="{Binding ErrorMsg}" Width="150"/>
-                <DataGridTextColumn Header="Base Item Code" Binding="{Binding BaseItemCode}" Width="110"/>
+                <DataGridTextColumn Header="Valid" Binding="{Binding Valid}" Width="60"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#146A65"/><Setter Property="Padding" Value="5,0,2,0"/><Style.Triggers><DataTrigger Binding="{Binding Valid}" Value="X"><Setter Property="Foreground" Value="#B42332"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding Valid}" Value="X"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+                <DataGridTextColumn Header="Error MSG" Binding="{Binding ErrorMsg}" Width="150"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#4D6078"/><Setter Property="Padding" Value="5,0,2,0"/><Style.Triggers><DataTrigger Binding="{Binding Valid}" Value="X"><Setter Property="Foreground" Value="#B42332"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding Valid}" Value="X"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+                <DataGridTextColumn Header="Base Item Code" Binding="{Binding BaseItemCode}" Width="110"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong Item"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong Item"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
                 <DataGridTextColumn Header="품명 (Desc)" Binding="{Binding Desc}" Width="250"/>
-                <DataGridTextColumn Header="Batch Number" Binding="{Binding BatchNumber}" Width="120"/>
-                <DataGridTextColumn Header="CHS Code" Binding="{Binding ChsCode}" Width="100"/>
+                <DataGridTextColumn Header="Batch Number" Binding="{Binding BatchNumber}" Width="120"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong Batch"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong Batch"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+                <DataGridTextColumn Header="CHS Code" Binding="{Binding ChsCode}" Width="100"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong CHS"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong CHS"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
                 <DataGridTextColumn Header="Color Code" Binding="{Binding ColorCode}" Width="90"/>
-                <DataGridTextColumn Header="QTY" Binding="{Binding Qty}" Width="80"/>
+                <DataGridTextColumn Header="QTY" Binding="{Binding Qty}" Width="80"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/><Setter Property="Padding" Value="3,0,6,0"/><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong QTY"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong QTY"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
                 <DataGridTextColumn Header="LTQTY" Binding="{Binding LtQty, StringFormat={}{0:F2}}" Width="90">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,5,0" />
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="MF. Date" Binding="{Binding MfDate}" Width="100"/>
-                <DataGridTextColumn Header="보존기한 (Shelf)" Binding="{Binding Shelf}" Width="100"/>
+                <DataGridTextColumn Header="MF. Date" Binding="{Binding MfDate}" Width="100"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong Date"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong Date"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+                <DataGridTextColumn Header="보존기한 (Shelf)" Binding="{Binding Shelf}" Width="100"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding ErrorMsg}" Value="Wrong Shelf"><Setter Property="Foreground" Value="#B42332"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding ErrorMsg}" Value="Wrong Shelf"/><Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Foreground" Value="White"/></MultiDataTrigger></Style.Triggers></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
                 <DataGridTextColumn Header="EXP. Date" Binding="{Binding ExpDate}" Width="100"/>
                 <DataGridTextColumn Header="PJT No" Binding="{Binding PjtNo}" Width="120"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <DataGrid x:Name="TblDetail" Grid.Row="3" AutoGenerateColumns="False" GridLinesVisibility="All" Background="White" IsReadOnly="True">
+        </Grid></Border><Border Grid.Row="6" Background="White" BorderBrush="#D8E2EF" BorderThickness="1" CornerRadius="6"><Grid><Grid.RowDefinitions><RowDefinition Height="31"/><RowDefinition Height="*"/></Grid.RowDefinitions><Border Grid.Row="0" Background="#EDF3FA" BorderBrush="#D8E2EF" BorderThickness="0,0,0,1" Padding="10,0"><DockPanel LastChildFill="True"><TextBlock Text="품질 시험 결과" FontWeight="Bold" FontSize="12" Foreground="#193D66" VerticalAlignment="Center" Margin="0,0,12,0"/><TextBlock Text="선택한 배치의 시험 항목  |  약 8행 표시 · 추가 항목 스크롤" FontSize="11" Foreground="#607995" VerticalAlignment="Center"/></DockPanel></Border><DataGrid x:Name="TblDetail" Grid.Row="1" AutoGenerateColumns="False" GridLinesVisibility="All" Background="White" IsReadOnly="True" Margin="0" Style="{StaticResource DenseGrid}" ColumnHeaderStyle="{StaticResource DenseHeader}" RowHeight="21" ColumnHeaderHeight="27" RowStyle="{StaticResource CoASelectionRow}" CellStyle="{StaticResource CoASelectionCell}">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="NO" Binding="{Binding No}" Width="50"/>
                 <DataGridTextColumn Header="Characteristic" Binding="{Binding Characteristic}" Width="2*"/>
                 <DataGridTextColumn Header="First Value" Binding="{Binding FirstValue}" Width="1.2*">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,5,0" />
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -129,8 +86,8 @@
                 <DataGridTextColumn Header="Last Value" Binding="{Binding LastValue}" Width="1.2*">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,5,0" />
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -138,8 +95,8 @@
                 <DataGridTextColumn Header="LowerLimit" Binding="{Binding LowerLimit}" Width="1.2*">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,5,0" />
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -147,8 +104,8 @@
                 <DataGridTextColumn Header="UpperLimit" Binding="{Binding UpperLimit}" Width="1.2*">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,5,0" />
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -156,5 +113,4 @@
                 <DataGridTextColumn Header="Item Code" Binding="{Binding ItemCode}" Width="1.5*"/>
             </DataGrid.Columns>
         </DataGrid>
-    </Grid>
-</UserControl>
+    </Grid></Border></Grid></UserControl>

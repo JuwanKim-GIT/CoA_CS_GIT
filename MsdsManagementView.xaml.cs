@@ -51,7 +51,7 @@ namespace QCS
   }
   private static SqliteConnection OpenReadOnly()
   {
-   string dbPath=DatabaseManager.ActiveDbPath;
+   string dbPath=DatabaseManager.GetDbPath("msds");
    if(string.IsNullOrWhiteSpace(dbPath)||!File.Exists(dbPath)) throw new FileNotFoundException("QCS DB 파일이 존재하지 않습니다. DB 연결 상태를 확인하세요.",dbPath);
    var builder=new SqliteConnectionStringBuilder { DataSource=dbPath,Mode=SqliteOpenMode.ReadOnly,DefaultTimeout=10,Pooling=false };
    var connection=new SqliteConnection(builder.ToString()); connection.Open(); return connection;
@@ -65,7 +65,7 @@ namespace QCS
     MasterGrid.ItemsSource=_master.DefaultView;
     DetailGrid.ItemsSource=null;
     ClearDetails(); ApplyFilter();
-    StatusText.Text=$"DB: {DatabaseManager.ActiveDbPath} | 마지막 조회: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+    StatusText.Text=$"DB: {DatabaseManager.GetDbPath("msds")} | 마지막 조회: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
    }
    catch(Exception ex) { StatusText.Text="DB 조회 실패: "+ex.Message; MessageBox.Show(ex.Message,"MSDS DB 조회 오류",MessageBoxButton.OK,MessageBoxImage.Error); }
   }
@@ -168,7 +168,7 @@ namespace QCS
 
             try
             {
-                string dbPath = DatabaseManager.ActiveDbPath;
+                string dbPath = DatabaseManager.GetDbPath("msds");
                 if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
                     throw new FileNotFoundException("DB 파일을 찾을 수 없습니다.", dbPath);
                 var builder = new SqliteConnectionStringBuilder
