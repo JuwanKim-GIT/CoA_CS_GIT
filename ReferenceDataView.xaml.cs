@@ -10,7 +10,7 @@ namespace QCS { public partial class ReferenceDataView : UserControl {
  private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshData();
  private void Clear_Click(object sender, RoutedEventArgs e) { SearchBox.Clear(); RefreshData(); }
  private void RefreshData() { try {
- string path = DatabaseManager.ActiveDbPath;
+ string path = DatabaseManager.GetDbPath("reference");
  if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) throw new FileNotFoundException("DB 파일이 없습니다.",path);
  var b = new SqliteConnectionStringBuilder { DataSource=path,Mode=SqliteOpenMode.ReadOnly,DefaultTimeout=10,Pooling=false };
  using var conn = new SqliteConnection(b.ToString()); conn.Open();

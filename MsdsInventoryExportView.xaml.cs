@@ -33,7 +33,7 @@ namespace QCS
         {
             try
             {
-                string path = DatabaseManager.ActiveDbPath;
+                string path = DatabaseManager.GetDbPath("msds");
                 if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                     throw new FileNotFoundException("QCS DB 파일이 없습니다.", path);
 
@@ -119,7 +119,7 @@ namespace QCS
             {
                 var builder = new SqliteConnectionStringBuilder
                 {
-                    DataSource = DatabaseManager.ActiveDbPath,
+                    DataSource = DatabaseManager.GetDbPath("msds"),
                     Mode = SqliteOpenMode.ReadOnly,
                     DefaultTimeout = 10,
                     Pooling = false

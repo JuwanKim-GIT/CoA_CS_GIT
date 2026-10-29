@@ -1,9 +1,12 @@
 ﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Data;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+
+using ComboBox = System.Windows.Controls.ComboBox;
 
 using DataFormats = System.Windows.DataFormats;
 
@@ -24,6 +27,57 @@ namespace QCS
     {
         private DataTable _dtSource = new DataTable();
         private DataGrid _dataGrid = new DataGrid();
+        private TextBlock _changeStatus;
+
+        private void CommitPendingEdits()
+        {
+            _dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            _dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        }
+
+        private (int total, int added, int modified, int deleted) GetChangeCounts()
+        {
+            int added = 0, modified = 0, deleted = 0, total = 0;
+            foreach (DataRow row in _dtSource.Rows)
+            {
+                switch (row.RowState)
+                {
+                    case DataRowState.Added: added++; total++; break;
+                    case DataRowState.Modified: modified++; total++; break;
+                    case DataRowState.Deleted: deleted++; break;
+                    default: total++; break;
+                }
+            }
+            return (total, added, modified, deleted);
+        }
+
+        private void RefreshChangeStatus()
+        {
+            if (_changeStatus == null) return;
+            var c = GetChangeCounts();
+            _changeStatus.Text = $"조회: {c.total:N0}건   │   신규: {c.added:N0}건   │   수정: {c.modified:N0}건   │   삭제: {c.deleted:N0}건";
+        }
+
+        private void AttachChangeTracking(DataTable table)
+        {
+            table.RowChanged += (s, e) => Dispatcher.BeginInvoke(new Action(RefreshChangeStatus));
+            table.RowDeleted += (s, e) => Dispatcher.BeginInvoke(new Action(RefreshChangeStatus));
+            table.TableNewRow += (s, e) => Dispatcher.BeginInvoke(new Action(RefreshChangeStatus));
+        }
+
+        /// <summary>
+        /// 상위 탭 관리자가 탭 닫기/이동 전에 호출할 수 있는 확인 메서드.
+        /// false이면 탭 닫기/이동을 취소해야 한다.
+        /// </summary>
+        public bool CanDiscardChanges()
+        {
+            CommitPendingEdits();
+            var c = GetChangeCounts();
+            if (c.added + c.modified + c.deleted == 0) return true;
+            return MessageBox.Show(
+                $"저장하지 않은 변경 사항이 있습니다.\n\n신규: {c.added}건 / 수정: {c.modified}건 / 삭제: {c.deleted}건\n\n계속하면 변경 내용이 사라집니다. 계속하시겠습니까?",
+                "미저장 데이터 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        }
 
         public CodeListView()
         {
@@ -35,58 +89,89 @@ namespace QCS
         {
             DockPanel mainPanel = new DockPanel();
 
-            StackPanel searchBar = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(10, 10, 10, 5)
-            };
+            // 1차 개선: 검색/작업 영역만 재구성. DataGrid 편집 동작은 그대로 유지한다.
+            var outerBar = new StackPanel { Margin = new Thickness(10, 10, 10, 5) };
+            var searchBar = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 7) };
+            var actionBar = new WrapPanel { Orientation = Orientation.Horizontal };
 
-            TextBlock lblSearch1 = new TextBlock
-            {
-                Text = "검색어 1:",
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.Bold,
-                Foreground = System.Windows.Media.Brushes.DimGray
-            };
-            TextBox txtSearch1 = new TextBox
-            {
-                Width = 150,
-                Height = 26,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 15, 0)
-            };
+            TextBlock lblField = new TextBlock { Text = "Field Name:", VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.DimGray };
+            ComboBox cboField = new ComboBox { Width = 220, Height = 28, IsEditable = true,
+                IsTextSearchEnabled = true, Margin = new Thickness(6, 0, 16, 4),
+                VerticalContentAlignment = VerticalAlignment.Center };
 
-            TextBlock lblSearch2 = new TextBlock
-            {
-                Text = "검색어 2:",
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.Bold,
-                Foreground = System.Windows.Media.Brushes.DimGray
-            };
-            TextBox txtSearch2 = new TextBox
-            {
-                Width = 150,
-                Height = 26,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 15, 0)
-            };
+            TextBlock lblSearch1 = new TextBlock { Text = "검색어 1:", VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.DimGray };
+            TextBox txtSearch1 = new TextBox { Width = 150, Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 16, 4) };
+            TextBlock lblSearch2 = new TextBlock { Text = "검색어 2:", VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.DimGray };
+            TextBox txtSearch2 = new TextBox { Width = 150, Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 16, 4) };
 
-            Button btnSearch = new Button { Content = "검색", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0) };
-            Button btnDelete = new Button { Content = "선택삭제", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0), Background = System.Windows.Media.Brushes.MistyRose };
-            Button btnSave = new Button { Content = "저장", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0), Background = System.Windows.Media.Brushes.LightBlue, FontWeight = FontWeights.Bold };
-            Button btnExport = new Button { Content = "엑셀출력", Width = 80, Height = 26, Background = System.Windows.Media.Brushes.LightGreen, FontWeight = FontWeights.Bold };
+            Button btnSearch = new Button { Content = "검색", Width = 78, Height = 28, Margin = new Thickness(0, 0, 6, 4) };
+            Button btnAll = new Button { Content = "전체조회", Width = 86, Height = 28, Margin = new Thickness(0, 0, 6, 4) };
+            Button btnDelete = new Button { Content = "선택삭제", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 12, 4), Background = System.Windows.Media.Brushes.MistyRose };
+            Button btnSave = new Button { Content = "저장", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 8, 4), Background = System.Windows.Media.Brushes.LightBlue, FontWeight = FontWeights.Bold };
+            Button btnExport = new Button { Content = "엑셀출력", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 8, 4), Background = System.Windows.Media.Brushes.LightGreen, FontWeight = FontWeights.Bold };
 
+            searchBar.Children.Add(lblField);
+            searchBar.Children.Add(cboField);
             searchBar.Children.Add(lblSearch1);
             searchBar.Children.Add(txtSearch1);
             searchBar.Children.Add(lblSearch2);
             searchBar.Children.Add(txtSearch2);
             searchBar.Children.Add(btnSearch);
-            searchBar.Children.Add(btnDelete);
-            searchBar.Children.Add(btnSave);
-            searchBar.Children.Add(btnExport);
+            searchBar.Children.Add(btnAll);
+            actionBar.Children.Add(btnDelete);
+            actionBar.Children.Add(btnSave);
+            actionBar.Children.Add(btnExport);
+            // 작업 버튼 우측: 현재 조회 및 미저장 변경 건수
+            _changeStatus = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                TextAlignment = TextAlignment.Right,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = System.Windows.Media.Brushes.DimGray,
+                Margin = new Thickness(10, 0, 0, 4)
+            };
+            var actionRow = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(actionBar, Dock.Left);
+            actionRow.Children.Add(actionBar);
+            actionRow.Children.Add(_changeStatus);
+            outerBar.Children.Add(searchBar);
+            outerBar.Children.Add(actionRow);
+            DockPanel.SetDock(outerBar, Dock.Top);
+            mainPanel.Children.Add(outerBar);
 
-            DockPanel.SetDock(searchBar, Dock.Top);
-            mainPanel.Children.Add(searchBar);
+            // 기존 테이블의 그룹 목록을 가져오되, 새 그룹 입력도 가능하도록 편집형 콤보박스를 사용한다.
+            Action loadFieldNames = () =>
+            {
+                string currentText = cboField.Text;
+                try
+                {
+                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    {
+                        conn.Open();
+                        using (var cmd = new SqliteCommand(
+                            "SELECT DISTINCT zx_code_fldname FROM zx_code_mstr WHERE zx_code_fldname IS NOT NULL ORDER BY zx_code_fldname;", conn))
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            cboField.Items.Clear();
+                            while (reader.Read()) cboField.Items.Add(reader.GetString(0));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Field Name 목록 조회 실패: {ex.Message}");
+                }
+                cboField.Text = currentText;
+            };
 
             _dataGrid = new DataGrid
             {
@@ -121,18 +206,21 @@ namespace QCS
             };
 
             _dataGrid.PreviewKeyDown += DataGrid_PreviewKeyDown;
+            _dataGrid.CellEditEnding += (s, e) => Dispatcher.BeginInvoke(new Action(RefreshChangeStatus));
+            _dataGrid.RowEditEnding += (s, e) => Dispatcher.BeginInvoke(new Action(RefreshChangeStatus));
 
             mainPanel.Children.Add(_dataGrid);
 
             // 데이터 조회 로직
             Action ActionSearch = () =>
             {
-                _dtSource = new DataTable();
+                string fieldName = cboField.Text.Trim();
                 string key1 = txtSearch1.Text.Trim();
                 string key2 = txtSearch2.Text.Trim();
 
                 try
                 {
+                    var newTable = new DataTable();
                     using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
                     {
                         conn.Open();
@@ -146,6 +234,9 @@ namespace QCS
                         sql.AppendLine("    zx_code_char1 AS [Char#1], ");
                         sql.AppendLine("    zx_code_char2 AS [Char#2] ");
                         sql.AppendLine("FROM zx_code_mstr WHERE 1=1");
+
+                        if (!string.IsNullOrEmpty(fieldName))
+                            sql.AppendLine("AND zx_code_fldname = @fieldName");
 
                         if (!string.IsNullOrEmpty(key1))
                         {
@@ -167,18 +258,22 @@ namespace QCS
 
                         using (var cmd = new SqliteCommand(sql.ToString(), conn))
                         {
+                            if (!string.IsNullOrEmpty(fieldName)) cmd.Parameters.AddWithValue("@fieldName", fieldName);
                             if (!string.IsNullOrEmpty(key1)) cmd.Parameters.AddWithValue("@likeKey1", $"%{key1}%");
                             if (!string.IsNullOrEmpty(key2)) cmd.Parameters.AddWithValue("@likeKey2", $"%{key2}%");
 
                             using (var reader = cmd.ExecuteReader())
                             {
-                                _dtSource.Load(reader);
+                                newTable.Load(reader);
                             }
                         }
                     }
 
+                    _dtSource = newTable;
+                    AttachChangeTracking(_dtSource);
                     _dataGrid.ItemsSource = null;
                     _dataGrid.ItemsSource = _dtSource.DefaultView;
+                    RefreshChangeStatus();
                 }
                 catch (Exception ex)
                 {
@@ -189,11 +284,8 @@ namespace QCS
             // 데이터 일괄 저장 (CUD 통합 처리) 로직
             Action ActionSave = () =>
             {
-                // 셀 편집 내용을 먼저 확정
-                _dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-
-                // 행 편집 내용을 확정
-                _dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+                // 셀/행 편집 내용을 먼저 확정
+                CommitPendingEdits();
 
                 int updateCount = 0;
                 int insertCount = 0;
@@ -276,6 +368,7 @@ namespace QCS
                     if (updateCount > 0 || insertCount > 0 || deleteCount > 0)
                     {
                         MessageBox.Show($"DB 저장이 정상 완료되었습니다!\n(수정: {updateCount}건, 추가: {insertCount}건, 삭제: {deleteCount}건)", "저장 완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                        loadFieldNames();
                         ActionSearch();
                     }
                     else
@@ -368,11 +461,25 @@ namespace QCS
                 }
             };
 
-            btnSearch.Click += (s, e) => ActionSearch();
+            Action guardedSearch = () =>
+            {
+                if (CanDiscardChanges()) ActionSearch();
+            };
+            btnSearch.Click += (s, e) => guardedSearch();
+            btnAll.Click += (s, e) =>
+            {
+                if (!CanDiscardChanges()) return;
+                cboField.Text = "";
+                txtSearch1.Clear();
+                txtSearch2.Clear();
+                ActionSearch();
+            };
+            cboField.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) guardedSearch(); };
             btnSave.Click += (s, e) => ActionSave();
-            txtSearch1.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) ActionSearch(); };
-            txtSearch2.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) ActionSearch(); };
+            txtSearch1.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) guardedSearch(); };
+            txtSearch2.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) guardedSearch(); };
 
+            loadFieldNames();
             ActionSearch();
 
             return mainPanel;

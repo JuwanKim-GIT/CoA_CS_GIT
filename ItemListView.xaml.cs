@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Data;
 using System.Text;
@@ -35,58 +35,48 @@ namespace QCS
         {
             DockPanel mainPanel = new DockPanel();
 
-            StackPanel searchBar = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(10, 10, 10, 5)
-            };
-
-            TextBlock lblSearch1 = new TextBlock
-            {
-                Text = "검색어 1:",
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.Bold,
-                Foreground = System.Windows.Media.Brushes.DimGray
-            };
-            TextBox txtSearch1 = new TextBox
-            {
-                Width = 150,
-                Height = 26,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 15, 0)
-            };
-
-            TextBlock lblSearch2 = new TextBlock
-            {
-                Text = "검색어 2:",
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.Bold,
-                Foreground = System.Windows.Media.Brushes.DimGray
-            };
-            TextBox txtSearch2 = new TextBox
-            {
-                Width = 150,
-                Height = 26,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 15, 0)
-            };
-
-            Button btnSearch = new Button { Content = "검색", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0) };
-            Button btnDelete = new Button { Content = "선택삭제", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0), Background = System.Windows.Media.Brushes.MistyRose };
-            Button btnSave = new Button { Content = "저장", Width = 80, Height = 26, Margin = new Thickness(0, 0, 10, 0), Background = System.Windows.Media.Brushes.LightBlue, FontWeight = FontWeights.Bold };
-            Button btnExport = new Button { Content = "엑셀출력", Width = 80, Height = 26, Background = System.Windows.Media.Brushes.LightGreen, FontWeight = FontWeights.Bold };
+            // 검색/작업 영역: 기존 그리드 및 DB 편집 로직과 독립적으로 구성
+            var outerBar = new StackPanel { Margin = new Thickness(10, 10, 10, 5) };
+            var searchBar = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 7) };
+            var actionBar = new DockPanel { LastChildFill = true };
+            var actionButtons = new WrapPanel { Orientation = Orientation.Horizontal };
+            TextBlock lblSearch1 = new TextBlock { Text = "검색어 1:", VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.DimGray };
+            TextBox txtSearch1 = new TextBox { Width = 150, Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 16, 4) };
+            TextBlock lblSearch2 = new TextBlock { Text = "검색어 2:", VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.DimGray };
+            TextBox txtSearch2 = new TextBox { Width = 150, Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 16, 4) };
+            Button btnSearch = new Button { Content = "검색", Width = 78, Height = 28, Margin = new Thickness(0, 0, 6, 4) };
+            Button btnAll = new Button { Content = "전체조회", Width = 86, Height = 28, Margin = new Thickness(0, 0, 6, 4) };
+            Button btnDelete = new Button { Content = "선택삭제", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 12, 4), Background = System.Windows.Media.Brushes.MistyRose };
+            Button btnSave = new Button { Content = "저장", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 8, 4), Background = System.Windows.Media.Brushes.LightBlue, FontWeight = FontWeights.Bold };
+            Button btnExport = new Button { Content = "엑셀출력", Width = 86, Height = 28,
+                Margin = new Thickness(0, 0, 8, 4), Background = System.Windows.Media.Brushes.LightGreen, FontWeight = FontWeights.Bold };
+            TextBlock lblStatus = new TextBlock { Text = "조회: 0건  │  신규: 0건  │  수정: 0건  │  삭제: 0건",
+                VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                TextAlignment = TextAlignment.Right, Margin = new Thickness(12, 0, 4, 4),
+                Foreground = System.Windows.Media.Brushes.DimGray, FontWeight = FontWeights.SemiBold };
 
             searchBar.Children.Add(lblSearch1);
             searchBar.Children.Add(txtSearch1);
             searchBar.Children.Add(lblSearch2);
             searchBar.Children.Add(txtSearch2);
             searchBar.Children.Add(btnSearch);
-            searchBar.Children.Add(btnDelete);
-            searchBar.Children.Add(btnSave);
-            searchBar.Children.Add(btnExport);
-
-            DockPanel.SetDock(searchBar, Dock.Top);
-            mainPanel.Children.Add(searchBar);
+            searchBar.Children.Add(btnAll);
+            actionButtons.Children.Add(btnDelete);
+            actionButtons.Children.Add(btnSave);
+            actionButtons.Children.Add(btnExport);
+            DockPanel.SetDock(actionButtons, Dock.Left);
+            actionBar.Children.Add(actionButtons);
+            actionBar.Children.Add(lblStatus);
+            outerBar.Children.Add(searchBar);
+            outerBar.Children.Add(actionBar);
+            DockPanel.SetDock(outerBar, Dock.Top);
+            mainPanel.Children.Add(outerBar);
 
             _dataGrid = new DataGrid
             {
@@ -123,10 +113,55 @@ namespace QCS
 
             mainPanel.Children.Add(_dataGrid);
 
+            // DataRowState 기반 실시간 건수 표시 (추가/수정/삭제 모두 포함)
+            Action updateStatus = () =>
+            {
+                int added = 0, modified = 0, deleted = 0, visible = 0;
+                foreach (DataRow row in _dtSource.Rows)
+                {
+                    switch (row.RowState)
+                    {
+                        case DataRowState.Added: added++; visible++; break;
+                        case DataRowState.Modified: modified++; visible++; break;
+                        case DataRowState.Deleted: deleted++; break;
+                        default: visible++; break;
+                    }
+                }
+                lblStatus.Text = $"조회: {visible}건  │  신규: {added}건  │  수정: {modified}건  │  삭제: {deleted}건";
+            };
+            Action<DataTable> watchTable = table =>
+            {
+                table.RowChanged += (sender, args) => updateStatus();
+                table.RowDeleted += (sender, args) => updateStatus();
+                table.TableNewRow += (sender, args) => updateStatus();
+                updateStatus();
+            };
+            Func<bool> confirmDiscard = () =>
+            {
+                // 셀/행 편집 중인 값도 먼저 DataTable에 반영
+                _dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                _dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+                int added = 0, modified = 0, deleted = 0;
+                foreach (DataRow row in _dtSource.Rows)
+                {
+                    if (row.RowState == DataRowState.Added) added++;
+                    else if (row.RowState == DataRowState.Modified) modified++;
+                    else if (row.RowState == DataRowState.Deleted) deleted++;
+                }
+                if (added + modified + deleted == 0) return true;
+                return MessageBox.Show(
+                    $"저장하지 않은 변경 사항이 있습니다.\n신규: {added}건 / 수정: {modified}건 / 삭제: {deleted}건\n계속하면 변경 내용이 사라집니다. 계속하시겠습니까?",
+                    "미저장 변경 사항", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            };
+
+            bool skipDiscardOnce = false;
+
             // 데이터 조회 로직
             Action ActionSearch = () =>
             {
-                _dtSource = new DataTable();
+                if (!skipDiscardOnce && !confirmDiscard()) return;
+                skipDiscardOnce = false;
+                DataTable loadedTable = new DataTable();
                 string key1 = txtSearch1.Text.Trim();
                 string key2 = txtSearch2.Text.Trim();
 
@@ -167,12 +202,14 @@ namespace QCS
 
                             using (var reader = cmd.ExecuteReader())
                             {
-                                _dtSource.Load(reader);
+                                loadedTable.Load(reader);
                             }
                         }
                     }
+                    _dtSource = loadedTable;
                     _dataGrid.ItemsSource = null;
                     _dataGrid.ItemsSource = _dtSource.DefaultView;
+                    watchTable(_dtSource);
                 }
                 catch (Exception ex)
                 {
@@ -183,6 +220,7 @@ namespace QCS
             // 데이터 일괄 저장 로직
             Action ActionSave = () =>
             {
+                _dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
                 _dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
                 int updateCount = 0;
@@ -301,6 +339,7 @@ namespace QCS
                     if (updateCount > 0 || insertCount > 0 || deleteCount > 0)
                     {
                         MessageBox.Show($"품목 정보 저장이 완료되었습니다!\n(수정: {updateCount}건, 추가: {insertCount}건, 삭제: {deleteCount}건)", "저장 완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _dtSource.AcceptChanges(); // DB 저장 완료 후 재조회 시 미저장 경고 방지
                         ActionSearch();
                     }
                     else
@@ -395,6 +434,15 @@ namespace QCS
             };
 
             btnSearch.Click += (s, e) => ActionSearch();
+            btnAll.Click += (s, e) =>
+            {
+                // 기존 검색 조건을 보존할 수 있도록 확인 후에만 초기화
+                if (!confirmDiscard()) return;
+                txtSearch1.Clear();
+                txtSearch2.Clear();
+                skipDiscardOnce = true;
+                ActionSearch();
+            };
             btnSave.Click += (s, e) => ActionSave();
             txtSearch1.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) ActionSearch(); };
             txtSearch2.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) ActionSearch(); };
