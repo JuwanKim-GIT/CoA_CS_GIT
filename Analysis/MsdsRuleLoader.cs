@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,7 +22,7 @@ namespace QCS.Analysis
     }
     public static class MsdsRuleLoader
     {
-        public static string RulePath => Path.Combine(AppContext.BaseDirectory, "Analysis", "FieldRules.json");
+        public static string RulePath => Path.Combine(Path.GetDirectoryName(Environment.ProcessPath!)!, "Analysis", "FieldRules.json");
         public static MsdsRuleSet Load()
         {
             if (!File.Exists(RulePath))

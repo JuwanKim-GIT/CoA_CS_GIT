@@ -810,8 +810,8 @@ namespace QCS
             }
 
             string templatePath = System.IO.Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, 
-                xltmBaseDir, 
+                System.IO.Path.GetDirectoryName(Environment.ProcessPath!)!,
+                xltmBaseDir,
                 templateFile).Replace("/", "\\");
 
             if (!System.IO.File.Exists(templatePath))
