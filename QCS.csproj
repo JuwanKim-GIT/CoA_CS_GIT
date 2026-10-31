@@ -11,7 +11,16 @@
 		
 		<PublishSingleFile>false</PublishSingleFile>
 		<SelfContained>false</SelfContained>
+		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Update="Database.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+	  </None>
+	</ItemGroup>
 
 	<ItemGroup>
 	  <None Remove="Analysis\FieldRules.json" />
@@ -102,5 +111,4 @@
 	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </Resource>
 	</ItemGroup>
-
 </Project>

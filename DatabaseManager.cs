@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.VisualBasic.FileIO;   // TextFieldParser
 using ExcelDataReader;
@@ -15,20 +16,73 @@ namespace QCS
     /// </summary>
     public static class DatabaseManager
     {
-        // ── 상수 ────────────────────────────────────────
-        //private const string LocalDbFolder = "QCS_db";
-        //private const string LocalDbFile = "qcs.db";
-        private const string NetworkDbFolder = @"\\zcnpo0317vn0001\IPK_DBs\SQL_DBs\QCS";
-        private static readonly Dictionary<string, string> DbFiles = new(StringComparer.OrdinalIgnoreCase)
+        // 설정 파일은 실제 QCS.exe가 있는 폴더에서 읽는다.
+        private sealed class DatabaseSettings
         {
-            ["msds"] = "qcs_msds.db", ["coa"] = "qcs_coa.db",
-            ["quality"] = "qcs_quality.db", ["reference"] = "qcs_reference.db",
-            ["common"] = "qcs_common.db", ["message"] = "qcs_message.db"
-        };
-        public static string GetDbPath(string module) => Path.Combine(NetworkDbFolder, DbFiles[module]);
+            public string NetworkDbFolder { get; set; } = "";
+            public Dictionary<string, string> Databases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+            public ConnectionSettings Connection { get; set; } = new();
+        }
+
+        private sealed class ConnectionSettings
+        {
+            public int DefaultTimeout { get; set; } = 10;
+            public bool Pooling { get; set; } = true;
+        }
+
+        private static readonly string[] RequiredModules =
+            { "msds", "coa", "quality", "reference", "common", "message" };
+
+        private static readonly Lazy<DatabaseSettings> Settings = new(LoadSettings);
+        private static DatabaseSettings Config => Settings.Value;
+        private static Dictionary<string, string> DbFiles => Config.Databases;
+
+        private static DatabaseSettings LoadSettings()
+        {
+            string exePath = Environment.ProcessPath
+                ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
+            string configPath = Path.Combine(Path.GetDirectoryName(exePath)!, "Database.json");
+            if (!File.Exists(configPath))
+                throw new FileNotFoundException($"DB 설정 파일이 없습니다: {configPath}", configPath);
+
+            DatabaseSettings settings;
+            try
+            {
+                settings = JsonSerializer.Deserialize<DatabaseSettings>(File.ReadAllText(configPath),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    ?? throw new InvalidDataException("설정 내용이 비어 있습니다.");
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"Database.json 형식 오류: {ex.Message}", ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.NetworkDbFolder))
+                throw new InvalidDataException("Database.json: NetworkDbFolder가 비어 있습니다.");
+            settings.Databases = new Dictionary<string, string>(settings.Databases ?? new(),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (string module in RequiredModules)
+            {
+                if (!settings.Databases.TryGetValue(module, out string? file) ||
+                    string.IsNullOrWhiteSpace(file) || file != Path.GetFileName(file))
+                    throw new InvalidDataException($"Database.json: {module} DB 파일명이 올바르지 않습니다.");
+            }
+            if (settings.Connection is null || settings.Connection.DefaultTimeout < 0)
+                throw new InvalidDataException("Database.json: Connection 설정이 올바르지 않습니다.");
+            return settings;
+        }
+
+        public static string GetDbPath(string module) =>
+            Path.Combine(Config.NetworkDbFolder, DbFiles[module]);
+
         public static string GetConnectionString(string module) =>
-            new SqliteConnectionStringBuilder { DataSource = GetDbPath(module), Mode = SqliteOpenMode.ReadWrite,
-                DefaultTimeout = 10, Pooling = true }.ToString();
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = GetDbPath(module),
+                Mode = SqliteOpenMode.ReadWrite,
+                DefaultTimeout = Config.Connection.DefaultTimeout,
+                Pooling = Config.Connection.Pooling
+            }.ToString();
 
         /// <summary>모듈 DB를 기본 DB로 열고 나머지 DB를 ATTACH한다. 호출자가 using으로 닫아야 한다.</summary>
         public static SqliteConnection OpenConnection(string module)
@@ -110,7 +164,7 @@ namespace QCS
         }
 
         /// <summary>
-        /// 앱 시작 시 1회 호출한다. 실행폴더\QCS_db\qcs.db를 준비하고 연결을 활성화한다.
+        /// 앱 시작 시 1회 호출한다. Database.json을 읽고 공유폴더 DB 연결을 활성화한다.
         /// </summary>
         public static void Initialize()
         {

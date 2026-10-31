@@ -809,7 +809,10 @@ namespace QCS
                 return;
             }
 
-            string templatePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, xltmBaseDir, templateFile).Replace("/", "\\");
+            string templatePath = System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, 
+                xltmBaseDir, 
+                templateFile).Replace("/", "\\");
 
             if (!System.IO.File.Exists(templatePath))
             {
@@ -817,7 +820,10 @@ namespace QCS
                 return;
             }
 
-            string docsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CoA_Docs");
+            string docsDir = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Environment.ProcessPath!)!,
+                "CoA_Docs");
+
             if (!System.IO.Directory.Exists(docsDir))
             {
                 System.IO.Directory.CreateDirectory(docsDir);
@@ -1058,9 +1064,13 @@ namespace QCS
             }
             catch (Exception ex)
             {
-                // 🎯 InnerException까지 싹 다 긁어와서 진짜 배후의 원인을 노출시킴
-                string realError = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                MessageBox.Show($"4단계 엑셀 제어 및 매핑 중 오류가 발생했습니다:\n{realError}\n\n[상세 정보]: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    ex.ToString(),
+                    "4단계 Excel 처리 오류 - 상세 정보",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+
                 return;
             }
             finally
