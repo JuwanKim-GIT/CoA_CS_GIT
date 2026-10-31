@@ -215,16 +215,21 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <Button x:Name="StartAnalysisButton"
-                            Grid.Row="4"
-                            Content="▶ 분석 시작"
-                            HorizontalAlignment="Stretch"
-                            Height="30"
-                            Margin="0,2,0,5"
-                            Padding="6,2"
-                            Style="{StaticResource PrimaryButton}"
-                            IsEnabled="False"
-                            Click="StartAnalysis_Click"/>
+                    <Grid Grid.Row="4" Margin="0,2,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="AI 모델" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="AiModelComboBox" Grid.Column="1" Height="30"
+                                  DisplayMemberPath="Description" SelectedValuePath="Value"
+                                  VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Button x:Name="StartAnalysisButton" Grid.Column="2"
+                                Content="▶ 분석 시작" Height="30" Margin="0"
+                                Padding="8,2" Style="{StaticResource PrimaryButton}"
+                                IsEnabled="False" Click="StartAnalysis_Click"/>
+                    </Grid>
 
                     <Button x:Name="StopAnalysisButton" Grid.Row="4" Content="■ 중지" Width="68"
                             HorizontalAlignment="Right" Margin="0,2,5,5" Visibility="Collapsed"

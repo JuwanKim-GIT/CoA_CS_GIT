@@ -154,7 +154,7 @@ namespace QCS
                 string currentText = cboField.Text;
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("common")))
                     {
                         conn.Open();
                         using (var cmd = new SqliteCommand(
@@ -221,7 +221,7 @@ namespace QCS
                 try
                 {
                     var newTable = new DataTable();
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("common")))
                     {
                         conn.Open();
                         StringBuilder sql = new StringBuilder();
@@ -293,7 +293,7 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("common")))
                     {
                         conn.Open();
                         using (var tx = conn.BeginTransaction())

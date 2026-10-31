@@ -92,13 +92,31 @@ namespace QCS
             try
             {
                 conn.Open();
+                // 연결 풀에서 재사용된 SQLite 연결에 기존 ATTACH가 남아 있을 수 있다.
+                // 이미 연결된 별칭은 건너뛰되, 실제 DB 파일 경로가 다른 경우 오류로 처리한다.
+                var attached = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                using (var listCmd = conn.CreateCommand())
+                {
+                    listCmd.CommandText = "PRAGMA database_list;";
+                    using var reader = listCmd.ExecuteReader();
+                    while (reader.Read())
+                        attached[reader.GetString(1)] = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                }
                 foreach (var item in DbFiles)
                 {
                     if (item.Key.Equals(module, StringComparison.OrdinalIgnoreCase)) continue;
+                    string expectedPath = Path.GetFullPath(GetDbPath(item.Key));
+                    if (attached.TryGetValue(item.Key, out string? existingPath))
+                    {
+                        if (!string.Equals(Path.GetFullPath(existingPath), expectedPath,
+                            StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException(
+                                $"DB ATTACH 별칭 '{item.Key}'이(가) 다른 파일을 가리킵니다: {existingPath}");
+                        continue;
+                    }
                     using var cmd = conn.CreateCommand();
-                    // ATTACH의 별칭은 고정된 내부 키만 사용한다.
                     cmd.CommandText = $"ATTACH DATABASE $path AS \"{item.Key}\";";
-                    cmd.Parameters.AddWithValue("$path", GetDbPath(item.Key));
+                    cmd.Parameters.AddWithValue("$path", expectedPath);
                     cmd.ExecuteNonQuery();
                 }
                 return conn;

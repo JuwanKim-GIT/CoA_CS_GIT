@@ -167,7 +167,7 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("reference")))
                     {
                         conn.Open();
                         StringBuilder sql = new StringBuilder();
@@ -229,7 +229,7 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("reference")))
                     {
                         conn.Open();
                         using (var tx = conn.BeginTransaction())

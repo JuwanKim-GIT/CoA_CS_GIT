@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -53,9 +53,8 @@ namespace QCS
 
             try
             {
-                using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
+                using (var conn = DatabaseManager.OpenConnection("coa"))
                 {
-                    conn.Open();
 
                     // 1. 기존에 설정된 고유 시작 번호 필드가 있는지 조회 (Read)
                     string checkQuery = "SELECT COUNT(*) FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Start_Num';";
@@ -177,9 +176,8 @@ namespace QCS
         private string ReserveCoaNumber()
         {
             string today = DateTime.Now.ToString("yyyyMMdd");
-            using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+            using (var conn = DatabaseManager.OpenConnection("coa"))
             {
-                conn.Open();
                 using (var busy = new SqliteCommand("PRAGMA busy_timeout = 10000;", conn)) busy.ExecuteNonQuery();
                 // BEGIN IMMEDIATE: 다른 사용자가 동일한 Next_Num을 읽지 못하도록 먼저 쓰기 잠금을 확보한다.
                 using (var begin = new SqliteCommand("BEGIN IMMEDIATE;", conn)) begin.ExecuteNonQuery();
@@ -272,9 +270,8 @@ namespace QCS
             List<PreviewItem> previewList = new List<PreviewItem>();
 
             // 전체 검증에 하나의 읽기 연결을 재사용한다.
-            using (var validationConn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+            using (var validationConn = DatabaseManager.OpenConnection("coa"))
             {
-                validationConn.Open();
                 foreach (var inputItem in _inputList)
                 {
                 // 🎯 [수정] 기본값 초기화 구역
@@ -654,9 +651,8 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = DatabaseManager.OpenConnection("coa"))
                     {
-                        conn.Open();
                         openedMs = perf.ElapsedMilliseconds;
 
                         string query = @"
@@ -791,9 +787,8 @@ namespace QCS
 
             // zx_code_mstr에서 CoA_CS_xltm_path 조회 (없으면 등록 요청)
             string xltmBaseDir = null;
-            using (var connPath = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+            using (var connPath = DatabaseManager.OpenConnection("coa"))
             {
-                connPath.Open();
                 string queryPath = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_xltm_path' LIMIT 1;";
                 using (var cmdPath = new SqliteCommand(queryPath, connPath))
                 {
@@ -968,9 +963,8 @@ namespace QCS
                     int startRow = 21;
                     int excelRowOffset = 0;
 
-                    using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = DatabaseManager.OpenConnection("coa"))
                     {
-                        conn.Open();
                         string detailQuery = "SELECT qmir_charac, qmir_first_value, qmir_uom, qmir_ltol, qmir_utol FROM qmir_det WHERE qmir_batch = @BatchNo;";
 
                         using (var detCmd = new Microsoft.Data.Sqlite.SqliteCommand(detailQuery, conn))
@@ -1084,9 +1078,8 @@ namespace QCS
             // [5단계] DB 최종 마스터/디테일 저장 및 화면 초기화 (실제 컬럼 스펙 반영)
             // ===================================================================
 
-            using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.ActiveConnectionString))
+            using (var conn = DatabaseManager.OpenConnection("coa"))
             {
-                conn.Open();
                 using (var tx = conn.BeginTransaction())
                 {
                     try

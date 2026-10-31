@@ -246,13 +246,68 @@ namespace QCS
         private CancellationTokenSource? _analysisCts;
         private bool _previewZoomInitialized;
 
+        private sealed class AiModelOption
+        {
+            public string Value { get; set; } = "";
+            public string Description { get; set; } = "";
+        }
+
+        private void LoadAiModels()
+        {
+            using var conn = new SqliteConnection(
+                DatabaseManager.GetConnectionString("common"));
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT zx_code_value, zx_code_desc1 FROM zx_code_mstr
+                                WHERE zx_code_fldname = 'API_model'
+                                  AND COALESCE(zx_code_value, '') <> ''
+                                ORDER BY zx_code_value";
+            var options = new List<AiModelOption>();
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var value = reader.IsDBNull(0) ? "" : reader.GetString(0).Trim();
+                    if (value.Length == 0) continue;
+                    var desc = reader.IsDBNull(1) ? value : reader.GetString(1).Trim();
+                    options.Add(new AiModelOption { Value = value, Description = desc.Length == 0 ? value : desc });
+                }
+            }
+            if (options.Count == 0)
+                throw new InvalidOperationException("API_model 공통코드가 등록되어 있지 않습니다.");
+            AiModelComboBox.ItemsSource = options;
+            var defaultModel = GetAiSetting("MSDS_AI_Model", required: false);
+            if (string.IsNullOrWhiteSpace(defaultModel)) defaultModel = "gpt-4.1-mini";
+            AiModelComboBox.SelectedValue = options.Any(o => o.Value == defaultModel)
+                ? defaultModel : options[0].Value;
+        }
+
+        private string GetSelectedAiModel()
+        {
+            if (AiModelComboBox.SelectedValue is string value && !string.IsNullOrWhiteSpace(value))
+                return value;
+            throw new InvalidOperationException("AI 모델을 선택해 주세요.");
+        }
+
+        private void RefreshAiModelAvailability()
+        {
+            try { AiModelComboBox.IsEnabled = !_isAnalyzing && GetMsdsAnalysisRule() != "2"; }
+            catch { AiModelComboBox.IsEnabled = false; }
+        }
+
         public MsdsRegistrationView()
         {
             InitializeComponent();
             FilesGrid.ItemsSource = _files;
+            try { LoadAiModels(); }
+            catch (Exception ex)
+            {
+                AiModelComboBox.IsEnabled = false;
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  AI 모델 목록 조회 오류: {ex.Message}");
+            }
             UpdateCount();
             SizeChanged += (_, _) => UpdateResponsiveLayout();
-            Loaded += (_, _) => { UpdateResponsiveLayout(); UpdateLogHeight(); UpdateNavigation(); };
+            Loaded += (_, _) => { UpdateResponsiveLayout(); UpdateLogHeight(); UpdateNavigation(); RefreshAiModelAvailability(); };
             SizeChanged += (_, _) => UpdateLogHeight();
         }
 
@@ -346,6 +401,7 @@ namespace QCS
                 if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox))
                     box.IsReadOnly = analyzing;
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
+            RefreshAiModelAvailability();
             UpdateCount();
             UpdateNavigation();
         }
@@ -560,7 +616,8 @@ namespace QCS
 
         private static string GetMsdsAnalysisRule()
         {
-            using var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString);
+            using var conn = new SqliteConnection(
+                DatabaseManager.GetConnectionString("common"));
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT zx_code_cmmt
@@ -582,7 +639,8 @@ namespace QCS
         // 공통코드의 Comment 컬럼에서 AI 설정값을 조회한다.
         private static string GetAiSetting(string fieldName, bool required = true)
         {
-            using var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString);
+            using var conn = new SqliteConnection(
+                DatabaseManager.GetConnectionString("common"));
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT zx_code_cmmt FROM zx_code_mstr
@@ -638,6 +696,7 @@ namespace QCS
                 return;
             }
 
+            RefreshAiModelAvailability();
             // 1: AI Only - PDF 원본을 AI에 전달하고 기존 검토 화면에 표시한다.
             if (analysisRule == "1")
             {
@@ -645,8 +704,7 @@ namespace QCS
                 try
                 {
                     apiKey = GetAiSetting("MSDS_API_KEY");
-                    model = GetAiSetting("MSDS_AI_Model", required: false);
-                    if (string.IsNullOrWhiteSpace(model)) model = "gpt-4.1-mini";
+                    model = GetSelectedAiModel();
                 }
                 catch (Exception ex)
                 {
@@ -707,10 +765,75 @@ namespace QCS
                 return;
             }
 
-            // 3: C# + AI는 연결 테스트 이후 구현한다.
+            // 3: C#에서 PDF 전체 텍스트를 추출한 뒤 AI에 텍스트만 전달한다.
             if (analysisRule == "3")
             {
-                System.Windows.MessageBox.Show("C# + AI 통합 분석은 다음 단계에서 연결합니다.", "AI 모듈 연결 대기");
+                string apiKey, model;
+                try
+                {
+                    apiKey = GetAiSetting("MSDS_API_KEY");
+                    model = GetSelectedAiModel();
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show("AI 설정 조회 오류: " + ex.Message, "분석 중단");
+                    return;
+                }
+
+                if (!PrepareNewAnalysis()) return;
+                _analysisCts = new CancellationTokenSource();
+                SetAnalysisUi(true);
+                var targetsHybrid = _files.ToArray();
+                int processedHybrid = 0;
+                AnalysisProgressBar.Value = 0;
+                AnalysisProgressText.Text = $"0 / {targetsHybrid.Length} (0%)";
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  C# + AI 전체 텍스트 분석 시작 ({targetsHybrid.Length}건, {model})");
+                try
+                {
+                    var analyzer = new MsdsAiPdfAnalyzer(apiKey, model);
+                    foreach (var item in targetsHybrid)
+                    {
+                        if (_analysisCts!.IsCancellationRequested) break;
+                        item.Status = "분석 중";
+                        FilesGrid.Items.Refresh();
+                        try
+                        {
+                            var extracted = await _textExtractor.ExtractAsync(item.FullPath, _analysisCts.Token);
+                            if (!extracted.HasExtractableText)
+                                throw new InvalidOperationException("PDF에 추출 가능한 텍스트가 없습니다. (OCR 미지원)");
+                            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {extracted.PageCount}페이지, 텍스트 {extracted.FullText.Length:N0}자 → AI 전달");
+                            var aiResult = await analyzer.AnalyzeTextAsync(item.FullPath, extracted.FullText, _analysisCts.Token);
+                            MsdsAiResultFiles.Save(item.FullPath, aiResult);
+                            SetAnalysisResult(item, aiResult);
+                            if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
+                            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 하이브리드 추출 {aiResult.Fields.Count}필드, 성분 {aiResult.Ingredients.Count}건 (검증 필요)");
+                        }
+                        catch (OperationCanceledException) when (_analysisCts?.IsCancellationRequested == true)
+                        {
+                            item.Status = "중지됨";
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            item.Status = "분석오류";
+                            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 하이브리드 분석 오류 - {ex.Message}");
+                        }
+                        processedHybrid++;
+                        int percent = (int)Math.Round(processedHybrid * 100.0 / targetsHybrid.Length);
+                        AnalysisProgressBar.Value = percent;
+                        AnalysisProgressText.Text = $"{processedHybrid} / {targetsHybrid.Length} ({percent}%)";
+                        FilesGrid.Items.Refresh();
+                    }
+                    LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  C# + AI 전체 텍스트 분석 종료");
+                }
+                finally
+                {
+                    FinishCancelledAnalysis();
+                    SetAnalysisUi(false);
+                    _analysisCts?.Dispose();
+                    _analysisCts = null;
+                    StopAnalysisButton.IsEnabled = true;
+                }
                 return;
             }
 

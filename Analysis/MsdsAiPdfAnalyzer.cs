@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -64,6 +64,43 @@ namespace QCS.Analysis
                 } },
                 text = new { format = new { type = "json_object" } }
             };
+            return await SendAndParseAsync(payload, pdfPath, MsdsEngineMode.AiDirect, ct);
+        }
+
+        // Hybrid: send only locally extracted text; never attach the PDF file.
+        public async Task<MsdsAnalysisResult> AnalyzeTextAsync(string pdfPath, string fullText, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(fullText))
+                throw new InvalidOperationException("PDF에서 추출된 텍스트가 없습니다.");
+
+            string prompt = "You are an MSDS/SDS extraction assistant. Analyze the FULL PDF text provided below, not an attached PDF. " +
+                "Page markers [PAGE N] indicate source pages. Text may have imperfect table layout. " +
+                "Return ONLY a JSON object with keys 'fields' (object), 'ingredients' (array), and 'warnings' (array of strings). " +
+                "For each of these field keys provide an object {value: string|null, source_page: integer|null, source_text: string|null}: " +
+                string.Join(", ", FieldKeys) + ". " +
+                "ingredients must contain {name: string|null, cas_number: string|null, concentration_raw: string|null, source_page: integer|null, source_text: string|null}. " +
+                "Use exact source evidence, do not infer or invent missing data. Use null when absent. " +
+                "Keep supplier and importer distinct; supplier is the document's supplier/manufacturer. " +
+                "Do not confuse first issue date with revision date. Do not merge ingredients sharing CAS unless document explicitly does. " +
+                "For H codes use comma-separated codes; if document explicitly says not classified, return that wording. " +
+                "Preserve 'not applicable', 'not available', and 'not classified' literally instead of null when stated. " +
+                "For revision dates use YYYY-MM-DD only if unambiguous. Respond in original document language.";
+
+            var payload = new {
+                model = _model,
+                input = new object[] { new {
+                    role = "user",
+                    content = new object[] {
+                        new { type = "input_text", text = prompt + "\n\n=== BEGIN MSDS TEXT ===\n" + fullText + "\n=== END MSDS TEXT ===" }
+                    }
+                } },
+                text = new { format = new { type = "json_object" } }
+            };
+            return await SendAndParseAsync(payload, pdfPath, MsdsEngineMode.AiDirect, ct);
+        }
+
+        private async Task<MsdsAnalysisResult> SendAndParseAsync(object payload, string pdfPath, MsdsEngineMode engine, CancellationToken ct)
+        {
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -85,7 +122,7 @@ namespace QCS.Analysis
             if (texts.Count == 0) throw new InvalidOperationException("AI 응답에 분석 JSON이 없습니다.");
             string json = string.Join("\n", texts);
             using var parsed = JsonDocument.Parse(json);
-            var result = new MsdsAnalysisResult { FilePath = pdfPath, Engine = MsdsEngineMode.AiDirect };
+            var result = new MsdsAnalysisResult { FilePath = pdfPath, Engine = engine };
             var data = parsed.RootElement;
             if (!data.TryGetProperty("fields", out var fields) || fields.ValueKind != JsonValueKind.Object)
                 throw new InvalidOperationException("AI 응답의 fields 구조가 올바르지 않습니다.");

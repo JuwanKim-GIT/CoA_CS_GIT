@@ -189,7 +189,7 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("quality")))
                     {
                         conn.Open();
 
@@ -266,7 +266,7 @@ namespace QCS
 
                 try
                 {
-                    using (var conn = new SqliteConnection(DatabaseManager.ActiveConnectionString))
+                    using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("quality")))
                     {
                         conn.Open();
                         using (var tx = conn.BeginTransaction())

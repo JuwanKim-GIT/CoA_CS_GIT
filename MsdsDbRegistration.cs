@@ -49,7 +49,7 @@ namespace QCS
         }
         internal static HashSet<string> GetRegisteredFileNames()
         {
-            var cs = DatabaseManager.ActiveConnectionString;
+            var cs = DatabaseManager.GetConnectionString("msds");
             if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("DB 연결이 설정되지 않았습니다.");
             using var db = new SqliteConnection(cs);
             db.Open();
@@ -69,7 +69,7 @@ namespace QCS
             try
             {
                 if (!File.Exists(doc.FilePath)) throw new IOException("원본 PDF 파일이 없습니다.");
-                var connStr = DatabaseManager.ActiveConnectionString;
+                var connStr = DatabaseManager.GetConnectionString("msds");
                 if (string.IsNullOrWhiteSpace(connStr)) throw new InvalidOperationException("DB 연결이 설정되지 않았습니다.");
                 using var db = new SqliteConnection(connStr);
                 db.Open();
