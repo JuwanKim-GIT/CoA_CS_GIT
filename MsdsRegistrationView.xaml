@@ -102,16 +102,27 @@
             </Style.Triggers>
         </Style>
         <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="8,7"/>
+            <Setter Property="Padding" Value="12,7"/>
             <Setter Property="Foreground" Value="#24466D"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Background" Value="#F1F4F8"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#2563EB"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabHeader" Background="{TemplateBinding Background}"
+                                BorderBrush="#D7E1ED" BorderThickness="1,1,1,0" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabHeader" Property="Background" Value="#2563EB"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="Label" TargetType="TextBlock">
@@ -291,11 +302,11 @@
                                 Content="▶ 분석 시작" Height="30" Margin="0"
                                 Padding="8,2" Style="{StaticResource PrimaryButton}"
                                 IsEnabled="False" Click="StartAnalysis_Click"/>
-                    </Grid>
 
-                    <Button x:Name="StopAnalysisButton" Grid.Row="4" Content="■ 중지" Width="68"
-                            HorizontalAlignment="Right" Margin="0,2,5,5" Visibility="Collapsed"
-                            Click="StopAnalysis_Click" Panel.ZIndex="2"/>
+                    <Button x:Name="StopAnalysisButton" Grid.Column="2" Content="■ 중지" Width="68" Height="30"
+                            Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0"
+                            Visibility="Collapsed" Click="StopAnalysis_Click" Panel.ZIndex="2"/>
+                    </Grid>
                     <Grid Grid.Row="5">
                         <TextBlock Text="처리 진행 상태" Style="{StaticResource SubTitle}"/>
                         <Button x:Name="ToggleLogButton" Style="{StaticResource SecondaryButton}" Content="로그 접기 ▲"
@@ -781,7 +792,6 @@
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="43"/>
-                        <RowDefinition Height="47"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
@@ -790,50 +800,6 @@
                     </Border>
 
                     <Border Grid.Row="1"
-             BorderBrush="#D9E2EE"
-             BorderThickness="0,0,0,1">
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Orientation="Horizontal"
-                   VerticalAlignment="Center">
-
-                                <Button Content="❮"
-                Width="32"
-                IsEnabled="False"/>
-
-                                <Button Content="❯"
-                Width="32"
-                IsEnabled="False"/>
-
-                                <TextBox Text="1"
-                 Width="34"
-                 IsReadOnly="True"/>
-
-                                <TextBlock Text=" / 1"
-                   Margin="4,0,12,0"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="3"
-                   Orientation="Horizontal"
-                   VerticalAlignment="Center">
-
-                                <Button x:Name="ZoomOutButton" FontSize="20" FontWeight="Bold" Height="34" Content="−" Width="36" Click="ZoomOut_Click"/>
-
-                                <TextBlock x:Name="ZoomText" Text="100%" Margin="6,0,10,0" VerticalAlignment="Center"/>
-
-                                <Button x:Name="ZoomInButton" FontSize="20" FontWeight="Bold" Height="34" Content="+" Width="36" Click="ZoomIn_Click" Margin="0"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Row="2"
              Background="#E8EDF3"
              BorderBrush="#D3DDE8"
              BorderThickness="1"

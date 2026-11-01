@@ -6,35 +6,41 @@
  <UserControl.Resources>
   <SolidColorBrush x:Key="Line" Color="#D7E1ED"/>
   <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="6"/></Style>
-  <Style x:Key="FieldLabel" TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="6,3"/><Setter Property="Foreground" Value="#2D476B"/></Style>
-  <Style x:Key="FieldValue" TargetType="TextBox"><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="6,3"/><Setter Property="Background" Value="#F9FBFE"/><Setter Property="BorderBrush" Value="#CED8E5"/></Style>
-  <Style x:Key="ActionButton" TargetType="Button"><Setter Property="Padding" Value="10,5"/><Setter Property="Margin" Value="3,0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Background" Value="#F8FAFD"/><Setter Property="Foreground" Value="#234269"/><Setter Property="BorderBrush" Value="#CFD9E7"/></Style>
-  <Style TargetType="DataGrid"><Setter Property="AutoGenerateColumns" Value="False"/><Setter Property="IsReadOnly" Value="True"/><Setter Property="CanUserAddRows" Value="False"/><Setter Property="CanUserDeleteRows" Value="False"/><Setter Property="GridLinesVisibility" Value="Horizontal"/><Setter Property="RowHeight" Value="30"/><Setter Property="ColumnHeaderHeight" Value="32"/><Setter Property="AlternatingRowBackground" Value="#F7FAFE"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D6E0EC"/></Style>
+  <Style x:Key="FieldLabel" TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="6,2"/><Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#2D476B"/></Style>
+  <Style x:Key="FieldValue" TargetType="TextBox"><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="3,2"/><Setter Property="Height" Value="23"/><Setter Property="Padding" Value="6,0"/><Setter Property="Background" Value="#EAF3FF"/><Setter Property="Foreground" Value="#1E3A5F"/><Setter Property="BorderBrush" Value="#CED8E5"/></Style>
+  <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource QcsPrimaryButton}"><Setter Property="Padding" Value="10,5"/><Setter Property="Margin" Value="3,0"/></Style>
+  <Style x:Key="LocalGridDefaults" TargetType="DataGrid"><Setter Property="AutoGenerateColumns" Value="False"/><Setter Property="IsReadOnly" Value="True"/><Setter Property="CanUserAddRows" Value="False"/><Setter Property="CanUserDeleteRows" Value="False"/><Setter Property="GridLinesVisibility" Value="Horizontal"/><Setter Property="RowHeight" Value="30"/><Setter Property="ColumnHeaderHeight" Value="32"/><Setter Property="AlternatingRowBackground" Value="#F7FAFE"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D6E0EC"/></Style>
  </UserControl.Resources>
  <Grid Margin="8,7,8,6">
   <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/><RowDefinition Height="35"/></Grid.RowDefinitions>
   <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,5">
    <DockPanel Margin="8,2" LastChildFill="False">
-    <Button DockPanel.Dock="Left" x:Name="ToggleFilesButton" Content="☰  MSDS 목록" Click="ToggleFiles_Click" Style="{StaticResource ActionButton}"/>
-    <Button DockPanel.Dock="Left" x:Name="TogglePreviewButton" Content="▣  원문 접기" Click="TogglePreview_Click" Style="{StaticResource ActionButton}"/>
+    <Button DockPanel.Dock="Left" x:Name="ToggleFilesButton" Content="☰  MSDS 목록" Click="ToggleFiles_Click" Style="{StaticResource QcsActionButton}"/>
+    <Button DockPanel.Dock="Left" x:Name="TogglePreviewButton" Content="▣  원문 접기" Click="TogglePreview_Click" Style="{StaticResource QcsActionButton}"/>
     <TextBlock DockPanel.Dock="Right" Text="MSDS 조회/관리" Foreground="#617895" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
   <Grid Grid.Row="1" x:Name="WorkspaceGrid">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="390"/></Grid.ColumnDefinitions>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="25*" MinWidth="0"/><ColumnDefinition Width="6"/><ColumnDefinition Width="45*" MinWidth="0"/><ColumnDefinition Width="6"/><ColumnDefinition Width="30*" MinWidth="0"/></Grid.ColumnDefinitions>
    <!-- 등록 화면의 PDF 등록 패널을 DB 목록 패널로 교체 -->
    <Border Grid.Column="0" x:Name="FilesPanel" Style="{StaticResource Card}">
     <Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-     <DockPanel Grid.Row="0"><Button DockPanel.Dock="Right" Content="새로고침" Click="Refresh_Click" Style="{StaticResource ActionButton}"/><TextBlock x:Name="MasterCount" Text="MSDS 목록 (0건)" FontSize="15" FontWeight="Bold" Foreground="#122C53" VerticalAlignment="Center"/></DockPanel>
-     <StackPanel Grid.Row="1" Margin="0,4,0,8">
-      <TextBox x:Name="SearchProduct" Height="27" Margin="0,0,0,5" ToolTip="원료(제품)명"/>
-      <TextBlock Text="제품명 검색" FontSize="10" Foreground="#617895" Margin="3,0,0,5"/>
-      <TextBox x:Name="SearchCode" Height="27" Margin="0,0,0,5" ToolTip="Graco Code"/>
-      <TextBlock Text="Graco Code 검색" FontSize="10" Foreground="#617895" Margin="3,0,0,5"/>
-      <TextBox x:Name="SearchSupplier" Height="27" Margin="0,0,0,5" ToolTip="공급업체명"/>
-      <StackPanel Orientation="Horizontal"><CheckBox x:Name="LatestOnly" Content="최신 개정판만" VerticalAlignment="Center"/><Button Content="조회" Click="Search_Click" Style="{StaticResource ActionButton}" /><Button Content="초기화" Click="Reset_Click" Style="{StaticResource ActionButton}"/></StackPanel>
+     <Border Grid.Row="0" Background="#E2EAF5" BorderBrush="#D1DAE7" BorderThickness="0,0,0,1" Height="40"><TextBlock x:Name="MasterCount" Text="MSDS 목록" FontSize="15" FontWeight="SemiBold" Foreground="#1E3A5F" Margin="10,0" VerticalAlignment="Center"/></Border>
+     <StackPanel Grid.Row="1" Margin="0,7,0,8">
+      <ComboBox x:Name="DateField" Height="27" SelectedIndex="0" SelectionChanged="DateField_SelectionChanged" Margin="0,0,0,5">
+       <ComboBoxItem Content="날짜 기준 선택"/><ComboBoxItem Content="개정일"/><ComboBoxItem Content="등록일"/><ComboBoxItem Content="수정일"/>
+      </ComboBox>
+      <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <TextBlock Text="From" VerticalAlignment="Center" Margin="0,0,5,0"/><DatePicker x:Name="DateFrom" Grid.Column="1" SelectedDateFormat="Short"/>
+       <TextBlock Text="To" Grid.Column="2" VerticalAlignment="Center" Margin="7,0,5,0"/><DatePicker x:Name="DateTo" Grid.Column="3" SelectedDateFormat="Short"/>
+      </Grid>
+      <Grid Margin="0,0,0,7"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <TextBox x:Name="SearchText" Height="25" Style="{StaticResource QcsInput}" Padding="6,0" KeyDown="Search_KeyDown"/>
+       <TextBlock Grid.Column="1" Text="ⓘ" FontSize="16" Foreground="#2861A0" VerticalAlignment="Center" Margin="7,0,2,0" Cursor="Help" ToolTip="검색 대상: MSDS ID, Graco Code, 제품명, 공급업체, 구성성분명, CAS 번호&#10;공백 또는 AND, &amp; : 모두 포함&#10;OR 또는 | : 하나 이상 포함&#10;괄호 ( ) : 검색 조건 묶기&#10;예: (KUA OR FQA) AND 123"/>
+      </Grid>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><CheckBox x:Name="LatestOnly" Content="최신 개정판만" Margin="0,0,7,0" VerticalAlignment="Center"/><Button x:Name="SearchButton" Content="조회" Click="Search_Click" Style="{StaticResource ActionButton}" MinWidth="72" Height="30"/></StackPanel>
      </StackPanel>
-     <DataGrid Grid.Row="2" x:Name="MasterGrid" SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="MasterGrid_SelectionChanged">
+     <DataGrid Grid.Row="2" x:Name="MasterGrid" AutoGenerateColumns="False" SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="MasterGrid_SelectionChanged" PreviewMouseLeftButtonDown="MasterGrid_PreviewMouseLeftButtonDown" PreviewKeyDown="MasterGrid_PreviewKeyDown" Style="{StaticResource QcsGrid}" RowStyle="{StaticResource QcsGridRow}">
       <DataGrid.Columns>
        <DataGridTextColumn Header="ID" Binding="{Binding [msds_msds_id]}" Width="55"/>
        <DataGridTextColumn Header="Graco Code" Binding="{Binding [msds_graco_code]}" Width="92"/>
@@ -42,18 +48,18 @@
        <DataGridTextColumn Header="개정일" Binding="{Binding [msds_revision_date]}" Width="95"/>
       </DataGrid.Columns>
      </DataGrid>
-     <TextBlock Grid.Row="3" Text="목록에서 MSDS를 선택하면 상세정보와 원문이 표시됩니다." Foreground="#617895" FontSize="10" Margin="0,7,0,0" TextWrapping="Wrap"/>
+     <DockPanel Grid.Row="3" Margin="2,8,0,0" LastChildFill="True"><Button DockPanel.Dock="Right" x:Name="DeleteButton" Content="선택 삭제" Click="DeleteSelected_Click" Style="{StaticResource ActionButton}" MinWidth="88" Height="30" IsEnabled="False"/><TextBlock x:Name="CountText" Text="조회 0건 / 전체 0건 / 선택 0건" Foreground="#1E3A5F" FontSize="12" VerticalAlignment="Center"/></DockPanel>
     </Grid>
    </Border>
    <GridSplitter Grid.Column="1" x:Name="LeftSplitter" Width="6" HorizontalAlignment="Stretch" ResizeDirection="Columns" Background="#E2EAF4"/>
    <!-- 등록 화면과 동일한 중앙 기본정보 / 구성성분 구조 -->
    <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="1.2*" MinHeight="180"/><RowDefinition Height="6"/><RowDefinition Height="0.8*" MinHeight="130"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Style="{StaticResource Card}">
-     <DockPanel><DockPanel DockPanel.Dock="Top" Background="#F5F8FC" LastChildFill="False" Height="42">
-      <TextBlock DockPanel.Dock="Left" Text="2. 기본정보" FontSize="15" FontWeight="Bold" Foreground="#122C53" Margin="12,0" VerticalAlignment="Center"/>
-      <Button DockPanel.Dock="Right" Content="선택 레코드 삭제" Click="DeleteSelected_Click" Style="{StaticResource ActionButton}" Foreground="#B91C1C"/>
+     <DockPanel><DockPanel DockPanel.Dock="Top" Background="#E2EAF5" LastChildFill="False" Height="40">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"><Button x:Name="EditButton" Content="수정" Click="Edit_Click" Style="{StaticResource ActionButton}"/><Button x:Name="SaveEditButton" Content="저장" Click="SaveEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/><Button x:Name="CancelEditButton" Content="취소" Click="CancelEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/></StackPanel>
+      <TextBlock DockPanel.Dock="Left" Text="기본정보" FontSize="15" FontWeight="SemiBold" Foreground="#1E3A5F" Margin="12,0" VerticalAlignment="Center"/>
      </DockPanel>
-     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><Grid x:Name="BasicFields" Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid x:Name="BasicFields" MinWidth="0" Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <TextBlock Grid.Row="0" Grid.Column="0" Text="MSDS ID" Style="{StaticResource FieldLabel}"/>
 <TextBox Grid.Row="0" Grid.Column="1" Tag="msds_msds_id" IsReadOnly="True" Style="{StaticResource FieldValue}"/>
@@ -102,7 +108,7 @@
     </Border>
     <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" ResizeDirection="Rows" Background="#E2EAF4"/>
     <Border Grid.Row="2" Style="{StaticResource Card}">
-     <DockPanel><TextBlock DockPanel.Dock="Top" x:Name="DetailCount" Text="구성성분 (0건)" FontSize="15" FontWeight="Bold" Foreground="#122C53" Background="#F5F8FC" Padding="12,10"/><DataGrid x:Name="DetailGrid"><DataGrid.Columns>
+     <DockPanel><DockPanel DockPanel.Dock="Top" Height="40" Background="#E2EAF5"><TextBlock x:Name="DetailCount" Text="구성성분 (0건)" FontSize="15" FontWeight="SemiBold" Foreground="#1E3A5F" Padding="12,0" VerticalAlignment="Center"/><StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,8,0"><Button x:Name="AddDetailButton" Content="행 추가" Click="AddDetail_Click" IsEnabled="False" Style="{StaticResource ActionButton}"/><Button x:Name="RemoveDetailButton" Content="행 삭제" Click="RemoveDetail_Click" IsEnabled="False" Style="{StaticResource ActionButton}"/></StackPanel></DockPanel><DataGrid x:Name="DetailGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Extended" SelectionUnit="CellOrRowHeader" ClipboardCopyMode="ExcludeHeader" PreviewKeyDown="DetailGrid_PreviewKeyDown" Style="{StaticResource QcsGrid}" RowStyle="{StaticResource QcsGridRow}"><DataGrid.Columns>
       <DataGridTextColumn Header="성분명" Binding="{Binding [msds_comp_name]}" Width="*" MinWidth="100"/><DataGridTextColumn Header="CAS 번호" Binding="{Binding [msds_comp_cas_no]}" Width="100"/><DataGridTextColumn Header="함량(원문)" Binding="{Binding [msds_comp_content_raw]}" Width="100"/><DataGridTextColumn Header="최소(%)" Binding="{Binding [msds_comp_content_min]}" Width="80"/><DataGridTextColumn Header="최대(%)" Binding="{Binding [msds_comp_content_max]}" Width="80"/><DataGridTextColumn Header="산출값(%)" Binding="{Binding [msds_comp_content_calculated]}" Width="85"/><DataGridTextColumn Header="분자식" Binding="{Binding [msds_comp_molecular_formula]}" Width="85"/><DataGridTextColumn Header="TWA" Binding="{Binding [msds_comp_twa]}" Width="85"/><DataGridTextColumn Header="STEL" Binding="{Binding [msds_comp_stel]}" Width="85"/>
      </DataGrid.Columns></DataGrid></DockPanel>
     </Border>
@@ -110,9 +116,9 @@
    <GridSplitter Grid.Column="3" x:Name="RightSplitter" Width="6" HorizontalAlignment="Stretch" ResizeDirection="Columns" Background="#E2EAF4"/>
    <!-- 등록 화면과 같은 WebView2 원문 뷰어 -->
    <Border Grid.Column="4" x:Name="PreviewPanel" Style="{StaticResource Card}">
-    <Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <DockPanel Grid.Row="0"><TextBlock DockPanel.Dock="Left" Text="3. PDF 원문 미리보기" FontSize="15" FontWeight="Bold" Foreground="#122C53" VerticalAlignment="Center"/><Button DockPanel.Dock="Right" Content="외부 열기" Click="OpenPdf_Click" Style="{StaticResource ActionButton}"/></DockPanel>
-     <DockPanel Grid.Row="1"><TextBlock DockPanel.Dock="Left" x:Name="PdfFileName" Text="선택된 PDF 없음" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="#617895"/><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="−" Click="ZoomOut_Click" Style="{StaticResource ActionButton}"/><TextBlock x:Name="ZoomText" Text="100%" VerticalAlignment="Center" Margin="5,0"/><Button Content="+" Click="ZoomIn_Click" Style="{StaticResource ActionButton}"/></StackPanel></DockPanel>
+    <Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <DockPanel Grid.Row="0" Background="#E2EAF5" Height="40" LastChildFill="False"><TextBlock DockPanel.Dock="Left" Text="PDF 원문 미리보기" FontSize="15" FontWeight="SemiBold" Foreground="#1E3A5F" Margin="10,0" VerticalAlignment="Center"/><Button DockPanel.Dock="Right" Content="외부 열기" Click="OpenPdf_Click" Style="{StaticResource ActionButton}"/></DockPanel>
+     <DockPanel Grid.Row="1"><TextBlock DockPanel.Dock="Left" x:Name="PdfFileName" Text="선택된 PDF 없음" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="#617895"/></DockPanel>
      <Grid Grid.Row="2" Background="#E8EDF3"><wv2:WebView2 x:Name="PdfBrowser" Margin="4"/><Border x:Name="PreviewFallback" Background="#F8FAFC"><TextBlock x:Name="PreviewMessage" Text="MSDS를 선택하세요." Foreground="#64748B" TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12"/></Border></Grid>
     </Grid>
    </Border>

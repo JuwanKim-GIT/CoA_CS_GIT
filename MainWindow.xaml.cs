@@ -16,11 +16,16 @@ using System.Data;
 // 🎯 [WPF 전용 매싱 완벽 잠금] 윈폼과 충돌하는 알림창 및 버튼 자물쇠 추가
 using MessageBox = System.Windows.MessageBox;
 using Button = System.Windows.Controls.Button;
+using TextBox = System.Windows.Controls.TextBox;
+using PasswordBox = System.Windows.Controls.PasswordBox;
+using StackPanel = System.Windows.Controls.StackPanel;
+using TextBlock = System.Windows.Controls.TextBlock;
 
 namespace QCS
 {
     public partial class MainWindow : Window
     {
+        private QcsUser? _switchedUser;
         public MainWindow()
         {
             InitializeComponent();
@@ -65,8 +70,8 @@ namespace QCS
         {
             try
             {
-                var current = StartupUserService.FindCurrentUser();
-                SetCurrentUser(windowsId, current?.Name ?? name, current?.UserLevel ?? 0);
+                var current = _switchedUser ?? StartupUserService.FindCurrentUser();
+                SetCurrentUser(current?.WindowsId ?? windowsId, current?.Name ?? name, current?.UserLevel ?? 0);
             }
             catch
             {
@@ -86,7 +91,7 @@ namespace QCS
 
         public void RefreshCurrentUserStatus()
         {
-            var current = StartupUserService.FindCurrentUser();
+            var current = _switchedUser ?? StartupUserService.FindCurrentUser();
             if (current != null) SetCurrentUser(current.WindowsId, current.Name, current.UserLevel);
         }
 
@@ -283,7 +288,74 @@ namespace QCS
 
         private void Menu_SwitchUser_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("사용자 전환", new UserSwitchView());
+            var dialog = new Window
+            {
+                Title = "사용자 전환", Width = 410, SizeToContent = SizeToContent.Height,
+                ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = System.Windows.Media.Brushes.White,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI, Malgun Gothic")
+            };
+            var panel = new StackPanel { Margin = new Thickness(24) };
+            dialog.Content = panel;
+            panel.Children.Add(new TextBlock { Text = "사용자 ID", Margin = new Thickness(0, 0, 0, 6) });
+            var idInput = new TextBox { Height = 34, Padding = new Thickness(8, 0, 8, 0),
+                VerticalContentAlignment = VerticalAlignment.Center };
+            panel.Children.Add(idInput);
+            panel.Children.Add(new TextBlock { Text = "비밀번호", Margin = new Thickness(0, 16, 0, 6) });
+            var passwordInput = new PasswordBox { Height = 34, Padding = new Thickness(8, 0, 8, 0),
+                VerticalContentAlignment = VerticalAlignment.Center };
+            panel.Children.Add(passwordInput);
+            var hint = new TextBlock { Foreground = System.Windows.Media.Brushes.Firebrick,
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
+            panel.Children.Add(hint);
+            var buttons = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 22, 0, 0) };
+            var cancel = new Button { Content = "취소", Width = 85, Height = 34, IsCancel = true };
+            var confirm = new Button { Content = "전환", Width = 85, Height = 34, IsDefault = true,
+                Margin = new Thickness(8, 0, 0, 0) };
+            if (System.Windows.Application.Current.TryFindResource("QcsActionButton") is Style actionStyle)
+                cancel.Style = actionStyle;
+            if (System.Windows.Application.Current.TryFindResource("QcsPrimaryButton") is Style primaryStyle)
+                confirm.Style = primaryStyle;
+            cancel.Click += (_, _) => dialog.DialogResult = false;
+            QcsUser? authenticated = null;
+            confirm.Click += (_, _) =>
+            {
+                try
+                {
+                    authenticated = StartupUserService.AuthenticateSwitch(idInput.Text, passwordInput.Password);
+                    if (authenticated == null)
+                    {
+                        hint.Text = "사용자 ID 또는 비밀번호가 올바르지 않습니다.";
+                        passwordInput.Clear();
+                        passwordInput.Focus();
+                        SetRunStatus("사용자 전환 실패: 인증 정보가 일치하지 않습니다.");
+                        return;
+                    }
+                    dialog.DialogResult = true;
+                }
+                catch (Exception ex)
+                {
+                    hint.Text = "인증 처리 중 오류가 발생했습니다.";
+                    SetRunStatus("사용자 전환 실패: DB 인증 오류");
+                    MessageBox.Show(dialog, ex.Message, "사용자 인증 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
+            buttons.Children.Add(cancel);
+            buttons.Children.Add(confirm);
+            panel.Children.Add(buttons);
+            dialog.Loaded += (_, _) => idInput.Focus();
+            if (QcsModal.Show(dialog, this) == true && authenticated != null)
+            {
+                _switchedUser = authenticated;
+                RefreshCurrentUserStatus();
+                SetRunStatus($"사용자 전환 완료: {authenticated.Name} ({authenticated.WindowsId})");
+            }
+            else
+            {
+                SetRunStatus("사용자 전환 취소: 기존 사용자를 유지합니다.");
+            }
         }
 
         private void Menu_DatabaseSchema_Click(object sender, RoutedEventArgs e)

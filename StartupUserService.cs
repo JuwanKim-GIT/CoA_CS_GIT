@@ -72,6 +72,35 @@ namespace QCS
                 reader.IsDBNull(3) ? "" : reader.GetString(3), reader.IsDBNull(4) ? "" : reader.GetString(4));
         }
 
+        // Authenticate a QCS identity using the password assigned to its actual DB level.
+        // An inactive or unknown user cannot switch identities.
+        internal static QcsUser? AuthenticateSwitch(string userId, string password)
+        {
+            userId = (userId ?? "").Trim();
+            if (userId.Length == 0 || string.IsNullOrEmpty(password)) return null;
+            using var conn = OpenCommon();
+            ValidateColumns(conn);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT u.zx_code_value, u.zx_code_desc1, u.zx_code_desc2,
+                                         u.zx_code_cmmt, u.zx_code_char1, u.zx_code_char2,
+                                         p.zx_code_cmmt
+                                  FROM zx_code_mstr AS u
+                                  LEFT JOIN zx_code_mstr AS p
+                                    ON p.zx_code_fldname = 'QCS_PASSWORD'
+                                   AND p.zx_code_value = u.zx_code_cmmt
+                                  WHERE u.zx_code_fldname = 'QCS_USERS'
+                                    AND u.zx_code_value = $id COLLATE NOCASE
+                                  LIMIT 1";
+            cmd.Parameters.AddWithValue("$id", userId);
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return null;
+            string Get(int index) => reader.IsDBNull(index) ? "" : reader.GetValue(index).ToString() ?? "";
+            int level = ParseLevel(Get(3));
+            if (level != 1 && level != 9) return null;
+            if (!string.Equals(Get(6), password, StringComparison.Ordinal)) return null;
+            return new QcsUser(Get(0), Get(1), Get(2), level, Get(4), Get(5));
+        }
+
         internal static QcsUser Register(string name, string department, string email = "", string phone = "")
         {
             name = (name ?? "").Trim(); department = (department ?? "").Trim();

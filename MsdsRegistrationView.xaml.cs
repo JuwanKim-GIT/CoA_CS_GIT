@@ -272,7 +272,6 @@ namespace QCS
         private readonly MsdsLocalFieldParser _fieldParser = new();
         private bool _isAnalyzing;
         private CancellationTokenSource? _analysisCts;
-        private bool _previewZoomInitialized;
 
         private sealed class AiModelOption
         {
@@ -496,25 +495,6 @@ namespace QCS
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  분석 중지 요청");
             PublishStatus("MSDS 분석 중지 요청");
         }
-        private void InitializePdfZoom()
-        {
-            if (_previewZoomInitialized) return;
-            _previewZoomInitialized = true;
-            PdfBrowser.ZoomFactorChanged += (_, _) => Dispatcher.BeginInvoke(new Action(UpdateZoomText));
-            UpdateZoomText();
-        }
-        private void UpdateZoomText()
-        {
-            if (ZoomText != null) ZoomText.Text = $"{PdfBrowser.ZoomFactor * 100:0}%";
-        }
-        private void ZoomIn_Click(object sender, RoutedEventArgs e) => SetZoom(PdfBrowser.ZoomFactor * 1.1);
-        private void ZoomOut_Click(object sender, RoutedEventArgs e) => SetZoom(PdfBrowser.ZoomFactor / 1.1);
-        private void SetZoom(double value)
-        {
-            PdfBrowser.ZoomFactor = Math.Clamp(value, 0.25, 5.0);
-            UpdateZoomText();
-        }
-
         private void UpdateResponsiveLayout()
         {
             if (_layoutUpdating || WorkspaceGrid == null || FilesPanel == null ||
@@ -638,7 +618,6 @@ namespace QCS
             {
                 // WebView2는 비동기로 초기화된다. 초기화 완료 후 선택된 PDF를 연다.
                 await PdfBrowser.EnsureCoreWebView2Async();
-                InitializePdfZoom();
                 // 초기화 도중 사용자가 다른 파일을 선택하거나 목록을 비울 수 있다.
                 if (!ReferenceEquals(FilesGrid.SelectedItem, item)) return;
                 PdfBrowser.CoreWebView2.Navigate(new Uri(Path.GetFullPath(item.FullPath)).AbsoluteUri);

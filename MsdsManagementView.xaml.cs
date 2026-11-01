@@ -1,7 +1,17 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Diagnostics;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Text;
+using System.Windows.Data;
+using Binding = System.Windows.Data.Binding;
+using Clipboard = System.Windows.Clipboard;
+using DataFormats = System.Windows.DataFormats;
+using System.Windows.Input;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Data.Sqlite;
@@ -10,6 +20,11 @@ using Microsoft.Data.Sqlite;
 using UserControl = System.Windows.Controls.UserControl;
 using TextBox = System.Windows.Controls.TextBox;
 using MessageBox = System.Windows.MessageBox;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
+using VisualTreeHelper = System.Windows.Media.VisualTreeHelper;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
+using ColorConverter = System.Windows.Media.ColorConverter;
 
 namespace QCS
 {
@@ -19,27 +34,128 @@ namespace QCS
   private string _selectedPdfPath = "";
   private bool _previewExpanded = true;
   private bool _filesExpanded = true;
-  private bool _zoomInitialized;
+
+   private long? _detailId;
+   private readonly Dictionary<long, string> _componentSearch = new();
   private int _previewRequest;
+   private bool _editing;
+   private bool _restoringSelection;
+   private DataTable? _detailTable;
+   private long? _editingId;
+   private DataRowView? _lockedMasterRow;
   public MsdsManagementView() { InitializeComponent(); Loaded += (_, __) => RefreshData(); }
-  private static string Value(DataRowView row, string key) => row.Row.Table.Columns.Contains(key) ? Convert.ToString(row[key]) ?? "" : "";
-  private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshData();
-  private void Search_Click(object sender, RoutedEventArgs e) => ApplyFilter();
-  private void Reset_Click(object sender, RoutedEventArgs e) { SearchCode.Text=""; SearchProduct.Text=""; SearchSupplier.Text=""; LatestOnly.IsChecked=false; ApplyFilter(); }
-  private void ApplyFilter()
+  private void DateField_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
-   if (_master.Columns.Count == 0) return;
-   var filters = new System.Collections.Generic.List<string>();
-   static string Escape(string value) => value.Replace("'", "''").Replace("[", "[[]").Replace("%", "[%]").Replace("*", "[*]");
-   if (!string.IsNullOrWhiteSpace(SearchCode.Text)) filters.Add($"Convert(msds_graco_code, 'System.String') LIKE '%{Escape(SearchCode.Text.Trim())}%'");
-   if (!string.IsNullOrWhiteSpace(SearchProduct.Text)) filters.Add($"Convert(msds_product_name, 'System.String') LIKE '%{Escape(SearchProduct.Text.Trim())}%'");
-   if (!string.IsNullOrWhiteSpace(SearchSupplier.Text)) filters.Add($"Convert(msds_supplier_name, 'System.String') LIKE '%{Escape(SearchSupplier.Text.Trim())}%'");
-   if (LatestOnly.IsChecked == true) filters.Add("Convert(msds_is_latest, 'System.String') = '1'");
-   _master.DefaultView.RowFilter = string.Join(" AND ", filters);
-   MasterCount.Text = $"MSDS 목록 ({_master.DefaultView.Count}건)";
-   MasterGrid.SelectedIndex = _master.DefaultView.Count > 0 ? 0 : -1;
-   if (_master.DefaultView.Count == 0) ClearDetails();
+   if (DateFrom == null || DateTo == null || DateField == null) return;
+   if (DateField.SelectedIndex == 0) { DateFrom.SelectedDate = null; DateTo.SelectedDate = null; }
+   else { DateFrom.SelectedDate = DateTime.Today; DateTo.SelectedDate = DateTime.Today; }
   }
+  private string? ResolveDateColumn()
+  {
+   if (DateField.SelectedIndex <= 0) return null;
+   string[] candidates = DateField.SelectedIndex switch
+   {
+    1 => new[] { "msds_revision_date" },
+    2 => new[] { "msds_created_at", "msds_registered_at", "msds_upload_date", "msds_uploaded_at", "msds_created_date", "msds_reg_date" },
+    3 => new[] { "msds_updated_at", "msds_modified_at", "msds_modified_date", "msds_update_date" },
+    _ => Array.Empty<string>()
+   };
+   string? column = candidates.FirstOrDefault(_master.Columns.Contains);
+   if (column == null) throw new InvalidOperationException($"{((ComboBoxItem)DateField.SelectedItem).Content} 컬럼을 현재 MSDS DB에서 확인할 수 없습니다. DB 스키마 확인이 필요합니다.");
+   return column;
+  }
+  private static bool DateMatches(string raw, DateTime? from, DateTime? to)
+  {
+   if (string.IsNullOrWhiteSpace(raw)) return false;
+   if (!DateTime.TryParse(raw, CultureInfo.CurrentCulture, DateTimeStyles.None, out var date) &&
+       !DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out date)) return false;
+   return (!from.HasValue || date.Date >= from.Value.Date) && (!to.HasValue || date.Date <= to.Value.Date);
+  }
+  private static string Value(DataRowView row, string key) => row.Row.Table.Columns.Contains(key) ? Convert.ToString(row[key]) ?? "" : "";
+   private void PublishStatus(string message)
+   {
+    if (Window.GetWindow(this) is MainWindow main) main.SetRunStatus(message);
+   }
+   private void Search_Click(object sender, RoutedEventArgs e) { if (_editing) return; if (ConfirmDiscard()) RefreshData(); }
+   private void Search_KeyDown(object sender, KeyEventArgs e)
+   {
+    if (e.Key == Key.Enter) { if (!_editing && ConfirmDiscard()) RefreshData(); e.Handled = true; }
+   }
+   // Same expression semantics as UserManagementView: implicit AND, &, |, AND, OR, parentheses.
+   private sealed class SearchParser
+   {
+    private readonly List<string> _tokens;
+    private readonly Func<string, bool> _matches;
+    private int _pos;
+    public SearchParser(string query, Func<string, bool> matches)
+    {
+     _tokens = Regex.Matches(query, @"\(|\)|\&|\||[^\s()&|]+").Select(m => m.Value).ToList();
+     _matches = matches;
+    }
+    private string? Peek() => _pos < _tokens.Count ? _tokens[_pos] : null;
+    private bool Is(string value) => string.Equals(Peek(), value, StringComparison.OrdinalIgnoreCase);
+    private bool Take(string value) { if (!Is(value)) return false; _pos++; return true; }
+    public bool Evaluate()
+    {
+     if (_tokens.Count == 0) return true;
+     bool result = ParseOr();
+     if (Peek() != null) throw new FormatException("검색 연산자 또는 괄호를 확인해 주세요.");
+     return result;
+    }
+    private bool ParseOr()
+    {
+     bool result = ParseAnd();
+     while (Take("OR") || Take("|")) { bool right = ParseAnd(); result = result || right; }
+     return result;
+    }
+    private bool ParseAnd()
+    {
+     bool result = ParseAtom();
+     while (Peek() != null && !Is(")") && !Is("OR") && !Is("|"))
+     { Take("AND"); Take("&"); bool right = ParseAtom(); result = result && right; }
+     return result;
+    }
+    private bool ParseAtom()
+    {
+     if (Take("(")) { bool result = ParseOr(); if (!Take(")")) throw new FormatException("닫는 괄호 ')'가 없습니다."); return result; }
+     var term = Peek();
+     if (term == null || Is(")") || Is("AND") || Is("OR") || Is("&") || Is("|")) throw new FormatException("검색어 또는 괄호가 필요합니다.");
+     _pos++; return _matches(term);
+    }
+   }
+   private bool Matches(DataRowView row, string term)
+   {
+    string[] fields = { "msds_msds_id", "msds_graco_code", "msds_product_name", "msds_supplier_name" };
+    if (fields.Any(f => Value(row, f).Contains(term, StringComparison.OrdinalIgnoreCase))) return true;
+    return long.TryParse(Value(row, "msds_msds_id"), out long id) &&
+     _componentSearch.TryGetValue(id, out string? content) && content.Contains(term, StringComparison.OrdinalIgnoreCase);
+   }
+   private void ApplyFilter()
+   {
+    if (_master.Columns.Count == 0) return;
+    string query = SearchText.Text.Trim();
+    _ = new SearchParser(query, _ => false).Evaluate();
+    string? dateColumn = ResolveDateColumn();
+    DateTime? from = DateFrom.SelectedDate, to = DateTo.SelectedDate;
+    if (dateColumn != null && from.HasValue && to.HasValue && from > to) throw new FormatException("시작일은 종료일보다 늦을 수 없습니다.");
+    var matched = _master.DefaultView.Cast<DataRowView>().Where(row =>
+     (dateColumn == null || (!from.HasValue && !to.HasValue) || DateMatches(Value(row, dateColumn), from, to)) &&
+     (LatestOnly.IsChecked != true || Value(row, "msds_is_latest") == "1") &&
+     new SearchParser(query, term => Matches(row, term)).Evaluate()).ToList();
+    // DataView.RowFilter cannot express multi-table AND/OR reliably; retain the complete master table.
+    MasterGrid.ItemsSource = matched;
+    MasterGrid.SelectedItems.Clear();
+    ClearDetails();
+    UpdateSelectionUi();
+   }
+   private void UpdateSelectionUi()
+   {
+    if (MasterGrid == null || CountText == null || DeleteButton == null) return;
+    int shown = MasterGrid.ItemsSource is System.Collections.ICollection rows ? rows.Count : 0;
+    int selected = MasterGrid.SelectedItems.Count;
+    CountText.Text = $"조회 {shown}건 / 전체 {_master.Rows.Count}건 / 선택 {selected}건";
+    DeleteButton.IsEnabled = !_editing && selected > 0;
+   }
   private static DataTable ReadTable(SqliteConnection connection, string sql, long? id = null)
   {
    using var cmd = connection.CreateCommand(); cmd.CommandText=sql;
@@ -58,19 +174,31 @@ namespace QCS
   }
   private void RefreshData()
   {
+   if (_editing) return;
    try
    {
     using var connection=OpenReadOnly();
     _master=ReadTable(connection,"SELECT * FROM msds_mstr ORDER BY msds_msds_id DESC");
-    MasterGrid.ItemsSource=_master.DefaultView;
+    _componentSearch.Clear();
+    var components = ReadTable(connection, "SELECT msds_comp_parent_msds_id, msds_comp_name, msds_comp_cas_no FROM msds_comp_dtl");
+    foreach (DataRow component in components.Rows)
+    {
+     if (!long.TryParse(Convert.ToString(component["msds_comp_parent_msds_id"]), out long parentId)) continue;
+     string entry = (Convert.ToString(component["msds_comp_name"]) ?? "") + " " + (Convert.ToString(component["msds_comp_cas_no"]) ?? "");
+     _componentSearch[parentId] = (_componentSearch.TryGetValue(parentId, out string? existing) ? existing + " " : "") + entry;
+    }
     DetailGrid.ItemsSource=null;
     ClearDetails(); ApplyFilter();
     StatusText.Text=$"DB: {DatabaseManager.GetDbPath("msds")} | 마지막 조회: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+    PublishStatus($"MSDS 조회 완료: {CountText.Text}");
    }
-   catch(Exception ex) { StatusText.Text="DB 조회 실패: "+ex.Message; MessageBox.Show(ex.Message,"MSDS DB 조회 오류",MessageBoxButton.OK,MessageBoxImage.Error); }
+   catch(FormatException ex) { PublishStatus("MSDS 검색식 오류: " + ex.Message); MessageBox.Show(ex.Message,"검색식 오류",MessageBoxButton.OK,MessageBoxImage.Warning); }
+   catch(Exception ex) { StatusText.Text="DB 조회 실패: "+ex.Message; PublishStatus("MSDS 조회 실패: " + ex.Message); MessageBox.Show(ex.Message,"MSDS DB 조회 오류",MessageBoxButton.OK,MessageBoxImage.Error); }
   }
-  private void ClearDetails()
+   private void ClearDetails()
   {
+   if (_editing) return;
+    _detailId = null;
    foreach(var child in BasicFields.Children) if(child is TextBox box) box.Text="";
    DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 (0건)";
    _selectedPdfPath=""; PdfFileName.Text="선택된 PDF 없음";
@@ -79,9 +207,38 @@ namespace QCS
    PreviewFallback.Visibility=Visibility.Visible;
    PreviewMessage.Text="MSDS를 선택하세요.";
   }
+  // 수정 중에는 목록의 다른 행을 선택할 수 없지만 스크롤은 유지한다.
+  private void MasterGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+  {
+    if (!_editing) return;
+    System.Windows.DependencyObject? node = e.OriginalSource as System.Windows.DependencyObject;
+    while (node != null && node is not System.Windows.Controls.DataGridRow && node != MasterGrid)
+      node = VisualTreeHelper.GetParent(node);
+    if (node is System.Windows.Controls.DataGridRow row && !ReferenceEquals(row.Item, _lockedMasterRow)) e.Handled = true;
+  }
+  private void MasterGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+  {
+    if (!_editing) return;
+    if (e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Home || e.Key == Key.End ||
+        e.Key == Key.PageUp || e.Key == Key.PageDown || e.Key == Key.Space ||
+        (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) != 0)) e.Handled = true;
+  }
   private void MasterGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
+    if (_editing && !_restoringSelection)
+    {
+      if (MasterGrid.SelectedItems.Count != 1 || !ReferenceEquals(MasterGrid.SelectedItem, _lockedMasterRow))
+      {
+        _restoringSelection = true;
+        try { MasterGrid.SelectedItems.Clear(); if (_lockedMasterRow != null) MasterGrid.SelectedItem = _lockedMasterRow; }
+        finally { _restoringSelection = false; }
+      }
+      return;
+    }
+   UpdateSelectionUi();
    if(MasterGrid.SelectedItem is not DataRowView row || !long.TryParse(Value(row,"msds_msds_id"),out long id)) { ClearDetails(); return; }
+   if (_detailId == id) return;
+   _detailId = id;
    foreach(var child in BasicFields.Children)
     if(child is TextBox box && box.Tag is string key) box.Text=key=="msds_is_latest" ? (Value(row,key)=="1"?"예":"아니오") : Value(row,key);
    _selectedPdfPath=Value(row,"msds_file_path");
@@ -91,7 +248,7 @@ namespace QCS
    {
     using var connection=OpenReadOnly();
     var detail=ReadTable(connection,"SELECT * FROM msds_comp_dtl WHERE msds_comp_parent_msds_id = $id ORDER BY msds_comp_sort_order, msds_comp_msds_id",id);
-    DetailGrid.ItemsSource=detail.DefaultView; DetailCount.Text=$"구성성분 ({detail.Rows.Count}건) — MSDS ID: {id}";
+    _detailTable=detail; detail.AcceptChanges(); DetailGrid.ItemsSource=detail.DefaultView; DetailCount.Text=$"구성성분 ({detail.Rows.Count}건) — MSDS ID: {id}";
    }
    catch(Exception ex) { DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 조회 실패"; StatusText.Text="구성성분 조회 실패: "+ex.Message; }
   }
@@ -107,129 +264,353 @@ namespace QCS
    {
     await PdfBrowser.EnsureCoreWebView2Async();
     if(request != _previewRequest || !_previewExpanded) return;
-    if(!_zoomInitialized)
-    {
-     _zoomInitialized=true;
-     PdfBrowser.ZoomFactorChanged += (_, _) => Dispatcher.BeginInvoke(new Action(UpdateZoomText));
-    }
     PdfBrowser.CoreWebView2.Navigate(new Uri(Path.GetFullPath(_selectedPdfPath)).AbsoluteUri);
     PreviewFallback.Visibility=Visibility.Collapsed;
-    UpdateZoomText();
    }
    catch(Exception ex) { PreviewMessage.Text="PDF 미리보기 오류: " + ex.Message; PreviewFallback.Visibility=Visibility.Visible; }
   }
-  private void UpdateZoomText() => ZoomText.Text=$"{PdfBrowser.ZoomFactor*100:0}%";
-  private void ZoomIn_Click(object sender,RoutedEventArgs e) { PdfBrowser.ZoomFactor=Math.Clamp(PdfBrowser.ZoomFactor*1.1,0.25,5); UpdateZoomText(); }
-  private void ZoomOut_Click(object sender,RoutedEventArgs e) { PdfBrowser.ZoomFactor=Math.Clamp(PdfBrowser.ZoomFactor/1.1,0.25,5); UpdateZoomText(); }
-  private void TogglePreview_Click(object sender,RoutedEventArgs e)
-  {
-   _previewExpanded=!_previewExpanded;
-   PreviewPanel.Visibility=_previewExpanded?Visibility.Visible:Visibility.Collapsed;
-   RightSplitter.Visibility=_previewExpanded?Visibility.Visible:Visibility.Collapsed;
-   WorkspaceGrid.ColumnDefinitions[4].Width=_previewExpanded?new GridLength(390):new GridLength(0);
-   WorkspaceGrid.ColumnDefinitions[3].Width=_previewExpanded?new GridLength(6):new GridLength(0);
-   TogglePreviewButton.Content=_previewExpanded?"▣  원문 접기":"▣  원문 보기";
-   if(_previewExpanded) LoadPreview();
-  }
-  private void ToggleFiles_Click(object sender,RoutedEventArgs e)
-  {
-   _filesExpanded=!_filesExpanded;
-   FilesPanel.Visibility=_filesExpanded?Visibility.Visible:Visibility.Collapsed;
-   LeftSplitter.Visibility=_filesExpanded?Visibility.Visible:Visibility.Collapsed;
-   WorkspaceGrid.ColumnDefinitions[0].Width=_filesExpanded?new GridLength(310):new GridLength(0);
-   WorkspaceGrid.ColumnDefinitions[1].Width=_filesExpanded?new GridLength(6):new GridLength(0);
-   ToggleFilesButton.Content=_filesExpanded?"☰  목록 접기":"☰  MSDS 목록";
-  }
+   // 접기 전에 사용자가 조절한 실제 너비를 저장하고, 펼칠 때 복원한다.
+   // Star 비율을 축소된 영역에 재적용하면 0에 가까운 폭이 되는 현상을 방지한다.
+   private double _savedFilesWidth;
+   private double _savedPreviewWidth;
+
+   private void TogglePreview_Click(object sender, RoutedEventArgs e)
+   {
+    var columns = WorkspaceGrid.ColumnDefinitions;
+    if (_previewExpanded)
+    {
+     _savedPreviewWidth = Math.Max(0, columns[4].ActualWidth);
+     _previewExpanded = false;
+     PreviewPanel.Visibility = Visibility.Collapsed;
+     RightSplitter.Visibility = Visibility.Collapsed;
+     columns[4].Width = new GridLength(0);
+     columns[3].Width = new GridLength(0);
+    }
+    else
+    {
+     _previewExpanded = true;
+     columns[3].Width = new GridLength(6);
+     double available = Math.Max(0, WorkspaceGrid.ActualWidth - 12);
+     double target = _savedPreviewWidth > 100 ? _savedPreviewWidth : available * 0.30;
+     columns[4].Width = new GridLength(Math.Min(target, available * 0.65));
+     PreviewPanel.Visibility = Visibility.Visible;
+     RightSplitter.Visibility = Visibility.Visible;
+     LoadPreview();
+    }
+    TogglePreviewButton.Content = _previewExpanded ? "▣  원문 접기" : "▣  원문 보기";
+    PublishStatus(_previewExpanded ? "PDF 원문 표시" : "PDF 원문 감춤");
+   }
+
+   private void ToggleFiles_Click(object sender, RoutedEventArgs e)
+   {
+    var columns = WorkspaceGrid.ColumnDefinitions;
+    if (_filesExpanded)
+    {
+     _savedFilesWidth = Math.Max(0, columns[0].ActualWidth);
+     _filesExpanded = false;
+     FilesPanel.Visibility = Visibility.Collapsed;
+     LeftSplitter.Visibility = Visibility.Collapsed;
+     columns[0].Width = new GridLength(0);
+     columns[1].Width = new GridLength(0);
+    }
+    else
+    {
+     _filesExpanded = true;
+     columns[1].Width = new GridLength(6);
+     double available = Math.Max(0, WorkspaceGrid.ActualWidth - 12);
+     double target = _savedFilesWidth > 100 ? _savedFilesWidth : available * 0.25;
+     columns[0].Width = new GridLength(Math.Min(target, available * 0.65));
+     FilesPanel.Visibility = Visibility.Visible;
+     LeftSplitter.Visibility = Visibility.Visible;
+    }
+    ToggleFilesButton.Content = _filesExpanded ? "☰  목록 접기" : "☰  MSDS 목록";
+    PublishStatus(_filesExpanded ? "MSDS 목록 펼침" : "MSDS 목록 접음");
+   }
+   private bool ConfirmDiscard()
+   {
+     if (!_editing) return true;
+     if (MessageBox.Show("저장하지 않은 변경사항을 취소하시겠습니까?", "MSDS 수정 취소", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return false;
+     ExitEditMode();
+     return true;
+   }
+   private void SetEditMode(bool enabled)
+   {
+     _editing = enabled;
+     EditButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+     SaveEditButton.Visibility = CancelEditButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+     AddDetailButton.IsEnabled = RemoveDetailButton.IsEnabled = enabled;
+     DetailGrid.IsReadOnly = !enabled;
+     DetailGrid.CanUserAddRows = false;
+     DetailGrid.CanUserDeleteRows = false;
+     foreach (var child in BasicFields.Children)
+       if (child is TextBox box && box.Tag is string key)
+         box.IsReadOnly = !enabled || key == "msds_msds_id" || key == "msds_file_name";
+     SearchText.IsEnabled = LatestOnly.IsEnabled = SearchButton.IsEnabled = !enabled;
+     DateField.IsEnabled = DateFrom.IsEnabled = DateTo.IsEnabled = !enabled;
+     var normalBg = (SolidColorBrush)new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#EAF3FF"));
+     var editableBg = (SolidColorBrush)new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFFFFF"));
+     foreach (var child in BasicFields.Children)
+       if (child is TextBox box && box.Tag is string key)
+       {
+         bool locked = key == "msds_msds_id" || key == "msds_file_name";
+         box.Background = enabled && !locked ? editableBg : normalBg;
+         box.Foreground = enabled && !locked ? System.Windows.Media.Brushes.Black : new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#1E3A5F"));
+         box.BorderBrush = enabled && !locked ? new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#8DB4E8")) : new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#CED8E5"));
+       }
+     DetailGrid.RowBackground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(enabled ? "#FFFFFF" : "#F0F6FF"));
+     DetailGrid.AlternatingRowBackground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(enabled ? "#F7FAFE" : "#EAF3FF"));
+     DeleteButton.IsEnabled = !enabled && MasterGrid.SelectedItems.Count > 0;
+   }
+   private void ExitEditMode()
+   {
+     _editingId = null;
+     _lockedMasterRow = null;
+     SetEditMode(false);
+   }
+   private void Edit_Click(object sender, RoutedEventArgs e)
+   {
+     if (_detailId == null || MasterGrid.SelectedItems.Count != 1) { PublishStatus("수정할 MSDS 한 건을 선택하세요."); return; }
+     _editingId = _detailId;
+     _lockedMasterRow = MasterGrid.SelectedItem as DataRowView;
+     _detailTable?.AcceptChanges();
+     SetEditMode(true);
+     PublishStatus($"MSDS ID {_editingId}: 수정 모드");
+   }
+   private void CancelEdit_Click(object sender, RoutedEventArgs e)
+   {
+     if (!ConfirmDiscard()) return;
+     var id = _detailId;
+     _detailId = null;
+     if (MasterGrid.SelectedItem is DataRowView row) MasterGrid_SelectionChanged(MasterGrid, new SelectionChangedEventArgs(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new System.Collections.ArrayList(), new System.Collections.ArrayList()));
+     PublishStatus($"MSDS ID {id}: 수정 취소");
+   }
+   private void AddDetail_Click(object sender, RoutedEventArgs e)
+   {
+     if (!_editing || _detailTable == null) return;
+     DetailGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+     DetailGrid.CommitEdit(DataGridEditingUnit.Row, true);
+     var row = _detailTable.NewRow();
+     if (_detailTable.Columns.Contains("msds_comp_parent_msds_id")) row["msds_comp_parent_msds_id"] = _editingId!.Value.ToString();
+     if (_detailTable.Columns.Contains("msds_comp_sort_order")) row["msds_comp_sort_order"] = (_detailTable.Rows.Count + 1).ToString();
+     _detailTable.Rows.Add(row);
+     DetailGrid.SelectedItem = _detailTable.DefaultView[_detailTable.DefaultView.Count - 1];
+     DetailGrid.ScrollIntoView(DetailGrid.SelectedItem);
+     DetailCount.Text = $"구성성분 ({_detailTable.DefaultView.Count}건) — MSDS ID: {_editingId}";
+   }
+   private void RemoveDetail_Click(object sender, RoutedEventArgs e)
+   {
+     if (!_editing || _detailTable == null) return;
+     DetailGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+     DetailGrid.CommitEdit(DataGridEditingUnit.Row, true);
+     var selected = DetailGrid.SelectedCells.Select(c => c.Item).Concat(DetailGrid.SelectedItems.Cast<object>()).OfType<DataRowView>().Distinct().ToList();
+     if (selected.Count == 0) { PublishStatus("삭제할 구성성분 행을 선택하세요."); return; }
+     foreach (var row in selected) row.Row.Delete();
+     DetailCount.Text = $"구성성분 ({_detailTable.DefaultView.Count}건) — MSDS ID: {_editingId}";
+   }
+   private void DetailGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+   {
+     if (e.Key != Key.V || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+     if (!_editing || _detailTable == null) { e.Handled = true; return; }
+     e.Handled = true;
+     DetailGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+     DetailGrid.CommitEdit(DataGridEditingUnit.Row, true);
+     string content = Clipboard.ContainsText() ? Clipboard.GetText() : "";
+     if (Clipboard.ContainsData(DataFormats.Html))
+     {
+       var html = Clipboard.GetData(DataFormats.Html) as string;
+       if (!string.IsNullOrWhiteSpace(html))
+       {
+         var rows = Regex.Matches(html, @"<tr\b[^>]*>(.*?)</tr>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+         var parsed = new List<string>();
+         foreach (Match tr in rows)
+         {
+           var cells = Regex.Matches(tr.Groups[1].Value, @"<t[dh]\b[^>]*>(.*?)</t[dh]>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+           if (cells.Count == 0) continue;
+           parsed.Add(string.Join("\t", cells.Cast<Match>().Select(m => System.Net.WebUtility.HtmlDecode(Regex.Replace(m.Groups[1].Value, @"<[^>]+>", "")).Trim())));
+         }
+         if (parsed.Count > 0) content = string.Join("\n", parsed);
+       }
+     }
+     if (string.IsNullOrWhiteSpace(content)) return;
+     var lines = content.Replace("\r\n", "\n").Replace('\r','\n').TrimEnd('\n').Split('\n');
+     var columns = DetailGrid.Columns.OrderBy(c => c.DisplayIndex).OfType<DataGridBoundColumn>().ToList();
+     var startColumn = DetailGrid.CurrentCell.Column == null ? 0 : DetailGrid.CurrentCell.Column.DisplayIndex;
+     int startRow = DetailGrid.SelectedIndex;
+     if (startRow < 0 && DetailGrid.CurrentItem != null) startRow = DetailGrid.Items.IndexOf(DetailGrid.CurrentItem);
+     if (startRow < 0) startRow = _detailTable.DefaultView.Count;
+     for (int i=0;i<lines.Length;i++)
+     {
+       var cells=lines[i].Split('\t');
+       while (_detailTable.DefaultView.Count <= startRow+i)
+       {
+         var row=_detailTable.NewRow();
+         if (_detailTable.Columns.Contains("msds_comp_parent_msds_id")) row["msds_comp_parent_msds_id"]=_editingId!.Value.ToString();
+         if (_detailTable.Columns.Contains("msds_comp_sort_order")) row["msds_comp_sort_order"]=(_detailTable.Rows.Count+1).ToString();
+         _detailTable.Rows.Add(row);
+       }
+       var target=_detailTable.DefaultView[startRow+i];
+       for(int j=0;j<cells.Length && startColumn+j<columns.Count;j++)
+       {
+         if (columns[startColumn+j].Binding is Binding binding && binding.Path?.Path is string path)
+         {
+           var key=path.Trim('[',']');
+           if (_detailTable.Columns.Contains(key)) target[key]=cells[j];
+         }
+       }
+     }
+     DetailCount.Text=$"구성성분 ({_detailTable.DefaultView.Count}건) — MSDS ID: {_editingId}";
+   }
+   private static HashSet<string> GetDbColumns(SqliteConnection conn, string table)
+   {
+     using var cmd=conn.CreateCommand(); cmd.CommandText=$"PRAGMA table_info({table})";
+     using var reader=cmd.ExecuteReader(); var cols=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+     while(reader.Read()) cols.Add(reader.GetString(1));
+     return cols;
+   }
+   private void SaveEdit_Click(object sender, RoutedEventArgs e)
+   {
+     if (!_editing || !_editingId.HasValue || _detailTable == null) return;
+     DetailGrid.CommitEdit(DataGridEditingUnit.Cell,true);
+     DetailGrid.CommitEdit(DataGridEditingUnit.Row,true);
+     if (MessageBox.Show("기본정보 및 구성성분 변경사항을 DB에 저장하시겠습니까?", "MSDS 수정 확인", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) { PublishStatus("MSDS 수정 저장 취소"); return; }
+     long id=_editingId.Value;
+     try
+     {
+       string dbPath=DatabaseManager.GetDbPath("msds");
+       var builder=new SqliteConnectionStringBuilder { DataSource=dbPath, Mode=SqliteOpenMode.ReadWrite, DefaultTimeout=10, Pooling=false };
+       using var conn=new SqliteConnection(builder.ToString()); conn.Open();
+       using (var pragma=conn.CreateCommand()) { pragma.CommandText="PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"; pragma.ExecuteNonQuery(); }
+       var masterColumns=GetDbColumns(conn,"msds_mstr");
+       var detailColumns=GetDbColumns(conn,"msds_comp_dtl");
+       using var tx=conn.BeginTransaction();
+       var fields=BasicFields.Children.OfType<TextBox>().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && masterColumns.Contains(key)).ToList();
+       using (var cmd=conn.CreateCommand())
+       {
+         cmd.Transaction=tx;
+         var sets=new List<string>();
+         foreach(var box in fields)
+         {
+           string key=(string)box.Tag;
+           sets.Add($"\"{key}\"=@{key}");
+           cmd.Parameters.AddWithValue("@"+key, key=="msds_is_latest" ? (box.Text.Trim()=="예" || box.Text.Trim()=="1" ? "1":"0") : box.Text);
+         }
+         if (sets.Count>0)
+         {
+           cmd.CommandText="UPDATE msds_mstr SET "+string.Join(",",sets)+" WHERE msds_msds_id=@id";
+           cmd.Parameters.AddWithValue("@id",id);
+           if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("MSDS 기본정보 저장 대상이 정확히 1건이 아닙니다.");
+         }
+       }
+       string pk="msds_comp_msds_id";
+       if (!detailColumns.Contains(pk)) throw new InvalidOperationException("구성성분 고유 ID 컬럼을 확인할 수 없습니다.");
+       foreach(DataRow row in _detailTable.Rows)
+       {
+         if(row.RowState==DataRowState.Unchanged) continue;
+         using var cmd=conn.CreateCommand();cmd.Transaction=tx;
+         if(row.RowState==DataRowState.Deleted)
+         {
+           cmd.CommandText=$"DELETE FROM msds_comp_dtl WHERE \"{pk}\"=@pk AND msds_comp_parent_msds_id=@parent";
+           cmd.Parameters.AddWithValue("@pk",row[pk,DataRowVersion.Original]);cmd.Parameters.AddWithValue("@parent",id);
+           if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 삭제 대상이 변경되었습니다.");
+           continue;
+         }
+         var editable=DetailGrid.Columns.OfType<DataGridBoundColumn>().Select(c=>(c.Binding as Binding)?.Path?.Path?.Trim('[',']')).Where(c=>!string.IsNullOrWhiteSpace(c) && detailColumns.Contains(c!)).Distinct().ToList();
+         if(row.RowState==DataRowState.Added)
+         {
+           var keys=editable.Concat(new[]{"msds_comp_parent_msds_id","msds_comp_sort_order"}).Where(detailColumns.Contains).Distinct().ToList();
+           cmd.CommandText="INSERT INTO msds_comp_dtl ("+string.Join(",",keys.Select(k=>"\""+k+"\""))+") VALUES ("+string.Join(",",keys.Select((k,i)=>"@p"+i))+")";
+           for(int i=0;i<keys.Count;i++)cmd.Parameters.AddWithValue("@p"+i,keys[i]=="msds_comp_parent_msds_id" ? id : row[keys[i]] is DBNull ? DBNull.Value : row[keys[i]]);
+         }
+         else
+         {
+           cmd.CommandText="UPDATE msds_comp_dtl SET "+string.Join(",",editable.Select((k,i)=>"\""+k+"\"=@p"+i))+" WHERE \""+pk+"\"=@pk AND msds_comp_parent_msds_id=@parent";
+           for(int i=0;i<editable.Count;i++)cmd.Parameters.AddWithValue("@p"+i,row[editable[i]!]);
+           cmd.Parameters.AddWithValue("@pk",row[pk]);cmd.Parameters.AddWithValue("@parent",id);
+         }
+         if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 저장 건수가 일치하지 않습니다.");
+       }
+       tx.Commit();
+       ExitEditMode();
+       RefreshData();
+       var matching=MasterGrid.Items.Cast<DataRowView>().FirstOrDefault(r=>Value(r,"msds_msds_id")==id.ToString());
+       if(matching!=null) MasterGrid.SelectedItem=matching;
+       PublishStatus($"MSDS ID {id}: 수정 저장 완료");
+     }
+     catch(Exception ex) { PublishStatus("MSDS 수정 저장 실패: "+ex.Message); MessageBox.Show(ex.Message,"MSDS 저장 오류",MessageBoxButton.OK,MessageBoxImage.Error); }
+   }
+
   private void OpenPdf_Click(object sender,RoutedEventArgs e)
   {
    if(string.IsNullOrWhiteSpace(_selectedPdfPath)||!File.Exists(_selectedPdfPath)) { MessageBox.Show("원본 PDF 파일을 찾을 수 없습니다.","PDF 열기",MessageBoxButton.OK,MessageBoxImage.Warning); return; }
    try { Process.Start(new ProcessStartInfo { FileName=_selectedPdfPath,UseShellExecute=true }); }
    catch(Exception ex) { MessageBox.Show(ex.Message,"PDF 열기 실패",MessageBoxButton.OK,MessageBoxImage.Error); }
   }
-        private void DeleteSelected_Click(object sender, RoutedEventArgs e)
-        {
-            if (MasterGrid.SelectedItem is not DataRowView row ||
-                !long.TryParse(Convert.ToString(row["msds_msds_id"]), out long id))
-            {
-                System.Windows.MessageBox.Show("삭제할 MSDS를 먼저 선택하세요.", "선택 필요");
-                return;
-            }
-
-            string name = Convert.ToString(row["msds_file_name"]) ?? "";
-            string pdfPath = row.Row.Table.Columns.Contains("msds_file_path")
-                ? Convert.ToString(row["msds_file_path"]) ?? "" : "";
-            var confirm = System.Windows.MessageBox.Show(
-                $"선택한 MSDS를 DB에서 영구 삭제하시겠습니까?\n\nID: {id}\n파일: {name}\n\n" +
-                "관련 구성성분·규제·추출 결과 및 등록 이력도 삭제됩니다.\n" +
-                "보관된 PDF도 삭제를 시도합니다. PDF 삭제 실패 시 DB 레코드는 삭제됩니다.",
-                "MSDS DB 레코드 삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
-
-            try
-            {
-                string dbPath = DatabaseManager.GetDbPath("msds");
-                if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
-                    throw new FileNotFoundException("DB 파일을 찾을 수 없습니다.", dbPath);
-                var builder = new SqliteConnectionStringBuilder
-                {
-                    DataSource = dbPath,
-                    Mode = SqliteOpenMode.ReadWrite,
-                    DefaultTimeout = 10,
-                    Pooling = false
-                };
-                using var connection = new SqliteConnection(builder.ToString());
-                connection.Open();
-                using (var pragma = connection.CreateCommand())
-                {
-                    pragma.CommandText = "PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;";
-                    pragma.ExecuteNonQuery();
-                }
-                using var transaction = connection.BeginTransaction();
-                // Child records must be deleted first because the schema uses ON DELETE RESTRICT.
-                string[] statements =
-                {
-                    "DELETE FROM reg_result_dtl WHERE reg_result_msds_id=$id",
-                    "DELETE FROM extract_result_dtl WHERE extract_result_msds_id=$id",
-                    "DELETE FROM msds_comp_dtl WHERE msds_comp_parent_msds_id=$id",
-                    "DELETE FROM msds_oper_dtl WHERE msds_oper_parent_msds_id=$id",
-                    "DELETE FROM audit_log_hist WHERE audit_log_msds_id=$id",
-                    "DELETE FROM msds_mstr WHERE msds_msds_id=$id"
-                };
-                int deleted = 0;
-                foreach (string sql in statements)
-                {
-                    using var cmd = connection.CreateCommand();
-                    cmd.Transaction = transaction;
-                    cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("$id", id);
-                    int count = cmd.ExecuteNonQuery();
-                    if (sql.StartsWith("DELETE FROM msds_mstr", StringComparison.Ordinal))
-                        deleted = count;
-                }
-                if (deleted != 1)
-                    throw new InvalidOperationException("삭제 대상 MSDS가 존재하지 않거나 이미 삭제되었습니다.");
-                transaction.Commit();
-                string pdfWarning = "";
-                if (!string.IsNullOrWhiteSpace(pdfPath))
-                {
-                    try { if (File.Exists(pdfPath)) File.Delete(pdfPath); }
-                    catch (Exception pdfEx) { pdfWarning = " PDF 삭제 실패(수동 삭제 필요): " + pdfEx.Message; }
-                }
-                RefreshData();
-                StatusText.Text = $"MSDS ID {id} DB 레코드 삭제 완료." + pdfWarning;
-                if (pdfWarning.Length > 0)
-                    System.Windows.MessageBox.Show(pdfWarning, "PDF 삭제 안내",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            catch (Exception ex)
-            {
-                StatusText.Text = "DB 레코드 삭제 실패: " + ex.Message;
-                System.Windows.MessageBox.Show(ex.Message, "MSDS DB 삭제 오류",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-
+   private void DeleteSelected_Click(object sender, RoutedEventArgs e)
+   {
+    if (!ConfirmDiscard()) return;
+    var selected = MasterGrid.SelectedItems.Cast<DataRowView>()
+     .Select(row => new { IdText = Value(row, "msds_msds_id"), Name = Value(row, "msds_file_name"), Path = Value(row, "msds_file_path") })
+     .ToList();
+    if (selected.Count == 0) { PublishStatus("삭제할 MSDS를 선택하세요."); return; }
+    if (selected.Any(row => !long.TryParse(row.IdText, out _)))
+    { PublishStatus("MSDS 삭제 제한: 유효하지 않은 ID가 있습니다."); return; }
+    if (MessageBox.Show($"선택한 MSDS {selected.Count}건을 DB에서 영구 삭제하시겠습니까?\n\n" +
+      "관련 구성성분·규제·추출 결과 및 등록 이력도 삭제됩니다.\n" +
+      "보관된 PDF도 삭제를 시도합니다. PDF 삭제 실패 시 DB 레코드는 삭제됩니다.",
+      "MSDS 일괄 삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+    { PublishStatus($"MSDS {selected.Count}건 삭제 취소"); return; }
+    try
+    {
+     string dbPath = DatabaseManager.GetDbPath("msds");
+     if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath)) throw new FileNotFoundException("DB 파일을 찾을 수 없습니다.", dbPath);
+     var builder = new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadWrite, DefaultTimeout = 10, Pooling = false };
+     using var connection = new SqliteConnection(builder.ToString());
+     connection.Open();
+     using (var pragma = connection.CreateCommand()) { pragma.CommandText = "PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"; pragma.ExecuteNonQuery(); }
+     using (var transaction = connection.BeginTransaction())
+     {
+      string[] statements = {
+       "DELETE FROM reg_result_dtl WHERE reg_result_msds_id=$id",
+       "DELETE FROM extract_result_dtl WHERE extract_result_msds_id=$id",
+       "DELETE FROM msds_comp_dtl WHERE msds_comp_parent_msds_id=$id",
+       "DELETE FROM msds_oper_dtl WHERE msds_oper_parent_msds_id=$id",
+       "DELETE FROM audit_log_hist WHERE audit_log_msds_id=$id",
+       "DELETE FROM msds_mstr WHERE msds_msds_id=$id"
+      };
+      foreach (var row in selected)
+      {
+       long id = long.Parse(row.IdText);
+       foreach (string sql in statements)
+       {
+        using var cmd = connection.CreateCommand();
+        cmd.Transaction = transaction;
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("$id", id);
+        int count = cmd.ExecuteNonQuery();
+        if (sql.StartsWith("DELETE FROM msds_mstr", StringComparison.Ordinal) && count != 1)
+         throw new InvalidOperationException($"MSDS ID {id}: 삭제 대상이 없거나 이미 삭제되었습니다.");
+       }
+      }
+      transaction.Commit();
+     }
+     var warnings = new List<string>();
+     foreach (var path in selected.Select(row => row.Path).Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
+     {
+      try { if (File.Exists(path)) File.Delete(path); }
+      catch (Exception ex) { warnings.Add(Path.GetFileName(path) + ": " + ex.Message); }
+     }
+     RefreshData();
+     string message = $"MSDS {selected.Count}건 삭제 완료" + (warnings.Count > 0 ? $" (PDF 삭제 실패 {warnings.Count}건)" : "");
+     StatusText.Text = message;
+     PublishStatus(message);
+     if (warnings.Count > 0) MessageBox.Show(string.Join("\n", warnings), "PDF 삭제 안내", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+    catch (Exception ex)
+    {
+     StatusText.Text = "DB 레코드 삭제 실패: " + ex.Message;
+     PublishStatus("MSDS 삭제 실패: " + ex.Message);
+     MessageBox.Show(ex.Message, "MSDS DB 삭제 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+   }
  }
 }
