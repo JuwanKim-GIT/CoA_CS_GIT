@@ -1,4 +1,4 @@
-﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -24,7 +24,70 @@ namespace QCS
         public MainWindow()
         {
             InitializeComponent();
+            // Windows identity can be shown without a database connection.
+            // Name, department and activation state will be loaded from QCS_USERS
+            // after DatabaseManager integration is available.
+            CurrentUserText.Text = $"{Environment.UserName}(Windows ID)";
+            UserStatusIcon.ToolTip = "사용자 활성화 상태 확인 전";
+            Loaded += (_, _) =>
+            {
+                try { RefreshCurrentUserStatus(); }
+                catch { /* Startup DB error is handled by existing initialization flow. */ }
+            };
 
+        }
+
+        // Public UI update hooks for the future DB startup/user registration flow.
+        // Database connection checks are intentionally NOT simulated here.
+        public void SetRunStatus(string message)
+        {
+            RunStatusText.Text = message ?? string.Empty;
+        }
+
+        public void SetDatabaseStatus(int connected, int total, string details = null)
+        {
+            if (total <= 0 || connected < 0 || connected > total)
+                throw new ArgumentOutOfRangeException(nameof(connected));
+
+            DatabaseStatusText.Text = connected == total
+                ? $"DB 연결: {connected}/{total} 정상"
+                : connected == 0
+                    ? $"DB 연결: {connected}/{total} 연결 오류"
+                    : $"DB 연결: {connected}/{total} 일부 오류";
+            DatabaseStatusIcon.Fill = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(
+                    connected == total ? "#16A34A" : connected == 0 ? "#DC2626" : "#EAB308"));
+            DatabaseStatusText.ToolTip = details ?? DatabaseStatusText.Text;
+        }
+
+        // Compatibility overload for existing startup calls. Always use the DB role.
+        public void SetCurrentUser(string windowsId, string name, string department, bool isActive)
+        {
+            try
+            {
+                var current = StartupUserService.FindCurrentUser();
+                SetCurrentUser(windowsId, current?.Name ?? name, current?.UserLevel ?? 0);
+            }
+            catch
+            {
+                SetCurrentUser(windowsId, name, 0);
+            }
+        }
+
+        public void SetCurrentUser(string windowsId, string name, int userLevel)
+        {
+            string role = userLevel == 9 ? "관리자" : userLevel == 1 ? "일반사용자" : "비활성";
+            CurrentUserText.Text = $"{name}({windowsId}, {role})";
+            UserStatusIcon.Fill = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(
+                    userLevel == 0 ? "#94A3B8" : "#16A34A"));
+            UserStatusIcon.ToolTip = role;
+        }
+
+        public void RefreshCurrentUserStatus()
+        {
+            var current = StartupUserService.FindCurrentUser();
+            if (current != null) SetCurrentUser(current.WindowsId, current.Name, current.UserLevel);
         }
 
         // ===================================================================

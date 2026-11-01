@@ -78,11 +78,29 @@ namespace QCS
             IngredientsGrid.Items.OfType<IngredientEdit>().Select(v => new IngredientEdit
             { Index = v.Index, Name = v.Name, CasNumber = v.CasNumber,
               ConcentrationRaw = v.ConcentrationRaw }).ToList();
+        private void PublishStatus(string message)
+        {
+            if (System.Windows.Window.GetWindow(this) is MainWindow main)
+                main.SetRunStatus(message);
+        }
+
         private void SetStatus(PdfItem item, string value)
         {
             item.Status = value;
             FilesGrid.Items.Refresh();
         }
+        // UI 상태만 갱신한다. 실제 저장·추가·삭제 조건과 처리 로직은 기존 메서드에서 검증한다.
+        private void UpdateActionButtons()
+        {
+            if (DbSaveButton == null || AddIngredientButton == null || RemoveIngredientButton == null) return;
+            DbSaveButton.IsEnabled = !_isAnalyzing && _files.Any(v => v.Confirmed && v.SavedValues != null && v.SavedIngredients != null);
+            bool canEditIngredients = !_isAnalyzing && _displayedItem?.Parsed != null;
+            AddIngredientButton.IsEnabled = canEditIngredients;
+            RemoveIngredientButton.IsEnabled = canEditIngredients && IngredientsGrid?.SelectedItem != null;
+        }
+
+        private void IngredientsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateActionButtons();
+
         private void SaveDisplayed()
         {
             if (_displayedItem == null || _isAnalyzing || _displayedItem.Parsed == null) return;
@@ -93,6 +111,8 @@ namespace QCS
             _displayedItem.Confirmed = true;
             _displayedItem.Dirty = false;
             SetStatus(_displayedItem, "확인완료");
+            UpdateActionButtons();
+            PublishStatus($"MSDS 검토 결과 저장 완료: {_displayedItem.FileName}");
         }
         private void SaveCurrent_Click(object sender, RoutedEventArgs e) => SaveDisplayed();
 
@@ -114,7 +134,11 @@ namespace QCS
                 return;
             }
             if (System.Windows.MessageBox.Show($"확인완료 {targets.Count}건을 DB에 저장하시겠습니까?", "DB 저장 확인",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                PublishStatus("MSDS DB 저장 취소");
+                return;
+            }
             DbSaveButton.IsEnabled = false;
             int success = 0, failed = 0;
             try
@@ -151,8 +175,9 @@ namespace QCS
             {
                 FilesGrid.Items.Refresh();
                 UpdateCount();
-                DbSaveButton.IsEnabled = true;
+                UpdateActionButtons();
             }
+            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건");
             System.Windows.MessageBox.Show($"DB 저장 완료: 성공 {success}건 / 실패 {failed}건", "DB 저장 결과");
         }
 
@@ -167,6 +192,7 @@ namespace QCS
             IngredientsGrid.SelectedItem = rows[^1];
             IngredientsGrid.ScrollIntoView(rows[^1]);
             MarkDirty();
+            UpdateActionButtons();
         }
 
         private void RemoveIngredient_Click(object sender, RoutedEventArgs e)
@@ -182,6 +208,7 @@ namespace QCS
             for (int i = 0; i < rows.Count; i++) rows[i].Index = i + 1;
             IngredientsGrid.ItemsSource = rows;
             MarkDirty();
+            UpdateActionButtons();
         }
 
         private void EditableField_TextChanged(object sender, TextChangedEventArgs e) => MarkDirty();
@@ -196,6 +223,7 @@ namespace QCS
                 _displayedItem.Confirmed = false;
                 SetStatus(_displayedItem, _displayedItem.AnalysisDisplay);
             }
+            UpdateActionButtons();
         }
         private bool ConfirmLeave()
         {
@@ -289,16 +317,59 @@ namespace QCS
             throw new InvalidOperationException("AI 모델을 선택해 주세요.");
         }
 
+        // 선택된 콤보박스에만 분석 방식과 모델명을 함께 표시한다.
+        // 드롭다운 목록과 SelectedValue(실제 분석에 전달하는 모델 값)는 변경하지 않는다.
+        private void UpdateAnalysisModeDisplay(string? rule = null)
+        {
+            if (AnalysisModeDisplay == null) return;
+            try
+            {
+                rule ??= GetMsdsAnalysisRule();
+                string mode = rule switch
+                {
+                    "1" => "AI Only",
+                    "2" => "C# Only",
+                    "3" => "C# + AI",
+                    _ => "설정 확인"
+                };
+                string model = rule == "2" ? "AI 미사용"
+                    : (AiModelComboBox.SelectedItem as AiModelOption)?.Description ?? "모델 미선택";
+                AnalysisModeDisplay.Text = $"{mode} | {model}";
+                AnalysisModeDisplay.ToolTip = rule switch
+                {
+                    "1" => "PDF 원본을 AI에 전달하여 분석",
+                    "2" => "C# 텍스트 추출 및 JSON 규칙으로 분석",
+                    "3" => "C#으로 추출한 텍스트를 AI로 분석",
+                    _ => "분석 방식 설정을 확인해 주세요."
+                };
+            }
+            catch
+            {
+                AnalysisModeDisplay.Text = "분석 방식 확인 필요";
+                AnalysisModeDisplay.ToolTip = "MSDS_Analysis_rule 설정을 확인해 주세요.";
+            }
+        }
+
         private void RefreshAiModelAvailability()
         {
-            try { AiModelComboBox.IsEnabled = !_isAnalyzing && GetMsdsAnalysisRule() != "2"; }
-            catch { AiModelComboBox.IsEnabled = false; }
+            try
+            {
+                string rule = GetMsdsAnalysisRule();
+                AiModelComboBox.IsEnabled = !_isAnalyzing && rule != "2";
+                UpdateAnalysisModeDisplay(rule);
+            }
+            catch
+            {
+                AiModelComboBox.IsEnabled = false;
+                UpdateAnalysisModeDisplay();
+            }
         }
 
         public MsdsRegistrationView()
         {
             InitializeComponent();
             FilesGrid.ItemsSource = _files;
+            AiModelComboBox.SelectionChanged += (_, _) => UpdateAnalysisModeDisplay();
             try { LoadAiModels(); }
             catch (Exception ex)
             {
@@ -306,6 +377,7 @@ namespace QCS
                 LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  AI 모델 목록 조회 오류: {ex.Message}");
             }
             UpdateCount();
+            UpdateActionButtons();
             SizeChanged += (_, _) => UpdateResponsiveLayout();
             Loaded += (_, _) => { UpdateResponsiveLayout(); UpdateLogHeight(); UpdateNavigation(); RefreshAiModelAvailability(); };
             SizeChanged += (_, _) => UpdateLogHeight();
@@ -319,12 +391,14 @@ namespace QCS
         {
             _filesOverride = FilesPanel.Visibility != Visibility.Visible;
             UpdateResponsiveLayout();
+            PublishStatus(FilesPanel.Visibility == Visibility.Visible ? "PDF 등록 영역 펼침" : "PDF 등록 영역 접음");
         }
 
         private void TogglePreview_Click(object sender, RoutedEventArgs e)
         {
             _previewOverride = PreviewPanel.Visibility != Visibility.Visible;
             UpdateResponsiveLayout();
+            PublishStatus(PreviewPanel.Visibility == Visibility.Visible ? "PDF 원문 표시" : "PDF 원문 감춤");
         }
 
         private bool _logExpanded = true;
@@ -339,6 +413,7 @@ namespace QCS
             UpdateLogHeight();
             LogList.Visibility = _logExpanded ? Visibility.Visible : Visibility.Collapsed;
             ToggleLogButton.Content = _logExpanded ? "로그 접기 ▲" : "로그 펼치기 ▼";
+            PublishStatus(_logExpanded ? "분석 로그 펼침" : "분석 로그 접음");
         }
 
         private void UpdateLogHeight()
@@ -419,6 +494,7 @@ namespace QCS
             StopAnalysisButton.IsEnabled = false;
             _analysisCts?.Cancel();
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  분석 중지 요청");
+            PublishStatus("MSDS 분석 중지 요청");
         }
         private void InitializePdfZoom()
         {
@@ -481,8 +557,8 @@ namespace QCS
                     ? new GridLength(mode == 2 ? 32 : 40, GridUnitType.Star)
                     : new GridLength(0);
 
-                ToggleFilesButton.Content = showFiles ? "◀  PDF 등록 접기" : "☰  PDF 등록";
-                TogglePreviewButton.Content = showPreview ? "▣  원문 접기" : "▣  원문 보기";
+                ToggleFilesButton.Content = showFiles ? "◀  PDF 등록 접기" : "☰  PDF 등록 펼치기";
+                TogglePreviewButton.Content = showPreview ? "▣  원문 감추기" : "▣  원문 보기";
             }
             finally { _layoutUpdating = false; }
         }
@@ -536,6 +612,7 @@ namespace QCS
                     "중복 파일명", MessageBoxButton.OK, MessageBoxImage.Information);
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  PDF {added}건 추가, 중복 {duplicate}건 제외");
             UpdateCount();
+            PublishStatus($"PDF 파일 {added}건 추가, 중복 {duplicate}건 제외");
             if (FilesGrid.SelectedItem == null && _files.Count > 0) FilesGrid.SelectedIndex = 0;
         }
 
@@ -554,6 +631,7 @@ namespace QCS
             UpdateNavigation();
             if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); return; }
             _displayedItem = item;
+            UpdateActionButtons();
             FileNameBox.Text = item.FileName;
             ShowExtractedFields(item);
             try
@@ -580,6 +658,7 @@ namespace QCS
                     MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
                 _displayedItem = null;
                 _files.Remove(item);
+                PublishStatus($"PDF 파일 목록에서 제거: {item.FileName}");
             }
             for (int i = 0; i < _files.Count; i++) _files[i].Index = i + 1;
             FilesGrid.Items.Refresh();
@@ -598,6 +677,7 @@ namespace QCS
             UpdateCount();
             ResetPreview();
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  목록 초기화");
+            PublishStatus("PDF 목록 초기화 완료");
         }
 
         private void ResetPreview()
@@ -610,6 +690,7 @@ namespace QCS
             ClearAdditionalFields();
             _loadingFields = false;
             SaveCurrentButton.IsEnabled = false;
+            UpdateActionButtons();
             if (PdfBrowser.CoreWebView2 != null)
                 PdfBrowser.CoreWebView2.Navigate("about:blank");
         }
@@ -687,6 +768,7 @@ namespace QCS
         private async void StartAnalysis_Click(object sender, RoutedEventArgs e)
         {
             if (_isAnalyzing || _files.Count == 0) return;
+            PublishStatus($"MSDS 분석 시작: {_files.Count}건");
             // DB 설정에 따라 분석 모듈을 선택한다.
             string analysisRule;
             try { analysisRule = GetMsdsAnalysisRule(); }
@@ -753,6 +835,7 @@ namespace QCS
                         FilesGrid.Items.Refresh();
                     }
                     LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  AI PDF 분석 종료");
+                    PublishStatus(_analysisCts?.IsCancellationRequested == true ? "MSDS 분석 중지됨" : "MSDS 분석 처리 종료");
                 }
                 finally
                 {
@@ -825,6 +908,7 @@ namespace QCS
                         FilesGrid.Items.Refresh();
                     }
                     LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  C# + AI 전체 텍스트 분석 종료");
+                    PublishStatus(_analysisCts?.IsCancellationRequested == true ? "MSDS 분석 중지됨" : "MSDS 분석 처리 종료");
                 }
                 finally
                 {
@@ -892,6 +976,7 @@ namespace QCS
                     FilesGrid.Items.Refresh();
                 }
                 LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  PDF 텍스트 추출 종료");
+                PublishStatus(_analysisCts?.IsCancellationRequested == true ? "MSDS 분석 중지됨" : "MSDS 분석 처리 종료");
             }
             finally
             {
@@ -943,6 +1028,7 @@ namespace QCS
                     ConcentrationRaw = v.ConcentrationRaw ?? "" }).ToList();
             _loadingFields = false;
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
+            UpdateActionButtons();
         }
 
         private void UpdateCount()
@@ -950,6 +1036,7 @@ namespace QCS
             FileCountText.Text = $"등록된 파일 {_files.Count}건";
             StartAnalysisButton.IsEnabled = _files.Count > 0 && !_isAnalyzing;
             UpdateNavigation();
+            UpdateActionButtons();
         }
     }
 }

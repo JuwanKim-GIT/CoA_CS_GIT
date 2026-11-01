@@ -24,8 +24,8 @@
 
         <Style x:Key="SectionTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="15"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="#122C53"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#1E3A5F"/>
         </Style>
 
         <Style x:Key="SubTitle" TargetType="TextBlock">
@@ -35,7 +35,7 @@
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Height" Value="21"/>
+            <Setter Property="Height" Value="23"/>
    <Setter Property="MinWidth" Value="0"/>
             <Setter Property="Padding" Value="6,1"/>
             <Setter Property="BorderBrush" Value="#CED8E5"/>
@@ -49,32 +49,32 @@
             <Setter Property="Background" Value="#F9FBFE"/>
         </Style>
 
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="12,7"/>
+        <Style TargetType="Button" BasedOn="{StaticResource QcsPrimaryButton}">
             <Setter Property="Margin" Value="0,0,6,0"/>
-            <Setter Property="Background" Value="#F8FAFD"/>
-            <Setter Property="Foreground" Value="#234269"/>
-            <Setter Property="BorderBrush" Value="#CFD9E7"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource QcsPrimaryButton}">
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource QcsActionButton}">
+            <Setter Property="Background" Value="#E8EEF7"/>
+            <Setter Property="Foreground" Value="#1E3A5F"/>
+            <Setter Property="BorderBrush" Value="#AFC4E0"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
         </Style>
-
-        <Style x:Key="PrimaryButton"
-         TargetType="Button"
-         BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#1265D8"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#1265D8"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <Style x:Key="PanelTitle" TargetType="Border">
+            <Setter Property="Background" Value="#E2EAF5"/>
+            <Setter Property="BorderBrush" Value="#D1DAE7"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
-
-        <Style TargetType="DataGrid">
+        <Style TargetType="DataGrid" BasedOn="{StaticResource QcsGrid}">
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="HorizontalGridLinesBrush" Value="#E8EEF5"/>
             <Setter Property="BorderBrush" Value="#D6E0EC"/>
             <Setter Property="RowHeight" Value="32"/>
-            <Setter Property="ColumnHeaderHeight" Value="32"/>
+            <Setter Property="ColumnHeaderHeight" Value="38"/>
             <Setter Property="Background" Value="White"/>
             <Setter Property="AlternatingRowBackground" Value="#F7FAFE"/>
             <Setter Property="CanUserAddRows" Value="False"/>
@@ -86,16 +86,42 @@
             <Setter Property="Background" Value="White"/>
         </Style>
 
+        <Style TargetType="DataGridRow" BasedOn="{StaticResource QcsGridRow}">
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#0879D0"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True">
+                    <Setter Property="Foreground" Value="White"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style TargetType="TabItem">
             <Setter Property="Padding" Value="8,7"/>
             <Setter Property="Foreground" Value="#24466D"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#F1F4F8"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="Label" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#2D476B"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+        <Style x:Key="CompactLabel" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+            <Setter Property="FontSize" Value="10"/>
         </Style>
     </UserControl.Resources>
 
@@ -109,10 +135,10 @@
         <!-- 컴팩트 도구 모음: 좁은 화면에서도 항상 접근 가능 -->
         <Border Grid.Row="0" Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="5" Margin="0,0,0,5">
             <DockPanel LastChildFill="False" Margin="6,2">
-                <Button x:Name="ToggleFilesButton" DockPanel.Dock="Left"
+                <Button x:Name="ToggleFilesButton" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Left"
                         Content="☰  PDF 등록" ToolTip="PDF 등록 사이드바 열기/닫기"
                         Click="ToggleFiles_Click" MinWidth="104" Padding="9,3"/>
-                <Button x:Name="TogglePreviewButton" DockPanel.Dock="Left"
+                <Button x:Name="TogglePreviewButton" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Left"
                         Content="▣  원문 보기" ToolTip="PDF 미리보기 열기/닫기"
                         Click="TogglePreview_Click" MinWidth="104" Padding="9,3"/>
                 <TextBlock DockPanel.Dock="Right" Text="MSDS 등록  /  디자인 검증"
@@ -133,7 +159,7 @@
             <Border x:Name="FilesRail" Grid.Column="0" Visibility="Collapsed"
                     Background="#F5F8FC" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="6">
                 <StackPanel Margin="3,10">
-                    <Button Content="☰" Width="34" Height="36" Padding="0"
+                    <Button Style="{StaticResource SecondaryButton}" Content="☰" Width="34" Height="36" Padding="0"
                             ToolTip="PDF 등록 열기" Click="ToggleFiles_Click"/>
                     <Button x:Name="RailAddButton" Content="＋" Width="34" Height="36" Padding="0" Margin="0,8,0,0"
                             ToolTip="PDF 파일 추가" Click="AddFiles_Click"/>
@@ -160,8 +186,9 @@
                         <RowDefinition x:Name="LogRow" Height="135"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="1. PDF 파일 등록"
-                Style="{StaticResource SectionTitle}"/>
+                    <Border Grid.Row="0" Style="{StaticResource PanelTitle}" Margin="-11,-11,-11,3">
+                        <TextBlock Text="1. PDF 파일 등록" Style="{StaticResource SectionTitle}" Margin="12,5,12,0"/>
+                    </Border>
 
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
@@ -199,17 +226,44 @@
                IsReadOnly="True"
                SelectionChanged="FilesGrid_SelectionChanged"
                Margin="0,2,0,5">
+                        <DataGrid.Resources>
+                            <!-- 선택된 행은 포커스를 잃어도 동일한 대비를 유지한다. -->
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#0879D0"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0879D0"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                        </DataGrid.Resources>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow" BasedOn="{StaticResource QcsGridRow}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#0879D0"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True">
+                                        <Setter Property="Background" Value="#0879D0"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="No."
+                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="No."
                            Binding="{Binding Index}"
                            Width="38"/>
-                            <DataGridTextColumn Header="파일명"
+                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="파일명"
                            Binding="{Binding FileName}"
                            Width="*"/>
-                            <DataGridTextColumn Header="크기"
+                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="크기"
                            Binding="{Binding FileSize}"
                            Width="63"/>
-                            <DataGridTextColumn Header="상태"
+                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="상태"
                            Binding="{Binding Status}"
                            Width="105"/>
                         </DataGrid.Columns>
@@ -222,9 +276,17 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="AI 모델" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <ComboBox x:Name="AiModelComboBox" Grid.Column="1" Height="30"
-                                  DisplayMemberPath="Description" SelectedValuePath="Value"
-                                  VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <!-- 선택 상태에는 분석 방식 + 모델명, 펼친 목록에는 기존 모델명만 표시 -->
+                        <Grid Grid.Column="1" Margin="0,0,6,0">
+                            <ComboBox x:Name="AiModelComboBox" Height="30"
+                                      DisplayMemberPath="Description" SelectedValuePath="Value"
+                                      VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AnalysisModeDisplay" Margin="9,0,24,0"
+                                       Padding="0,0,2,0" VerticalAlignment="Center"
+                                       Background="#F9FBFE" Foreground="#203755"
+                                       TextTrimming="CharacterEllipsis" FontSize="12"
+                                       IsHitTestVisible="False" Panel.ZIndex="1"/>
+                        </Grid>
                         <Button x:Name="StartAnalysisButton" Grid.Column="2"
                                 Content="▶ 분석 시작" Height="30" Margin="0"
                                 Padding="8,2" Style="{StaticResource PrimaryButton}"
@@ -236,7 +298,7 @@
                             Click="StopAnalysis_Click" Panel.ZIndex="2"/>
                     <Grid Grid.Row="5">
                         <TextBlock Text="처리 진행 상태" Style="{StaticResource SubTitle}"/>
-                        <Button x:Name="ToggleLogButton" Content="로그 접기 ▲"
+                        <Button x:Name="ToggleLogButton" Style="{StaticResource SecondaryButton}" Content="로그 접기 ▲"
                                 HorizontalAlignment="Right" Width="78" Height="26"
                                 Padding="3,1" Click="ToggleLog_Click"/>
                     </Grid>
@@ -286,19 +348,22 @@
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="43"/>
+                        <RowDefinition Height="43"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Grid>
+                    <Border Grid.Row="0" Style="{StaticResource PanelTitle}" Margin="-10,-10,-10,3">
+                        <TextBlock Text="2. 추출 · 검증 결과" Style="{StaticResource SectionTitle}" Margin="12,5,12,0"/>
+                    </Border>
+
+                    <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="2. 추출 · 검증 결과"
-                                   Style="{StaticResource SectionTitle}"
-                                   VerticalAlignment="Center" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Column="0" Text="" Width="0"/>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                             <Button x:Name="FirstFileButton" Padding="0"  Width="34" Height="27" FontSize="12" FontWeight="Bold" Click="FirstFile_Click" Margin="0,0,4,0">
@@ -346,7 +411,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <TabControl Grid.Row="1">
+                    <TabControl Grid.Row="2">
 
                         <!-- BASIC INFORMATION -->
                         <TabItem Header="기본 정보">
@@ -411,7 +476,7 @@
                                         <TextBox x:Name="ProductNameBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="개정일 *"
+                     Text="개정일 *" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="12,0,4,0"/>
 
                                         <TextBox x:Name="RevisionDateBox" TextChanged="EditableField_TextChanged" Grid.Column="3"/>
@@ -431,7 +496,7 @@
                                         <TextBox x:Name="SupplierNameBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="개정번호"
+                     Text="개정번호" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="12,0,4,0"/>
 
                                         <TextBox x:Name="RevisionNumberBox" TextChanged="EditableField_TextChanged" Grid.Column="3"/>
@@ -451,7 +516,7 @@
                                         <TextBox x:Name="PhoneBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="최신 개정판"
+                     Text="최신 개정판" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="12,0,4,0"/>
 
                                         <CheckBox Grid.Column="3"
@@ -474,7 +539,7 @@
                                         <TextBox x:Name="AddressBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="UN 번호"
+                     Text="UN 번호" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="12,0,4,0"/>
 
                                         <TextBox x:Name="UnNumberBox" TextChanged="EditableField_TextChanged" Grid.Column="3"/>
@@ -496,13 +561,13 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Text="유해·위험 문구 코드"
-                     Style="{StaticResource Label}"/>
+                                        <TextBlock Text="유해·위험 문구 코드" ToolTip="유해·위험 문구 코드"
+                     Style="{StaticResource CompactLabel}"/>
 
                                         <TextBox x:Name="HazardCodesBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="자연발화점"
+                     Text="자연발화점" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="14,0,4,0"/>
 
                                         <TextBox x:Name="AutoIgnitionBox" TextChanged="EditableField_TextChanged" Grid.Column="3"/>
@@ -556,13 +621,13 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Text="폭발하한계 (LEL)"
-                     Style="{StaticResource Label}"/>
+                                        <TextBlock Text="폭발하한계 (LEL)" ToolTip="폭발하한계 (LEL)"
+                     Style="{StaticResource CompactLabel}"/>
 
                                         <TextBox x:Name="LelBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
 
                                         <TextBlock Grid.Column="2"
-                     Text="독성치"
+                     Text="독성치" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"
                      Margin="14,0,4,0"/>
 
                                         <TextBox Grid.Column="3"/>
@@ -576,8 +641,8 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Text="폭발상한계 (UEL)"
-                     Style="{StaticResource Label}"/>
+                                        <TextBlock Text="폭발상한계 (UEL)" ToolTip="폭발상한계 (UEL)"
+                     Style="{StaticResource CompactLabel}"/>
 
                                         <TextBox x:Name="UelBox" TextChanged="EditableField_TextChanged" Grid.Column="1"/>
                                     </Grid>
@@ -612,10 +677,10 @@
                                         <StackPanel Grid.Column="1"
                       Orientation="Horizontal">
 
-                                            <Button Content="⊕ 행 추가"
+                                            <Button x:Name="AddIngredientButton" IsEnabled="False" Content="⊕ 행 추가"
                    Click="AddIngredient_Click"/>
 
-                                            <Button Content="⊖ 행 삭제"
+                                            <Button x:Name="RemoveIngredientButton" IsEnabled="False" Content="⊖ 행 삭제"
                    Click="RemoveIngredient_Click"
                    Margin="0"/>
 
@@ -623,18 +688,22 @@
                                     </Grid>
 
                                     <DataGrid x:Name="IngredientsGrid" Height="356"
-                   IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False">
+                   IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False" SelectionChanged="IngredientsGrid_SelectionChanged">
+                                        <DataGrid.Resources>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0879D0"/>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                                        </DataGrid.Resources>
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Binding="{Binding Index}" Header="No." Width="38"/>
-                                            <DataGridTextColumn Binding="{Binding Name}" Header="성분명 (국문/영문)" Width="180"/>
-                                            <DataGridTextColumn Binding="{Binding CasNumber}" Header="CAS 번호" Width="110"/>
-                                            <DataGridTextColumn Binding="{Binding ConcentrationRaw}" Header="함량(원문)" Width="100"/>
-                                            <DataGridTextColumn Header="최소(%)" Width="75"/>
-                                            <DataGridTextColumn Header="최대(%)" Width="75"/>
-                                            <DataGridTextColumn Header="산출값(%)" Width="85"/>
-                                            <DataGridTextColumn Header="분자식" Width="85"/>
-                                            <DataGridTextColumn Header="TWA" Width="85"/>
-                                            <DataGridTextColumn Header="STEL" Width="85"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Index}" Header="No." Width="38"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Name}" Header="성분명 (국문/영문)" Width="180"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding CasNumber}" Header="CAS 번호" Width="110"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding ConcentrationRaw}" Header="함량(원문)" Width="100"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="최소(%)" Width="75"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="최대(%)" Width="75"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="산출값(%)" Width="85"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="분자식" Width="85"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="TWA" Width="85"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="STEL" Width="85"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
 
@@ -716,8 +785,9 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="3. PDF 원문 미리보기"
-                Style="{StaticResource SectionTitle}"/>
+                    <Border Grid.Row="0" Style="{StaticResource PanelTitle}" Margin="-10,-10,-10,3">
+                        <TextBlock Text="3. PDF 원문 미리보기" Style="{StaticResource SectionTitle}" Margin="12,5,12,0"/>
+                    </Border>
 
                     <Border Grid.Row="1"
              BorderBrush="#D9E2EE"
@@ -754,11 +824,11 @@
                    Orientation="Horizontal"
                    VerticalAlignment="Center">
 
-                                <Button x:Name="ZoomOutButton" Content="−" Width="32" Click="ZoomOut_Click"/>
+                                <Button x:Name="ZoomOutButton" FontSize="20" FontWeight="Bold" Height="34" Content="−" Width="36" Click="ZoomOut_Click"/>
 
                                 <TextBlock x:Name="ZoomText" Text="100%" Margin="6,0,10,0" VerticalAlignment="Center"/>
 
-                                <Button x:Name="ZoomInButton" Content="+" Width="32" Click="ZoomIn_Click" Margin="0"/>
+                                <Button x:Name="ZoomInButton" FontSize="20" FontWeight="Bold" Height="34" Content="+" Width="36" Click="ZoomIn_Click" Margin="0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -797,7 +867,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="SaveCurrentButton" Content="저장" Width="110" IsEnabled="False"
                             Style="{StaticResource PrimaryButton}" Click="SaveCurrent_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="DbSaveButton" Content="DB 저장" Width="145"
+                    <Button x:Name="DbSaveButton" IsEnabled="False" Content="DB 저장" Width="145"
                             Click="DbSave_Click" Margin="0,0,8,0"/>
                     <Button x:Name="BottomClearButton" Content="✕  목록 초기화"
              Click="Clear_Click"

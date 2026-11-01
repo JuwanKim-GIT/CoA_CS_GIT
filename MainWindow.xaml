@@ -153,6 +153,53 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
+        <!-- Three independent, responsive status areas. -->
+        <Border DockPanel.Dock="Bottom" Height="34" Background="#F8FAFC"
+                BorderBrush="#CBD5E1" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="7*" MinWidth="90"/>
+                    <ColumnDefinition Width="1.5*" MinWidth="90"/>
+                    <ColumnDefinition Width="1.5*" MinWidth="130"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" Margin="12,0,8,0" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Path x:Name="RunStatusIcon" Width="16" Height="16" Stretch="Uniform"
+                          Fill="#2563EB" Data="M12,2 A10,10 0 1 1 11.99,2 Z M10,16.2 L6,12.2 7.4,10.8 10,13.4 16.6,6.8 18,8.2 Z"/>
+                    <TextBlock x:Name="RunStatusText" Grid.Column="1" Margin="9,0,0,0"
+                               Text="준비 완료" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                </Grid>
+                <Border Grid.Column="1" BorderBrush="#CBD5E1" BorderThickness="1,0,0,0">
+                    <Grid Margin="12,0,8,0" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <!-- Cylinder/database silhouette, drawn in XAML. -->
+                        <Viewbox Width="18" Height="18">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="DatabaseStatusIcon" Fill="#94A3B8"
+                                      Data="M3,5 C3,2 21,2 21,5 L21,18 C21,22 3,22 3,18 Z M3,5 C3,9 21,9 21,5 M3,11 C3,15 21,15 21,11"/>
+                                <Path Stroke="#F8FAFC" StrokeThickness="1.5" Fill="Transparent"
+                                      Data="M3,5 C3,9 21,9 21,5 M3,11 C3,15 21,15 21,11"/>
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock x:Name="DatabaseStatusText" Grid.Column="1" Margin="9,0,0,0"
+                                   Text="DB 연결: 확인 전" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" ToolTip="DB 연결 검사를 아직 수행하지 않았습니다."/>
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2" BorderBrush="#CBD5E1" BorderThickness="1,0,0,0">
+                    <Grid Margin="12,0,12,0" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Path x:Name="UserStatusIcon" Width="17" Height="17" Stretch="Uniform" Fill="#94A3B8"
+                              Data="M12,12 A5,5 0 1 0 12,2 A5,5 0 0 0 12,12 Z M2,22 C2,16 6,14 12,14 C18,14 22,16 22,22 Z"
+                              ToolTip="사용자 상태 확인 전"/>
+                        <TextBlock x:Name="CurrentUserText" Grid.Column="1" Margin="9,0,0,0"
+                                   Text="사용자 확인 중" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
         <TabControl x:Name="MainTabControl" Margin="10" Background="White" BorderBrush="#E4E6EF"/>
     </DockPanel>
 </Window>
