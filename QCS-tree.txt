@@ -1,0 +1,3683 @@
+Windows 볼륨에 대한 폴더 경로의 목록입니다.
+볼륨 일련 번호는 E2B3-E01D입니다.
+C:\QCS\QCS-개발
+|   .gitattributes
+|   .gitignore
+|   AccessPermissionView.xaml
+|   AccessPermissionView.xaml.cs
+|   AdminManagementView.xaml
+|   AdminManagementView.xaml.cs
+|   App.xaml
+|   App.xaml.cs
+|   AssemblyInfo.cs
+|   CoARegistryView.xaml
+|   CoARegistryView.xaml.cs
+|   CoA_CS.csproj.user
+|   CodeListView.xaml
+|   CodeListView.xaml.cs
+|   Database.json
+|   DatabaseManager.cs
+|   DatabaseSchemaView.xaml
+|   DatabaseSchemaView.xaml.cs
+|   DatabaseSchemaWindow.xaml
+|   DatabaseSchemaWindow.xaml.cs
+|   FirstUserRegistrationWindow.cs
+|   Input-data.xlsx
+|   ItemListView.xaml
+|   ItemListView.xaml.cs
+|   MainWindow.xaml
+|   MainWindow.xaml.cs
+|   MsdsDbRegistration.cs
+|   MsdsDbSetup.cs
+|   MsdsInventoryExportView.xaml
+|   MsdsInventoryExportView.xaml.cs
+|   MsdsManagementView.xaml
+|   MsdsManagementView.xaml.cs
+|   MsdsRegistrationView.xaml
+|   MsdsRegistrationView.xaml.cs
+|   QCS-tree.txt
+|   QCS.csproj
+|   QCS.csproj.user
+|   QCS.slnx
+|   QCS_MSDS_7개테이블_추가.sql
+|   README.md
+|   README_적용방법.txt
+|   ReferenceDataView.xaml
+|   ReferenceDataView.xaml.cs
+|   StartupUserService.cs
+|   TestResultListView.xaml
+|   TestResultListView.xaml.cs
+|   UserManagementView.xaml
+|   UserManagementView.xaml.cs
+|   UserSwitchView.xaml
+|   UserSwitchView.xaml.cs
+|   zx_code_mstr-add.xlsx
+|   
++---Analysis
+|       FieldRules.json
+|       FieldRules.json.old
+|       MsdsAiPdfAnalyzer.cs
+|       MsdsAiResultFiles.cs
+|       MsdsAnalysisContracts.cs
+|       MsdsLocalFieldParser.cs
+|       MsdsPdfTextExtractor.cs
+|       MsdsRuleEngine.cs
+|       MsdsRuleLoader.cs
+|       MsdsTempFiles.cs
+|       
++---bin
+|   +---Debug
+|   |   \---net9.0-windows7.0
+|   |       |   Database.json
+|   |       |   ExcelApi.dll
+|   |       |   ExcelDataReader.DataSet.dll
+|   |       |   ExcelDataReader.dll
+|   |       |   Microsoft.Data.Sqlite.dll
+|   |       |   Microsoft.Web.WebView2.Core.dll
+|   |       |   Microsoft.Web.WebView2.Core.xml
+|   |       |   Microsoft.Web.WebView2.WinForms.dll
+|   |       |   Microsoft.Web.WebView2.WinForms.xml
+|   |       |   Microsoft.Web.WebView2.Wpf.dll
+|   |       |   Microsoft.Web.WebView2.Wpf.xml
+|   |       |   NetOffice.dll
+|   |       |   OfficeApi.dll
+|   |       |   QCS.deps.json
+|   |       |   QCS.dll
+|   |       |   QCS.exe
+|   |       |   QCS.pdb
+|   |       |   QCS.runtimeconfig.json
+|   |       |   QCS_MSDS_7개테이블_추가.sql
+|   |       |   SQLitePCLRaw.batteries_v2.dll
+|   |       |   SQLitePCLRaw.core.dll
+|   |       |   SQLitePCLRaw.provider.e_sqlite3.dll
+|   |       |   stdole.dll
+|   |       |   UglyToad.PdfPig.Core.dll
+|   |       |   UglyToad.PdfPig.dll
+|   |       |   UglyToad.PdfPig.DocumentLayoutAnalysis.dll
+|   |       |   UglyToad.PdfPig.Fonts.dll
+|   |       |   UglyToad.PdfPig.Package.dll
+|   |       |   UglyToad.PdfPig.Tokenization.dll
+|   |       |   UglyToad.PdfPig.Tokens.dll
+|   |       |   VBIDEApi.dll
+|   |       |   
+|   |       +---Analysis
+|   |       |       FieldRules.json
+|   |       |       
+|   |       +---CoA_Docs
+|   |       |       CoA-20261029-502.xlsx
+|   |       |       CoA-20261029-505.xlsx
+|   |       |       CoA-20261029-506.xlsx
+|   |       |       CoA-20261029-507.xlsx
+|   |       |       CoA-20261029-508.xlsx
+|   |       |       CoA-20261029-515.xlsx
+|   |       |       CoA-20261029-522.xlsx
+|   |       |       
+|   |       +---CoA_xltm
+|   |       |       New_CoA_Form_Eng.xltm
+|   |       |       New_CoA_Form_Jpn-old.xltm
+|   |       |       New_CoA_Form_Jpn.xltm
+|   |       |       New_CoA_Form_Kor.xltm
+|   |       |       New_CoA_form_Rus.xltm
+|   |       |       
+|   |       +---QCS.exe.WebView2
+|   |       |   \---EBWebView
+|   |       |       |   Breadcrumbs
+|   |       |       |   BrowserMetrics-spare.pma
+|   |       |       |   CrashpadMetrics-active.pma
+|   |       |       |   Last Version
+|   |       |       |   Local State
+|   |       |       |   Variations
+|   |       |       |   VariationsRuntimeSeedV2
+|   |       |       |   VariationsSafeSeedV2
+|   |       |       |   VariationsSeedV2
+|   |       |       |   
+|   |       |       +---AutoLaunchProtocolsComponent
+|   |       |       |   \---1.0.0.12
+|   |       |       |           manifest.json
+|   |       |       |           protocols.json
+|   |       |       |           
+|   |       |       +---BrowserMetrics
+|   |       |       |       BrowserMetrics-6AE6E819-63D8.pma
+|   |       |       |       
+|   |       |       +---CertificateRevocation
+|   |       |       |   \---6498.2026.10.20
+|   |       |       |           crl-set
+|   |       |       |           manifest.json
+|   |       |       |           
+|   |       |       +---component_crx_cache
+|   |       |       |       00af3f07b5abb71f6d30337e1eef62fa280f06ef19485c0cf6b72171f92ccc0a
+|   |       |       |       0f1ccded57bb4b5edc565cb3e8ec03b9f164b400ca2a9b446f2b52da790a1804
+|   |       |       |       4906bd7a9eefe3a91738213e016c47e334882047cd6236f97267ccf589e701af
+|   |       |       |       720517793663c90e0dbd77cb42709bac49af733f83f73320ba89859d9b0310e0
+|   |       |       |       95fd9d48e4fc245a3f3a99a3a16ecd1355050ba3f4afc555f19a97c7f9b49677
+|   |       |       |       a81d1959892ae4180554347df1b97834abba2e1a5e6b9aeba000ecea26eabecc
+|   |       |       |       c96bfa43f6a4c128424edeea9aeb4f7dc667f565f5ee9783756ed5e23872192c
+|   |       |       |       cde4f808f038aaffece9680c0356ded00c81c4559e0a431acb45d1276425d9eb
+|   |       |       |       d3280a2d97d1bd59dd97decf1728960096362a103cab0a770e9201be9a61737d
+|   |       |       |       metadata.json
+|   |       |       |       
+|   |       |       +---Crashpad
+|   |       |       |   |   metadata
+|   |       |       |   |   settings.dat
+|   |       |       |   |   throttle_store.dat
+|   |       |       |   |   watson_metadata
+|   |       |       |   |   
+|   |       |       |   +---attachments
+|   |       |       |   \---reports
+|   |       |       |           b7ff7db9-7ad1-400c-98fa-10ff9e68c958.dmp
+|   |       |       |           d8daab8b-9cd7-4231-b934-40ce3b629a4b.dmp
+|   |       |       |           
+|   |       |       +---Default
+|   |       |       |   |   BookmarkMergedSurfaceOrdering
+|   |       |       |   |   DashTrackerDatabase
+|   |       |       |   |   DashTrackerDatabase-journal
+|   |       |       |   |   declarative_performance_observer.db
+|   |       |       |   |   declarative_performance_observer.db-journal
+|   |       |       |   |   DIPS
+|   |       |       |   |   ExtensionActivityEdge
+|   |       |       |   |   ExtensionActivityEdge-journal
+|   |       |       |   |   Favicons
+|   |       |       |   |   Favicons-journal
+|   |       |       |   |   favorites_diagnostic.log
+|   |       |       |   |   History
+|   |       |       |   |   History-journal
+|   |       |       |   |   LOCK
+|   |       |       |   |   LOG
+|   |       |       |   |   LOG.old
+|   |       |       |   |   Login Data
+|   |       |       |   |   Login Data For Account
+|   |       |       |   |   Login Data For Account-journal
+|   |       |       |   |   Login Data-journal
+|   |       |       |   |   Network Action Predictor
+|   |       |       |   |   Network Action Predictor-journal
+|   |       |       |   |   Preferences
+|   |       |       |   |   README
+|   |       |       |   |   Secure Preferences
+|   |       |       |   |   ServerCertificate
+|   |       |       |   |   ServerCertificate-journal
+|   |       |       |   |   settings_diagnostic.log
+|   |       |       |   |   Top Sites
+|   |       |       |   |   Top Sites-journal
+|   |       |       |   |   Vpn Tokens
+|   |       |       |   |   Vpn Tokens-journal
+|   |       |       |   |   Web Data
+|   |       |       |   |   Web Data-journal
+|   |       |       |   |   
+|   |       |       |   +---AutofillAiModelCache
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---AutofillStrikeDatabase
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---blob_storage
+|   |       |       |   |   \---f5bd3e11-6a7a-4fc8-bb8b-416863343a66
+|   |       |       |   +---BudgetDatabase
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---Cache
+|   |       |       |   |   +---Cache_Data
+|   |       |       |   |   \---No_Vary_Search
+|   |       |       |   +---ClientCertificates
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---Code Cache
+|   |       |       |   |   +---js
+|   |       |       |   |   |   |   0d3d20f895a141d8_0
+|   |       |       |   |   |   |   28abe95d451e9e99_0
+|   |       |       |   |   |   |   2f8c71a45ef98770_0
+|   |       |       |   |   |   |   3c5de4ae3ccce7d2_0
+|   |       |       |   |   |   |   41f71bc791a8ec5f_0
+|   |       |       |   |   |   |   4c16f84f5293c162_0
+|   |       |       |   |   |   |   4dbd99faabbe4e9e_0
+|   |       |       |   |   |   |   5e67a10e74e195da_0
+|   |       |       |   |   |   |   688f857a6d167f6f_0
+|   |       |       |   |   |   |   a90994bf2f44f133_0
+|   |       |       |   |   |   |   ac5d4bc87bc0821b_0
+|   |       |       |   |   |   |   aed1f2599e15d434_0
+|   |       |       |   |   |   |   c2e45e21b1c3556d_0
+|   |       |       |   |   |   |   c8a683b9059c30bd_0
+|   |       |       |   |   |   |   d26357fb5532d94e_0
+|   |       |       |   |   |   |   ef898b0b0023b7e9_0
+|   |       |       |   |   |   |   f9ee6bc743ce46f6_0
+|   |       |       |   |   |   |   fd05b31e97253a28_0
+|   |       |       |   |   |   |   index
+|   |       |       |   |   |   |   
+|   |       |       |   |   |   \---index-dir
+|   |       |       |   |   |           the-real-index
+|   |       |       |   |   |           
+|   |       |       |   |   \---wasm
+|   |       |       |   |       |   index
+|   |       |       |   |       |   
+|   |       |       |   |       \---index-dir
+|   |       |       |   |               the-real-index
+|   |       |       |   |               
+|   |       |       |   +---commerce_subscription_db
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---DawnGraphiteCache
+|   |       |       |   |       data_0
+|   |       |       |   |       data_1
+|   |       |       |   |       data_2
+|   |       |       |   |       data_3
+|   |       |       |   |       index
+|   |       |       |   |       
+|   |       |       |   +---DawnWebGPUCache
+|   |       |       |   |       data_0
+|   |       |       |   |       data_1
+|   |       |       |   |       data_2
+|   |       |       |   |       data_3
+|   |       |       |   |       index
+|   |       |       |   |       
+|   |       |       |   +---discounts_db
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---discount_infos_db
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---EdgeSessions
+|   |       |       |   |       SessionRestoreLog
+|   |       |       |   |       
+|   |       |       |   +---Extension Rules
+|   |       |       |   |       000003.log
+|   |       |       |   |       CURRENT
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       MANIFEST-000001
+|   |       |       |   |       
+|   |       |       |   +---Extension Scripts
+|   |       |       |   |       000003.log
+|   |       |       |   |       CURRENT
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       MANIFEST-000001
+|   |       |       |   |       
+|   |       |       |   +---Extension State
+|   |       |       |   |       000003.log
+|   |       |       |   |       CURRENT
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       MANIFEST-000001
+|   |       |       |   |       
+|   |       |       |   +---Feature Engagement Tracker
+|   |       |       |   |   +---AvailabilityDB
+|   |       |       |   |   |       LOCK
+|   |       |       |   |   |       LOG
+|   |       |       |   |   |       LOG.old
+|   |       |       |   |   |       
+|   |       |       |   |   \---EventDB
+|   |       |       |   |           LOCK
+|   |       |       |   |           LOG
+|   |       |       |   |           LOG.old
+|   |       |       |   |           
+|   |       |       |   +---GPUCache
+|   |       |       |   |       data_0
+|   |       |       |   |       data_1
+|   |       |       |   |       data_2
+|   |       |       |   |       data_3
+|   |       |       |   |       index
+|   |       |       |   |       
+|   |       |       |   +---JumpListIconsRecentWorkspacesV2
+|   |       |       |   +---Local Storage
+|   |       |       |   |   \---leveldb
+|   |       |       |   |           000003.log
+|   |       |       |   |           CURRENT
+|   |       |       |   |           LOCK
+|   |       |       |   |           LOG
+|   |       |       |   |           LOG.old
+|   |       |       |   |           MANIFEST-000001
+|   |       |       |   |           
+|   |       |       |   +---Network
+|   |       |       |   |       Cookies
+|   |       |       |   |       Cookies-journal
+|   |       |       |   |       Device Bound Sessions
+|   |       |       |   |       Device Bound Sessions-journal
+|   |       |       |   |       Network Persistent State
+|   |       |       |   |       NetworkDataMigrated
+|   |       |       |   |       Reporting and NEL
+|   |       |       |   |       Reporting and NEL-journal
+|   |       |       |   |       SCT Auditing Pending Reports
+|   |       |       |   |       Sdch Dictionaries
+|   |       |       |   |       Trust Tokens
+|   |       |       |   |       Trust Tokens-journal
+|   |       |       |   |       
+|   |       |       |   +---optimization_guide_hint_cache_store
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---parcel_tracking_db
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---PersistentOriginTrials
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       
+|   |       |       |   +---Session Storage
+|   |       |       |   |       000003.log
+|   |       |       |   |       CURRENT
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       MANIFEST-000001
+|   |       |       |   |       
+|   |       |       |   +---Sessions
+|   |       |       |   +---Sessions_Encrypted
+|   |       |       |   +---Shared Dictionary
+|   |       |       |   |   |   db
+|   |       |       |   |   |   db-journal
+|   |       |       |   |   |   
+|   |       |       |   |   \---cache
+|   |       |       |   |       |   index
+|   |       |       |   |       |   
+|   |       |       |   |       \---index-dir
+|   |       |       |   |               the-real-index
+|   |       |       |   |               
+|   |       |       |   +---shared_proto_db
+|   |       |       |   |   |   000003.log
+|   |       |       |   |   |   CURRENT
+|   |       |       |   |   |   LOCK
+|   |       |       |   |   |   LOG
+|   |       |       |   |   |   LOG.old
+|   |       |       |   |   |   MANIFEST-000001
+|   |       |       |   |   |   
+|   |       |       |   |   \---metadata
+|   |       |       |   |           000003.log
+|   |       |       |   |           CURRENT
+|   |       |       |   |           LOCK
+|   |       |       |   |           LOG
+|   |       |       |   |           LOG.old
+|   |       |       |   |           MANIFEST-000001
+|   |       |       |   |           
+|   |       |       |   +---Site Characteristics Database
+|   |       |       |   |       000003.log
+|   |       |       |   |       CURRENT
+|   |       |       |   |       LOCK
+|   |       |       |   |       LOG
+|   |       |       |   |       LOG.old
+|   |       |       |   |       MANIFEST-000001
+|   |       |       |   |       
+|   |       |       |   \---Sync Data
+|   |       |       |       \---LevelDB
+|   |       |       |               000003.log
+|   |       |       |               CURRENT
+|   |       |       |               LOCK
+|   |       |       |               LOG
+|   |       |       |               LOG.old
+|   |       |       |               MANIFEST-000001
+|   |       |       |               
+|   |       |       +---extensions_crx_cache
+|   |       |       |       metadata.json
+|   |       |       |       
+|   |       |       +---GPUPersistentCache
+|   |       |       |   \---DawnGraphiteCache
+|   |       |       |       \---VUIMOGEQSLQ64H7PBD4SBP3YY7MWDE7S
+|   |       |       |               cache.db
+|   |       |       |               cache.db-wal
+|   |       |       |               cache.journal
+|   |       |       |               
+|   |       |       +---GrShaderCache
+|   |       |       |       data_0
+|   |       |       |       data_1
+|   |       |       |       data_2
+|   |       |       |       data_3
+|   |       |       |       f_000001
+|   |       |       |       f_000002
+|   |       |       |       f_000003
+|   |       |       |       index
+|   |       |       |       
+|   |       |       +---hyphen-data
+|   |       |       |   \---120.0.6050.0
+|   |       |       |       |   hyph-af.hyb
+|   |       |       |       |   hyph-as.hyb
+|   |       |       |       |   hyph-be.hyb
+|   |       |       |       |   hyph-bg.hyb
+|   |       |       |       |   hyph-bn.hyb
+|   |       |       |       |   hyph-cs.hyb
+|   |       |       |       |   hyph-cu.hyb
+|   |       |       |       |   hyph-cy.hyb
+|   |       |       |       |   hyph-da.hyb
+|   |       |       |       |   hyph-de-1901.hyb
+|   |       |       |       |   hyph-de-1996.hyb
+|   |       |       |       |   hyph-de-ch-1901.hyb
+|   |       |       |       |   hyph-el.hyb
+|   |       |       |       |   hyph-en-gb.hyb
+|   |       |       |       |   hyph-en-us.hyb
+|   |       |       |       |   hyph-es.hyb
+|   |       |       |       |   hyph-et.hyb
+|   |       |       |       |   hyph-eu.hyb
+|   |       |       |       |   hyph-fr.hyb
+|   |       |       |       |   hyph-ga.hyb
+|   |       |       |       |   hyph-gl.hyb
+|   |       |       |       |   hyph-gu.hyb
+|   |       |       |       |   hyph-hi.hyb
+|   |       |       |       |   hyph-hr.hyb
+|   |       |       |       |   hyph-hu.hyb
+|   |       |       |       |   hyph-hy.hyb
+|   |       |       |       |   hyph-it.hyb
+|   |       |       |       |   hyph-ka.hyb
+|   |       |       |       |   hyph-kn.hyb
+|   |       |       |       |   hyph-la.hyb
+|   |       |       |       |   hyph-lt.hyb
+|   |       |       |       |   hyph-lv.hyb
+|   |       |       |       |   hyph-ml.hyb
+|   |       |       |       |   hyph-mn-cyrl.hyb
+|   |       |       |       |   hyph-mr.hyb
+|   |       |       |       |   hyph-mul-ethi.hyb
+|   |       |       |       |   hyph-nb.hyb
+|   |       |       |       |   hyph-nl.hyb
+|   |       |       |       |   hyph-nn.hyb
+|   |       |       |       |   hyph-or.hyb
+|   |       |       |       |   hyph-pa.hyb
+|   |       |       |       |   hyph-pt.hyb
+|   |       |       |       |   hyph-ru.hyb
+|   |       |       |       |   hyph-sk.hyb
+|   |       |       |       |   hyph-sl.hyb
+|   |       |       |       |   hyph-sq.hyb
+|   |       |       |       |   hyph-sv.hyb
+|   |       |       |       |   hyph-ta.hyb
+|   |       |       |       |   hyph-te.hyb
+|   |       |       |       |   hyph-tk.hyb
+|   |       |       |       |   hyph-uk.hyb
+|   |       |       |       |   hyph-und-ethi.hyb
+|   |       |       |       |   manifest.json
+|   |       |       |       |   
+|   |       |       |       \---_metadata
+|   |       |       |               verified_contents.json
+|   |       |       |               
+|   |       |       +---MEIPreload
+|   |       |       +---OriginTrials
+|   |       |       |   \---0.0.1.7
+|   |       |       |           manifest.json
+|   |       |       |           
+|   |       |       +---PKIMetadata
+|   |       |       |   \---72.0.0.0
+|   |       |       |           crs.pb
+|   |       |       |           ct_config.pb
+|   |       |       |           kp_pinslist.pb
+|   |       |       |           manifest.json
+|   |       |       |           
+|   |       |       +---ShaderCache
+|   |       |       |       data_0
+|   |       |       |       data_1
+|   |       |       |       data_2
+|   |       |       |       data_3
+|   |       |       |       index
+|   |       |       |       
+|   |       |       +---SmartScreen
+|   |       |       |   \---RemoteData
+|   |       |       |           customSettings
+|   |       |       |           customSettings_F95BA787499AB4FA9EFFF472CE383A14
+|   |       |       |           edgeSettings
+|   |       |       |           edgeSettings_2.0-0
+|   |       |       |           
+|   |       |       +---Speech Recognition
+|   |       |       |   \---1.15.0.1
+|   |       |       |           manifest.json
+|   |       |       |           Microsoft.CognitiveServices.Speech.core.dll
+|   |       |       |           
+|   |       |       +---Subresource Filter
+|   |       |       |   +---Indexed Rules
+|   |       |       |   |   \---38
+|   |       |       |   |       \---10.34.0.84
+|   |       |       |   |               LICENSE
+|   |       |       |   |               Ruleset Data
+|   |       |       |   |               
+|   |       |       |   \---Unindexed Rules
+|   |       |       |       \---10.34.0.84
+|   |       |       |               adblock_snippet.js
+|   |       |       |               Filtering Rules
+|   |       |       |               Filtering Rules-AA
+|   |       |       |               Filtering Rules-CA
+|   |       |       |               LICENSE
+|   |       |       |               manifest.json
+|   |       |       |               Part-DE
+|   |       |       |               Part-ES
+|   |       |       |               Part-FR
+|   |       |       |               Part-IT
+|   |       |       |               Part-NL
+|   |       |       |               Part-RU
+|   |       |       |               Part-ZH
+|   |       |       |               
+|   |       |       +---Trust Protection Lists
+|   |       |       +---TrustTokenKeyCommitments
+|   |       |       |   \---2026.10.12.1
+|   |       |       |       |   keys.json
+|   |       |       |       |   LICENSE
+|   |       |       |       |   manifest.json
+|   |       |       |       |   
+|   |       |       |       \---_metadata
+|   |       |       |               verified_contents.json
+|   |       |       |               
+|   |       |       \---WidevineCdm
+|   |       |           \---4.10.3112.0
+|   |       |               |   LICENSE
+|   |       |               |   manifest.json
+|   |       |               |   
+|   |       |               +---_metadata
+|   |       |               |       verified_contents.json
+|   |       |               |       
+|   |       |               \---_platform_specific
+|   |       |                   \---win_x64
+|   |       |                           widevinecdm.dll
+|   |       |                           widevinecdm.dll.sig
+|   |       |                           
+|   |       +---runtimes
+|   |       |   +---browser-wasm
+|   |       |   |   \---nativeassets
+|   |       |   |       \---net9.0
+|   |       |   |               e_sqlite3.a
+|   |       |   |               
+|   |       |   +---linux-arm
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-arm64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-armel
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-mips64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-musl-arm
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-musl-arm64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-musl-riscv64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-musl-s390x
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-musl-x64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-ppc64le
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-riscv64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-s390x
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-x64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---linux-x86
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.so
+|   |       |   |           
+|   |       |   +---maccatalyst-arm64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.dylib
+|   |       |   |           
+|   |       |   +---maccatalyst-x64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.dylib
+|   |       |   |           
+|   |       |   +---osx-arm64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.dylib
+|   |       |   |           
+|   |       |   +---osx-x64
+|   |       |   |   \---native
+|   |       |   |           libe_sqlite3.dylib
+|   |       |   |           
+|   |       |   +---win-arm
+|   |       |   |   \---native
+|   |       |   |           e_sqlite3.dll
+|   |       |   |           
+|   |       |   +---win-arm64
+|   |       |   |   \---native
+|   |       |   |           e_sqlite3.dll
+|   |       |   |           WebView2Loader.dll
+|   |       |   |           
+|   |       |   +---win-x64
+|   |       |   |   \---native
+|   |       |   |           e_sqlite3.dll
+|   |       |   |           WebView2Loader.dll
+|   |       |   |           
+|   |       |   \---win-x86
+|   |       |       \---native
+|   |       |               e_sqlite3.dll
+|   |       |               WebView2Loader.dll
+|   |       |               
+|   |       \---TempFiles
+|   |               CLZ651_KOR - AA00071-0000002542_ECB1C22FE039_ai_pdf_parsed.json
+|   |               CP0269_28B307243BBD_ai_pdf_parsed.json
+|   |               CP0269_28B307243BBD_debug.json
+|   |               CP0269_28B307243BBD_parsed.json
+|   |               CP0269_28B307243BBD_text.txt
+|   |               EY0048_B902163D7784_ai_pdf_parsed.json
+|   |               EY0048_B902163D7784_debug.json
+|   |               EY0048_B902163D7784_parsed.json
+|   |               EY0048_B902163D7784_text.txt
+|   |               FQA55K_KOR - AA00071-0000002409_1BC75602E09F_ai_pdf_parsed.json
+|   |               FQA55K_KOR - AA00071-0000002409_1BC75602E09F_debug.json
+|   |               FQA55K_KOR - AA00071-0000002409_1BC75602E09F_parsed.json
+|   |               FQA55K_KOR - AA00071-0000002409_1BC75602E09F_text.txt
+|   |               FT0072_361B234B7F09_ai_pdf_parsed.json
+|   |               FT0072_361B234B7F09_debug.json
+|   |               FT0072_361B234B7F09_parsed.json
+|   |               FT0072_361B234B7F09_text.txt
+|   |               KUA501_KOR - AA00071-0000001652_F49D7696342E_ai_pdf_parsed.json
+|   |               RC4908_10D31DE0EF94_ai_pdf_parsed.json
+|   |               
+|   \---Release
+|       \---net9.0-windows7.0
+|           |   CoA_CS.deps.json
+|           |   CoA_CS.dll
+|           |   CoA_CS.exe
+|           |   CoA_CS.pdb
+|           |   CoA_CS.runtimeconfig.json
+|           |   Database.json
+|           |   ExcelApi.dll
+|           |   ExcelDataReader.DataSet.dll
+|           |   ExcelDataReader.dll
+|           |   Microsoft.Data.Sqlite.dll
+|           |   Microsoft.Web.WebView2.Core.dll
+|           |   Microsoft.Web.WebView2.Core.xml
+|           |   Microsoft.Web.WebView2.WinForms.dll
+|           |   Microsoft.Web.WebView2.WinForms.xml
+|           |   Microsoft.Web.WebView2.Wpf.dll
+|           |   Microsoft.Web.WebView2.Wpf.xml
+|           |   NetOffice.dll
+|           |   OfficeApi.dll
+|           |   QCS.deps.json
+|           |   QCS.dll
+|           |   QCS.exe
+|           |   QCS.pdb
+|           |   QCS.runtimeconfig.json
+|           |   QCS_MSDS_7개테이블_추가.sql
+|           |   SQLitePCLRaw.batteries_v2.dll
+|           |   SQLitePCLRaw.core.dll
+|           |   SQLitePCLRaw.provider.e_sqlite3.dll
+|           |   stdole.dll
+|           |   UglyToad.PdfPig.Core.dll
+|           |   UglyToad.PdfPig.dll
+|           |   UglyToad.PdfPig.DocumentLayoutAnalysis.dll
+|           |   UglyToad.PdfPig.Fonts.dll
+|           |   UglyToad.PdfPig.Package.dll
+|           |   UglyToad.PdfPig.Tokenization.dll
+|           |   UglyToad.PdfPig.Tokens.dll
+|           |   VBIDEApi.dll
+|           |   
+|           +---Analysis
+|           |       FieldRules.json
+|           |       
+|           +---CoA_xltm
+|           |       New_CoA_Form_Eng.xltm
+|           |       New_CoA_Form_Jpn-old.xltm
+|           |       New_CoA_Form_Jpn.xltm
+|           |       New_CoA_Form_Kor.xltm
+|           |       New_CoA_form_Rus.xltm
+|           |       
+|           +---runtimes
+|           |   +---browser-wasm
+|           |   |   \---nativeassets
+|           |   |       \---net9.0
+|           |   |               e_sqlite3.a
+|           |   |               
+|           |   +---linux-arm
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-arm64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-armel
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-mips64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-musl-arm
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-musl-arm64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-musl-riscv64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-musl-s390x
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-musl-x64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-ppc64le
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-riscv64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-s390x
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-x64
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---linux-x86
+|           |   |   \---native
+|           |   |           libe_sqlite3.so
+|           |   |           
+|           |   +---maccatalyst-arm64
+|           |   |   \---native
+|           |   |           libe_sqlite3.dylib
+|           |   |           
+|           |   +---maccatalyst-x64
+|           |   |   \---native
+|           |   |           libe_sqlite3.dylib
+|           |   |           
+|           |   +---osx-arm64
+|           |   |   \---native
+|           |   |           libe_sqlite3.dylib
+|           |   |           
+|           |   +---osx-x64
+|           |   |   \---native
+|           |   |           libe_sqlite3.dylib
+|           |   |           
+|           |   +---win-arm
+|           |   |   \---native
+|           |   |           e_sqlite3.dll
+|           |   |           
+|           |   +---win-arm64
+|           |   |   \---native
+|           |   |           e_sqlite3.dll
+|           |   |           WebView2Loader.dll
+|           |   |           
+|           |   +---win-x64
+|           |   |   \---native
+|           |   |           e_sqlite3.dll
+|           |   |           WebView2Loader.dll
+|           |   |           
+|           |   \---win-x86
+|           |       \---native
+|           |               e_sqlite3.dll
+|           |               WebView2Loader.dll
+|           |               
+|           +---win-x64
+|           |   |   Accessibility.dll
+|           |   |   clretwrc.dll
+|           |   |   clrgc.dll
+|           |   |   clrgcexp.dll
+|           |   |   clrjit.dll
+|           |   |   coreclr.dll
+|           |   |   createdump.exe
+|           |   |   D3DCompiler_47_cor3.dll
+|           |   |   Database.json
+|           |   |   DirectWriteForwarder.dll
+|           |   |   ExcelApi.dll
+|           |   |   ExcelDataReader.DataSet.dll
+|           |   |   ExcelDataReader.dll
+|           |   |   e_sqlite3.dll
+|           |   |   hostfxr.dll
+|           |   |   hostpolicy.dll
+|           |   |   Microsoft.CSharp.dll
+|           |   |   Microsoft.Data.Sqlite.dll
+|           |   |   Microsoft.DiaSymReader.Native.amd64.dll
+|           |   |   Microsoft.VisualBasic.Core.dll
+|           |   |   Microsoft.VisualBasic.dll
+|           |   |   Microsoft.VisualBasic.Forms.dll
+|           |   |   Microsoft.Web.WebView2.Core.dll
+|           |   |   Microsoft.Web.WebView2.Core.xml
+|           |   |   Microsoft.Web.WebView2.WinForms.dll
+|           |   |   Microsoft.Web.WebView2.WinForms.xml
+|           |   |   Microsoft.Web.WebView2.Wpf.dll
+|           |   |   Microsoft.Web.WebView2.Wpf.xml
+|           |   |   Microsoft.Win32.Primitives.dll
+|           |   |   Microsoft.Win32.Registry.AccessControl.dll
+|           |   |   Microsoft.Win32.Registry.dll
+|           |   |   Microsoft.Win32.SystemEvents.dll
+|           |   |   mscordaccore.dll
+|           |   |   mscordaccore_amd64_amd64_9.0.1826.31522.dll
+|           |   |   mscordbi.dll
+|           |   |   mscorlib.dll
+|           |   |   mscorrc.dll
+|           |   |   msquic.dll
+|           |   |   NetOffice.dll
+|           |   |   netstandard.dll
+|           |   |   OfficeApi.dll
+|           |   |   PenImc_cor3.dll
+|           |   |   PresentationCore.dll
+|           |   |   PresentationFramework-SystemCore.dll
+|           |   |   PresentationFramework-SystemData.dll
+|           |   |   PresentationFramework-SystemDrawing.dll
+|           |   |   PresentationFramework-SystemXml.dll
+|           |   |   PresentationFramework-SystemXmlLinq.dll
+|           |   |   PresentationFramework.Aero.dll
+|           |   |   PresentationFramework.Aero2.dll
+|           |   |   PresentationFramework.AeroLite.dll
+|           |   |   PresentationFramework.Classic.dll
+|           |   |   PresentationFramework.dll
+|           |   |   PresentationFramework.Fluent.dll
+|           |   |   PresentationFramework.Luna.dll
+|           |   |   PresentationFramework.Royale.dll
+|           |   |   PresentationNative_cor3.dll
+|           |   |   PresentationUI.dll
+|           |   |   QCS.deps.json
+|           |   |   QCS.dll
+|           |   |   QCS.exe
+|           |   |   QCS.pdb
+|           |   |   QCS.runtimeconfig.json
+|           |   |   QCS_MSDS_7개테이블_추가.sql
+|           |   |   ReachFramework.dll
+|           |   |   SQLitePCLRaw.batteries_v2.dll
+|           |   |   SQLitePCLRaw.core.dll
+|           |   |   SQLitePCLRaw.provider.e_sqlite3.dll
+|           |   |   stdole.dll
+|           |   |   System.AppContext.dll
+|           |   |   System.Buffers.dll
+|           |   |   System.CodeDom.dll
+|           |   |   System.Collections.Concurrent.dll
+|           |   |   System.Collections.dll
+|           |   |   System.Collections.Immutable.dll
+|           |   |   System.Collections.NonGeneric.dll
+|           |   |   System.Collections.Specialized.dll
+|           |   |   System.ComponentModel.Annotations.dll
+|           |   |   System.ComponentModel.DataAnnotations.dll
+|           |   |   System.ComponentModel.dll
+|           |   |   System.ComponentModel.EventBasedAsync.dll
+|           |   |   System.ComponentModel.Primitives.dll
+|           |   |   System.ComponentModel.TypeConverter.dll
+|           |   |   System.Configuration.ConfigurationManager.dll
+|           |   |   System.Configuration.dll
+|           |   |   System.Console.dll
+|           |   |   System.Core.dll
+|           |   |   System.Data.Common.dll
+|           |   |   System.Data.DataSetExtensions.dll
+|           |   |   System.Data.dll
+|           |   |   System.Design.dll
+|           |   |   System.Diagnostics.Contracts.dll
+|           |   |   System.Diagnostics.Debug.dll
+|           |   |   System.Diagnostics.DiagnosticSource.dll
+|           |   |   System.Diagnostics.EventLog.dll
+|           |   |   System.Diagnostics.EventLog.Messages.dll
+|           |   |   System.Diagnostics.FileVersionInfo.dll
+|           |   |   System.Diagnostics.PerformanceCounter.dll
+|           |   |   System.Diagnostics.Process.dll
+|           |   |   System.Diagnostics.StackTrace.dll
+|           |   |   System.Diagnostics.TextWriterTraceListener.dll
+|           |   |   System.Diagnostics.Tools.dll
+|           |   |   System.Diagnostics.TraceSource.dll
+|           |   |   System.Diagnostics.Tracing.dll
+|           |   |   System.DirectoryServices.dll
+|           |   |   System.dll
+|           |   |   System.Drawing.Common.dll
+|           |   |   System.Drawing.Design.dll
+|           |   |   System.Drawing.dll
+|           |   |   System.Drawing.Primitives.dll
+|           |   |   System.Dynamic.Runtime.dll
+|           |   |   System.Formats.Asn1.dll
+|           |   |   System.Formats.Nrbf.dll
+|           |   |   System.Formats.Tar.dll
+|           |   |   System.Globalization.Calendars.dll
+|           |   |   System.Globalization.dll
+|           |   |   System.Globalization.Extensions.dll
+|           |   |   System.IO.Compression.Brotli.dll
+|           |   |   System.IO.Compression.dll
+|           |   |   System.IO.Compression.FileSystem.dll
+|           |   |   System.IO.Compression.Native.dll
+|           |   |   System.IO.Compression.ZipFile.dll
+|           |   |   System.IO.dll
+|           |   |   System.IO.FileSystem.AccessControl.dll
+|           |   |   System.IO.FileSystem.dll
+|           |   |   System.IO.FileSystem.DriveInfo.dll
+|           |   |   System.IO.FileSystem.Primitives.dll
+|           |   |   System.IO.FileSystem.Watcher.dll
+|           |   |   System.IO.IsolatedStorage.dll
+|           |   |   System.IO.MemoryMappedFiles.dll
+|           |   |   System.IO.Packaging.dll
+|           |   |   System.IO.Pipelines.dll
+|           |   |   System.IO.Pipes.AccessControl.dll
+|           |   |   System.IO.Pipes.dll
+|           |   |   System.IO.UnmanagedMemoryStream.dll
+|           |   |   System.Linq.dll
+|           |   |   System.Linq.Expressions.dll
+|           |   |   System.Linq.Parallel.dll
+|           |   |   System.Linq.Queryable.dll
+|           |   |   System.Memory.dll
+|           |   |   System.Net.dll
+|           |   |   System.Net.Http.dll
+|           |   |   System.Net.Http.Json.dll
+|           |   |   System.Net.HttpListener.dll
+|           |   |   System.Net.Mail.dll
+|           |   |   System.Net.NameResolution.dll
+|           |   |   System.Net.NetworkInformation.dll
+|           |   |   System.Net.Ping.dll
+|           |   |   System.Net.Primitives.dll
+|           |   |   System.Net.Quic.dll
+|           |   |   System.Net.Requests.dll
+|           |   |   System.Net.Security.dll
+|           |   |   System.Net.ServicePoint.dll
+|           |   |   System.Net.Sockets.dll
+|           |   |   System.Net.WebClient.dll
+|           |   |   System.Net.WebHeaderCollection.dll
+|           |   |   System.Net.WebProxy.dll
+|           |   |   System.Net.WebSockets.Client.dll
+|           |   |   System.Net.WebSockets.dll
+|           |   |   System.Numerics.dll
+|           |   |   System.Numerics.Vectors.dll
+|           |   |   System.ObjectModel.dll
+|           |   |   System.Printing.dll
+|           |   |   System.Private.CoreLib.dll
+|           |   |   System.Private.DataContractSerialization.dll
+|           |   |   System.Private.Uri.dll
+|           |   |   System.Private.Windows.Core.dll
+|           |   |   System.Private.Xml.dll
+|           |   |   System.Private.Xml.Linq.dll
+|           |   |   System.Reflection.DispatchProxy.dll
+|           |   |   System.Reflection.dll
+|           |   |   System.Reflection.Emit.dll
+|           |   |   System.Reflection.Emit.ILGeneration.dll
+|           |   |   System.Reflection.Emit.Lightweight.dll
+|           |   |   System.Reflection.Extensions.dll
+|           |   |   System.Reflection.Metadata.dll
+|           |   |   System.Reflection.Primitives.dll
+|           |   |   System.Reflection.TypeExtensions.dll
+|           |   |   System.Resources.Extensions.dll
+|           |   |   System.Resources.Reader.dll
+|           |   |   System.Resources.ResourceManager.dll
+|           |   |   System.Resources.Writer.dll
+|           |   |   System.Runtime.CompilerServices.Unsafe.dll
+|           |   |   System.Runtime.CompilerServices.VisualC.dll
+|           |   |   System.Runtime.dll
+|           |   |   System.Runtime.Extensions.dll
+|           |   |   System.Runtime.Handles.dll
+|           |   |   System.Runtime.InteropServices.dll
+|           |   |   System.Runtime.InteropServices.JavaScript.dll
+|           |   |   System.Runtime.InteropServices.RuntimeInformation.dll
+|           |   |   System.Runtime.Intrinsics.dll
+|           |   |   System.Runtime.Loader.dll
+|           |   |   System.Runtime.Numerics.dll
+|           |   |   System.Runtime.Serialization.dll
+|           |   |   System.Runtime.Serialization.Formatters.dll
+|           |   |   System.Runtime.Serialization.Json.dll
+|           |   |   System.Runtime.Serialization.Primitives.dll
+|           |   |   System.Runtime.Serialization.Xml.dll
+|           |   |   System.Security.AccessControl.dll
+|           |   |   System.Security.Claims.dll
+|           |   |   System.Security.Cryptography.Algorithms.dll
+|           |   |   System.Security.Cryptography.Cng.dll
+|           |   |   System.Security.Cryptography.Csp.dll
+|           |   |   System.Security.Cryptography.dll
+|           |   |   System.Security.Cryptography.Encoding.dll
+|           |   |   System.Security.Cryptography.OpenSsl.dll
+|           |   |   System.Security.Cryptography.Pkcs.dll
+|           |   |   System.Security.Cryptography.Primitives.dll
+|           |   |   System.Security.Cryptography.ProtectedData.dll
+|           |   |   System.Security.Cryptography.X509Certificates.dll
+|           |   |   System.Security.Cryptography.Xml.dll
+|           |   |   System.Security.dll
+|           |   |   System.Security.Permissions.dll
+|           |   |   System.Security.Principal.dll
+|           |   |   System.Security.Principal.Windows.dll
+|           |   |   System.Security.SecureString.dll
+|           |   |   System.ServiceModel.Web.dll
+|           |   |   System.ServiceProcess.dll
+|           |   |   System.Text.Encoding.CodePages.dll
+|           |   |   System.Text.Encoding.dll
+|           |   |   System.Text.Encoding.Extensions.dll
+|           |   |   System.Text.Encodings.Web.dll
+|           |   |   System.Text.Json.dll
+|           |   |   System.Text.RegularExpressions.dll
+|           |   |   System.Threading.AccessControl.dll
+|           |   |   System.Threading.Channels.dll
+|           |   |   System.Threading.dll
+|           |   |   System.Threading.Overlapped.dll
+|           |   |   System.Threading.Tasks.Dataflow.dll
+|           |   |   System.Threading.Tasks.dll
+|           |   |   System.Threading.Tasks.Extensions.dll
+|           |   |   System.Threading.Tasks.Parallel.dll
+|           |   |   System.Threading.Thread.dll
+|           |   |   System.Threading.ThreadPool.dll
+|           |   |   System.Threading.Timer.dll
+|           |   |   System.Transactions.dll
+|           |   |   System.Transactions.Local.dll
+|           |   |   System.ValueTuple.dll
+|           |   |   System.Web.dll
+|           |   |   System.Web.HttpUtility.dll
+|           |   |   System.Windows.Controls.Ribbon.dll
+|           |   |   System.Windows.dll
+|           |   |   System.Windows.Extensions.dll
+|           |   |   System.Windows.Forms.Design.dll
+|           |   |   System.Windows.Forms.Design.Editors.dll
+|           |   |   System.Windows.Forms.dll
+|           |   |   System.Windows.Forms.Primitives.dll
+|           |   |   System.Windows.Input.Manipulations.dll
+|           |   |   System.Windows.Presentation.dll
+|           |   |   System.Xaml.dll
+|           |   |   System.Xml.dll
+|           |   |   System.Xml.Linq.dll
+|           |   |   System.Xml.ReaderWriter.dll
+|           |   |   System.Xml.Serialization.dll
+|           |   |   System.Xml.XDocument.dll
+|           |   |   System.Xml.XmlDocument.dll
+|           |   |   System.Xml.XmlSerializer.dll
+|           |   |   System.Xml.XPath.dll
+|           |   |   System.Xml.XPath.XDocument.dll
+|           |   |   UglyToad.PdfPig.Core.dll
+|           |   |   UglyToad.PdfPig.dll
+|           |   |   UglyToad.PdfPig.DocumentLayoutAnalysis.dll
+|           |   |   UglyToad.PdfPig.Fonts.dll
+|           |   |   UglyToad.PdfPig.Package.dll
+|           |   |   UglyToad.PdfPig.Tokenization.dll
+|           |   |   UglyToad.PdfPig.Tokens.dll
+|           |   |   UIAutomationClient.dll
+|           |   |   UIAutomationClientSideProviders.dll
+|           |   |   UIAutomationProvider.dll
+|           |   |   UIAutomationTypes.dll
+|           |   |   VBIDEApi.dll
+|           |   |   vcruntime140_cor3.dll
+|           |   |   WebView2Loader.dll
+|           |   |   WindowsBase.dll
+|           |   |   WindowsFormsIntegration.dll
+|           |   |   wpfgfx_cor3.dll
+|           |   |   
+|           |   +---Analysis
+|           |   |       FieldRules.json
+|           |   |       
+|           |   +---CoA_xltm
+|           |   |       New_CoA_Form_Eng.xltm
+|           |   |       New_CoA_Form_Jpn-old.xltm
+|           |   |       New_CoA_Form_Jpn.xltm
+|           |   |       New_CoA_Form_Kor.xltm
+|           |   |       New_CoA_form_Rus.xltm
+|           |   |       
+|           |   +---cs
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---de
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---es
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---fr
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---it
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---ja
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---ko
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---pl
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---pt-BR
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---ru
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---runtimes
+|           |   |   \---win-x64
+|           |   |       \---native
+|           |   |               WebView2Loader.dll
+|           |   |               
+|           |   +---tr
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   +---zh-Hans
+|           |   |       Microsoft.VisualBasic.Forms.resources.dll
+|           |   |       PresentationCore.resources.dll
+|           |   |       PresentationFramework.resources.dll
+|           |   |       PresentationUI.resources.dll
+|           |   |       ReachFramework.resources.dll
+|           |   |       System.Windows.Controls.Ribbon.resources.dll
+|           |   |       System.Windows.Forms.Design.resources.dll
+|           |   |       System.Windows.Forms.Primitives.resources.dll
+|           |   |       System.Windows.Forms.resources.dll
+|           |   |       System.Windows.Input.Manipulations.resources.dll
+|           |   |       System.Xaml.resources.dll
+|           |   |       UIAutomationClient.resources.dll
+|           |   |       UIAutomationClientSideProviders.resources.dll
+|           |   |       UIAutomationProvider.resources.dll
+|           |   |       UIAutomationTypes.resources.dll
+|           |   |       WindowsBase.resources.dll
+|           |   |       WindowsFormsIntegration.resources.dll
+|           |   |       
+|           |   \---zh-Hant
+|           |           Microsoft.VisualBasic.Forms.resources.dll
+|           |           PresentationCore.resources.dll
+|           |           PresentationFramework.resources.dll
+|           |           PresentationUI.resources.dll
+|           |           ReachFramework.resources.dll
+|           |           System.Windows.Controls.Ribbon.resources.dll
+|           |           System.Windows.Forms.Design.resources.dll
+|           |           System.Windows.Forms.Primitives.resources.dll
+|           |           System.Windows.Forms.resources.dll
+|           |           System.Windows.Input.Manipulations.resources.dll
+|           |           System.Xaml.resources.dll
+|           |           UIAutomationClient.resources.dll
+|           |           UIAutomationClientSideProviders.resources.dll
+|           |           UIAutomationProvider.resources.dll
+|           |           UIAutomationTypes.resources.dll
+|           |           WindowsBase.resources.dll
+|           |           WindowsFormsIntegration.resources.dll
+|           |           
+|           \---win-x86
+|               |   Accessibility.dll
+|               |   clretwrc.dll
+|               |   clrgc.dll
+|               |   clrjit.dll
+|               |   CoA_CS.deps.json
+|               |   CoA_CS.dll
+|               |   CoA_CS.exe
+|               |   CoA_CS.pdb
+|               |   CoA_CS.runtimeconfig.json
+|               |   coreclr.dll
+|               |   createdump.exe
+|               |   D3DCompiler_47_cor3.dll
+|               |   DirectWriteForwarder.dll
+|               |   ExcelApi.dll
+|               |   ExcelDataReader.DataSet.dll
+|               |   ExcelDataReader.dll
+|               |   e_sqlite3.dll
+|               |   hostfxr.dll
+|               |   hostpolicy.dll
+|               |   Microsoft.CSharp.dll
+|               |   Microsoft.Data.Sqlite.dll
+|               |   Microsoft.DiaSymReader.Native.x86.dll
+|               |   Microsoft.VisualBasic.Core.dll
+|               |   Microsoft.VisualBasic.dll
+|               |   Microsoft.VisualBasic.Forms.dll
+|               |   Microsoft.Win32.Primitives.dll
+|               |   Microsoft.Win32.Registry.AccessControl.dll
+|               |   Microsoft.Win32.Registry.dll
+|               |   Microsoft.Win32.SystemEvents.dll
+|               |   mscordaccore.dll
+|               |   mscordaccore_x86_x86_9.0.1826.31522.dll
+|               |   mscordbi.dll
+|               |   mscorlib.dll
+|               |   mscorrc.dll
+|               |   msquic.dll
+|               |   NetOffice.dll
+|               |   netstandard.dll
+|               |   OfficeApi.dll
+|               |   PenImc_cor3.dll
+|               |   PresentationCore.dll
+|               |   PresentationFramework-SystemCore.dll
+|               |   PresentationFramework-SystemData.dll
+|               |   PresentationFramework-SystemDrawing.dll
+|               |   PresentationFramework-SystemXml.dll
+|               |   PresentationFramework-SystemXmlLinq.dll
+|               |   PresentationFramework.Aero.dll
+|               |   PresentationFramework.Aero2.dll
+|               |   PresentationFramework.AeroLite.dll
+|               |   PresentationFramework.Classic.dll
+|               |   PresentationFramework.dll
+|               |   PresentationFramework.Fluent.dll
+|               |   PresentationFramework.Luna.dll
+|               |   PresentationFramework.Royale.dll
+|               |   PresentationNative_cor3.dll
+|               |   PresentationUI.dll
+|               |   ReachFramework.dll
+|               |   SQLitePCLRaw.batteries_v2.dll
+|               |   SQLitePCLRaw.core.dll
+|               |   SQLitePCLRaw.provider.e_sqlite3.dll
+|               |   stdole.dll
+|               |   System.AppContext.dll
+|               |   System.Buffers.dll
+|               |   System.CodeDom.dll
+|               |   System.Collections.Concurrent.dll
+|               |   System.Collections.dll
+|               |   System.Collections.Immutable.dll
+|               |   System.Collections.NonGeneric.dll
+|               |   System.Collections.Specialized.dll
+|               |   System.ComponentModel.Annotations.dll
+|               |   System.ComponentModel.DataAnnotations.dll
+|               |   System.ComponentModel.dll
+|               |   System.ComponentModel.EventBasedAsync.dll
+|               |   System.ComponentModel.Primitives.dll
+|               |   System.ComponentModel.TypeConverter.dll
+|               |   System.Configuration.ConfigurationManager.dll
+|               |   System.Configuration.dll
+|               |   System.Console.dll
+|               |   System.Core.dll
+|               |   System.Data.Common.dll
+|               |   System.Data.DataSetExtensions.dll
+|               |   System.Data.dll
+|               |   System.Design.dll
+|               |   System.Diagnostics.Contracts.dll
+|               |   System.Diagnostics.Debug.dll
+|               |   System.Diagnostics.DiagnosticSource.dll
+|               |   System.Diagnostics.EventLog.dll
+|               |   System.Diagnostics.EventLog.Messages.dll
+|               |   System.Diagnostics.FileVersionInfo.dll
+|               |   System.Diagnostics.PerformanceCounter.dll
+|               |   System.Diagnostics.Process.dll
+|               |   System.Diagnostics.StackTrace.dll
+|               |   System.Diagnostics.TextWriterTraceListener.dll
+|               |   System.Diagnostics.Tools.dll
+|               |   System.Diagnostics.TraceSource.dll
+|               |   System.Diagnostics.Tracing.dll
+|               |   System.DirectoryServices.dll
+|               |   System.dll
+|               |   System.Drawing.Common.dll
+|               |   System.Drawing.Design.dll
+|               |   System.Drawing.dll
+|               |   System.Drawing.Primitives.dll
+|               |   System.Dynamic.Runtime.dll
+|               |   System.Formats.Asn1.dll
+|               |   System.Formats.Nrbf.dll
+|               |   System.Formats.Tar.dll
+|               |   System.Globalization.Calendars.dll
+|               |   System.Globalization.dll
+|               |   System.Globalization.Extensions.dll
+|               |   System.IO.Compression.Brotli.dll
+|               |   System.IO.Compression.dll
+|               |   System.IO.Compression.FileSystem.dll
+|               |   System.IO.Compression.Native.dll
+|               |   System.IO.Compression.ZipFile.dll
+|               |   System.IO.dll
+|               |   System.IO.FileSystem.AccessControl.dll
+|               |   System.IO.FileSystem.dll
+|               |   System.IO.FileSystem.DriveInfo.dll
+|               |   System.IO.FileSystem.Primitives.dll
+|               |   System.IO.FileSystem.Watcher.dll
+|               |   System.IO.IsolatedStorage.dll
+|               |   System.IO.MemoryMappedFiles.dll
+|               |   System.IO.Packaging.dll
+|               |   System.IO.Pipelines.dll
+|               |   System.IO.Pipes.AccessControl.dll
+|               |   System.IO.Pipes.dll
+|               |   System.IO.UnmanagedMemoryStream.dll
+|               |   System.Linq.dll
+|               |   System.Linq.Expressions.dll
+|               |   System.Linq.Parallel.dll
+|               |   System.Linq.Queryable.dll
+|               |   System.Memory.dll
+|               |   System.Net.dll
+|               |   System.Net.Http.dll
+|               |   System.Net.Http.Json.dll
+|               |   System.Net.HttpListener.dll
+|               |   System.Net.Mail.dll
+|               |   System.Net.NameResolution.dll
+|               |   System.Net.NetworkInformation.dll
+|               |   System.Net.Ping.dll
+|               |   System.Net.Primitives.dll
+|               |   System.Net.Quic.dll
+|               |   System.Net.Requests.dll
+|               |   System.Net.Security.dll
+|               |   System.Net.ServicePoint.dll
+|               |   System.Net.Sockets.dll
+|               |   System.Net.WebClient.dll
+|               |   System.Net.WebHeaderCollection.dll
+|               |   System.Net.WebProxy.dll
+|               |   System.Net.WebSockets.Client.dll
+|               |   System.Net.WebSockets.dll
+|               |   System.Numerics.dll
+|               |   System.Numerics.Vectors.dll
+|               |   System.ObjectModel.dll
+|               |   System.Printing.dll
+|               |   System.Private.CoreLib.dll
+|               |   System.Private.DataContractSerialization.dll
+|               |   System.Private.Uri.dll
+|               |   System.Private.Windows.Core.dll
+|               |   System.Private.Xml.dll
+|               |   System.Private.Xml.Linq.dll
+|               |   System.Reflection.DispatchProxy.dll
+|               |   System.Reflection.dll
+|               |   System.Reflection.Emit.dll
+|               |   System.Reflection.Emit.ILGeneration.dll
+|               |   System.Reflection.Emit.Lightweight.dll
+|               |   System.Reflection.Extensions.dll
+|               |   System.Reflection.Metadata.dll
+|               |   System.Reflection.Primitives.dll
+|               |   System.Reflection.TypeExtensions.dll
+|               |   System.Resources.Extensions.dll
+|               |   System.Resources.Reader.dll
+|               |   System.Resources.ResourceManager.dll
+|               |   System.Resources.Writer.dll
+|               |   System.Runtime.CompilerServices.Unsafe.dll
+|               |   System.Runtime.CompilerServices.VisualC.dll
+|               |   System.Runtime.dll
+|               |   System.Runtime.Extensions.dll
+|               |   System.Runtime.Handles.dll
+|               |   System.Runtime.InteropServices.dll
+|               |   System.Runtime.InteropServices.JavaScript.dll
+|               |   System.Runtime.InteropServices.RuntimeInformation.dll
+|               |   System.Runtime.Intrinsics.dll
+|               |   System.Runtime.Loader.dll
+|               |   System.Runtime.Numerics.dll
+|               |   System.Runtime.Serialization.dll
+|               |   System.Runtime.Serialization.Formatters.dll
+|               |   System.Runtime.Serialization.Json.dll
+|               |   System.Runtime.Serialization.Primitives.dll
+|               |   System.Runtime.Serialization.Xml.dll
+|               |   System.Security.AccessControl.dll
+|               |   System.Security.Claims.dll
+|               |   System.Security.Cryptography.Algorithms.dll
+|               |   System.Security.Cryptography.Cng.dll
+|               |   System.Security.Cryptography.Csp.dll
+|               |   System.Security.Cryptography.dll
+|               |   System.Security.Cryptography.Encoding.dll
+|               |   System.Security.Cryptography.OpenSsl.dll
+|               |   System.Security.Cryptography.Pkcs.dll
+|               |   System.Security.Cryptography.Primitives.dll
+|               |   System.Security.Cryptography.ProtectedData.dll
+|               |   System.Security.Cryptography.X509Certificates.dll
+|               |   System.Security.Cryptography.Xml.dll
+|               |   System.Security.dll
+|               |   System.Security.Permissions.dll
+|               |   System.Security.Principal.dll
+|               |   System.Security.Principal.Windows.dll
+|               |   System.Security.SecureString.dll
+|               |   System.ServiceModel.Web.dll
+|               |   System.ServiceProcess.dll
+|               |   System.Text.Encoding.CodePages.dll
+|               |   System.Text.Encoding.dll
+|               |   System.Text.Encoding.Extensions.dll
+|               |   System.Text.Encodings.Web.dll
+|               |   System.Text.Json.dll
+|               |   System.Text.RegularExpressions.dll
+|               |   System.Threading.AccessControl.dll
+|               |   System.Threading.Channels.dll
+|               |   System.Threading.dll
+|               |   System.Threading.Overlapped.dll
+|               |   System.Threading.Tasks.Dataflow.dll
+|               |   System.Threading.Tasks.dll
+|               |   System.Threading.Tasks.Extensions.dll
+|               |   System.Threading.Tasks.Parallel.dll
+|               |   System.Threading.Thread.dll
+|               |   System.Threading.ThreadPool.dll
+|               |   System.Threading.Timer.dll
+|               |   System.Transactions.dll
+|               |   System.Transactions.Local.dll
+|               |   System.ValueTuple.dll
+|               |   System.Web.dll
+|               |   System.Web.HttpUtility.dll
+|               |   System.Windows.Controls.Ribbon.dll
+|               |   System.Windows.dll
+|               |   System.Windows.Extensions.dll
+|               |   System.Windows.Forms.Design.dll
+|               |   System.Windows.Forms.Design.Editors.dll
+|               |   System.Windows.Forms.dll
+|               |   System.Windows.Forms.Primitives.dll
+|               |   System.Windows.Input.Manipulations.dll
+|               |   System.Windows.Presentation.dll
+|               |   System.Xaml.dll
+|               |   System.Xml.dll
+|               |   System.Xml.Linq.dll
+|               |   System.Xml.ReaderWriter.dll
+|               |   System.Xml.Serialization.dll
+|               |   System.Xml.XDocument.dll
+|               |   System.Xml.XmlDocument.dll
+|               |   System.Xml.XmlSerializer.dll
+|               |   System.Xml.XPath.dll
+|               |   System.Xml.XPath.XDocument.dll
+|               |   UIAutomationClient.dll
+|               |   UIAutomationClientSideProviders.dll
+|               |   UIAutomationProvider.dll
+|               |   UIAutomationTypes.dll
+|               |   VBIDEApi.dll
+|               |   vcruntime140_cor3.dll
+|               |   WindowsBase.dll
+|               |   WindowsFormsIntegration.dll
+|               |   wpfgfx_cor3.dll
+|               |   
+|               +---cs
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---de
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---es
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---fr
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---it
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---ja
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---ko
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---pl
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---pt-BR
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---ru
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---tr
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               +---zh-Hans
+|               |       Microsoft.VisualBasic.Forms.resources.dll
+|               |       PresentationCore.resources.dll
+|               |       PresentationFramework.resources.dll
+|               |       PresentationUI.resources.dll
+|               |       ReachFramework.resources.dll
+|               |       System.Windows.Controls.Ribbon.resources.dll
+|               |       System.Windows.Forms.Design.resources.dll
+|               |       System.Windows.Forms.Primitives.resources.dll
+|               |       System.Windows.Forms.resources.dll
+|               |       System.Windows.Input.Manipulations.resources.dll
+|               |       System.Xaml.resources.dll
+|               |       UIAutomationClient.resources.dll
+|               |       UIAutomationClientSideProviders.resources.dll
+|               |       UIAutomationProvider.resources.dll
+|               |       UIAutomationTypes.resources.dll
+|               |       WindowsBase.resources.dll
+|               |       WindowsFormsIntegration.resources.dll
+|               |       
+|               \---zh-Hant
+|                       Microsoft.VisualBasic.Forms.resources.dll
+|                       PresentationCore.resources.dll
+|                       PresentationFramework.resources.dll
+|                       PresentationUI.resources.dll
+|                       ReachFramework.resources.dll
+|                       System.Windows.Controls.Ribbon.resources.dll
+|                       System.Windows.Forms.Design.resources.dll
+|                       System.Windows.Forms.Primitives.resources.dll
+|                       System.Windows.Forms.resources.dll
+|                       System.Windows.Input.Manipulations.resources.dll
+|                       System.Xaml.resources.dll
+|                       UIAutomationClient.resources.dll
+|                       UIAutomationClientSideProviders.resources.dll
+|                       UIAutomationProvider.resources.dll
+|                       UIAutomationTypes.resources.dll
+|                       WindowsBase.resources.dll
+|                       WindowsFormsIntegration.resources.dll
+|                       
++---CoA_xltm
+|       New_CoA_Form_Eng.xltm
+|       New_CoA_Form_Jpn-old.xltm
+|       New_CoA_Form_Jpn.xltm
+|       New_CoA_Form_Kor.xltm
+|       New_CoA_form_Rus.xltm
+|       
++---obj
+|   |   CoA_CS.csproj.nuget.dgspec.json
+|   |   CoA_CS.csproj.nuget.g.props
+|   |   CoA_CS.csproj.nuget.g.targets
+|   |   project.assets.json
+|   |   project.nuget.cache
+|   |   QCS.csproj.nuget.dgspec.json
+|   |   QCS.csproj.nuget.g.props
+|   |   QCS.csproj.nuget.g.targets
+|   |   QCS_0uhzg3vt_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_0uhzg3vt_wpftmp.csproj.nuget.g.props
+|   |   QCS_0uhzg3vt_wpftmp.csproj.nuget.g.targets
+|   |   QCS_0xotqlnd_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_0xotqlnd_wpftmp.csproj.nuget.g.props
+|   |   QCS_0xotqlnd_wpftmp.csproj.nuget.g.targets
+|   |   QCS_2dqxpyaa_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_2dqxpyaa_wpftmp.csproj.nuget.g.props
+|   |   QCS_2dqxpyaa_wpftmp.csproj.nuget.g.targets
+|   |   QCS_4rloly1z_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_4rloly1z_wpftmp.csproj.nuget.g.props
+|   |   QCS_4rloly1z_wpftmp.csproj.nuget.g.targets
+|   |   QCS_4yq0t5bp_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_4yq0t5bp_wpftmp.csproj.nuget.g.props
+|   |   QCS_4yq0t5bp_wpftmp.csproj.nuget.g.targets
+|   |   QCS_bh2t5sy4_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_bh2t5sy4_wpftmp.csproj.nuget.g.props
+|   |   QCS_bh2t5sy4_wpftmp.csproj.nuget.g.targets
+|   |   QCS_cvl2qizr_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_cvl2qizr_wpftmp.csproj.nuget.g.props
+|   |   QCS_cvl2qizr_wpftmp.csproj.nuget.g.targets
+|   |   QCS_gk0h5rr2_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_gk0h5rr2_wpftmp.csproj.nuget.g.props
+|   |   QCS_gk0h5rr2_wpftmp.csproj.nuget.g.targets
+|   |   QCS_glnx05qs_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_glnx05qs_wpftmp.csproj.nuget.g.props
+|   |   QCS_glnx05qs_wpftmp.csproj.nuget.g.targets
+|   |   QCS_i2n1iagw_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_i2n1iagw_wpftmp.csproj.nuget.g.props
+|   |   QCS_i2n1iagw_wpftmp.csproj.nuget.g.targets
+|   |   QCS_jcc2irbj_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_jcc2irbj_wpftmp.csproj.nuget.g.props
+|   |   QCS_jcc2irbj_wpftmp.csproj.nuget.g.targets
+|   |   QCS_jk1s4svn_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_jk1s4svn_wpftmp.csproj.nuget.g.props
+|   |   QCS_jk1s4svn_wpftmp.csproj.nuget.g.targets
+|   |   QCS_jypgsjp3_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_jypgsjp3_wpftmp.csproj.nuget.g.props
+|   |   QCS_jypgsjp3_wpftmp.csproj.nuget.g.targets
+|   |   QCS_krwibaeb_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_krwibaeb_wpftmp.csproj.nuget.g.props
+|   |   QCS_krwibaeb_wpftmp.csproj.nuget.g.targets
+|   |   QCS_lmqlwakt_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_lmqlwakt_wpftmp.csproj.nuget.g.props
+|   |   QCS_lmqlwakt_wpftmp.csproj.nuget.g.targets
+|   |   QCS_mrnawofx_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_mrnawofx_wpftmp.csproj.nuget.g.props
+|   |   QCS_mrnawofx_wpftmp.csproj.nuget.g.targets
+|   |   QCS_nqb4iom3_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_nqb4iom3_wpftmp.csproj.nuget.g.props
+|   |   QCS_nqb4iom3_wpftmp.csproj.nuget.g.targets
+|   |   QCS_nvs0aoby_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_nvs0aoby_wpftmp.csproj.nuget.g.props
+|   |   QCS_nvs0aoby_wpftmp.csproj.nuget.g.targets
+|   |   QCS_nwshvhqu_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_nwshvhqu_wpftmp.csproj.nuget.g.props
+|   |   QCS_nwshvhqu_wpftmp.csproj.nuget.g.targets
+|   |   QCS_obsemx23_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_obsemx23_wpftmp.csproj.nuget.g.props
+|   |   QCS_obsemx23_wpftmp.csproj.nuget.g.targets
+|   |   QCS_onwlzojq_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_onwlzojq_wpftmp.csproj.nuget.g.props
+|   |   QCS_onwlzojq_wpftmp.csproj.nuget.g.targets
+|   |   QCS_p1ayjncz_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_p1ayjncz_wpftmp.csproj.nuget.g.props
+|   |   QCS_p1ayjncz_wpftmp.csproj.nuget.g.targets
+|   |   QCS_pczwz54x_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_pczwz54x_wpftmp.csproj.nuget.g.props
+|   |   QCS_pczwz54x_wpftmp.csproj.nuget.g.targets
+|   |   QCS_ptiaemkx_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_ptiaemkx_wpftmp.csproj.nuget.g.props
+|   |   QCS_ptiaemkx_wpftmp.csproj.nuget.g.targets
+|   |   QCS_r530ujyg_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_r530ujyg_wpftmp.csproj.nuget.g.props
+|   |   QCS_r530ujyg_wpftmp.csproj.nuget.g.targets
+|   |   QCS_squuhc4s_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_squuhc4s_wpftmp.csproj.nuget.g.props
+|   |   QCS_squuhc4s_wpftmp.csproj.nuget.g.targets
+|   |   QCS_tkpkd2zf_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_tkpkd2zf_wpftmp.csproj.nuget.g.props
+|   |   QCS_tkpkd2zf_wpftmp.csproj.nuget.g.targets
+|   |   QCS_um3xv4ce_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_um3xv4ce_wpftmp.csproj.nuget.g.props
+|   |   QCS_um3xv4ce_wpftmp.csproj.nuget.g.targets
+|   |   QCS_xhgmrfdh_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_xhgmrfdh_wpftmp.csproj.nuget.g.props
+|   |   QCS_xhgmrfdh_wpftmp.csproj.nuget.g.targets
+|   |   QCS_xlzc0usj_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_xlzc0usj_wpftmp.csproj.nuget.g.props
+|   |   QCS_xlzc0usj_wpftmp.csproj.nuget.g.targets
+|   |   QCS_yah1pzpi_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_yah1pzpi_wpftmp.csproj.nuget.g.props
+|   |   QCS_yah1pzpi_wpftmp.csproj.nuget.g.targets
+|   |   QCS_z1442z2k_wpftmp.csproj.nuget.dgspec.json
+|   |   QCS_z1442z2k_wpftmp.csproj.nuget.g.props
+|   |   QCS_z1442z2k_wpftmp.csproj.nuget.g.targets
+|   |   
+|   +---Debug
+|   |   \---net9.0-windows7.0
+|   |       |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|   |       |   AccessPermissionView.baml
+|   |       |   AccessPermissionView.g.cs
+|   |       |   AccessPermissionView.g.i.cs
+|   |       |   AdminManagementView.baml
+|   |       |   AdminManagementView.g.cs
+|   |       |   AdminManagementView.g.i.cs
+|   |       |   App.baml
+|   |       |   App.g.cs
+|   |       |   App.g.i.cs
+|   |       |   apphost.exe
+|   |       |   CoARegistryView.baml
+|   |       |   CoARegistryView.g.cs
+|   |       |   CoARegistryView.g.i.cs
+|   |       |   CoA_CS.AssemblyInfo.cs
+|   |       |   CoA_CS.AssemblyInfoInputs.cache
+|   |       |   CoA_CS.assets.cache
+|   |       |   CoA_CS.csproj.AssemblyReference.cache
+|   |       |   CoA_CS.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS.csproj.CoreCompileInputs.cache
+|   |       |   CoA_CS.csproj.FileListAbsolute.txt
+|   |       |   CoA_CS.csproj.Up2Date
+|   |       |   CoA_CS.designer.deps.json
+|   |       |   CoA_CS.designer.runtimeconfig.json
+|   |       |   CoA_CS.dll
+|   |       |   CoA_CS.g.resources
+|   |       |   CoA_CS.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS.genruntimeconfig.cache
+|   |       |   CoA_CS.GlobalUsings.g.cs
+|   |       |   CoA_CS.pdb
+|   |       |   CoA_CS.sourcelink.json
+|   |       |   CoA_CS_04eeng3c_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_04eeng3c_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_04eeng3c_wpftmp.assets.cache
+|   |       |   CoA_CS_04eeng3c_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_04eeng3c_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_04eeng3c_wpftmp.sourcelink.json
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.assets.cache
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_0qgdj1lz_wpftmp.sourcelink.json
+|   |       |   CoA_CS_25v5tyzq_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_25v5tyzq_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_25v5tyzq_wpftmp.assets.cache
+|   |       |   CoA_CS_25v5tyzq_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_25v5tyzq_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_25v5tyzq_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_25v5tyzq_wpftmp.sourcelink.json
+|   |       |   CoA_CS_3nplwjqb_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_3nplwjqb_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_3nplwjqb_wpftmp.assets.cache
+|   |       |   CoA_CS_3nplwjqb_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_3nplwjqb_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_3nplwjqb_wpftmp.sourcelink.json
+|   |       |   CoA_CS_4m0gfngj_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_4m0gfngj_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_4m0gfngj_wpftmp.assets.cache
+|   |       |   CoA_CS_4m0gfngj_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_4m0gfngj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_4m0gfngj_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_4m0gfngj_wpftmp.sourcelink.json
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.assets.cache
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_5hcxnv0b_wpftmp.sourcelink.json
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.assets.cache
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_c2r1fyzh_wpftmp.sourcelink.json
+|   |       |   CoA_CS_csbesm4v_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_csbesm4v_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_csbesm4v_wpftmp.assets.cache
+|   |       |   CoA_CS_csbesm4v_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_csbesm4v_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_csbesm4v_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_csbesm4v_wpftmp.sourcelink.json
+|   |       |   CoA_CS_e3fzq45a_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_e3fzq45a_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_e3fzq45a_wpftmp.assets.cache
+|   |       |   CoA_CS_e3fzq45a_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_e3fzq45a_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_e3fzq45a_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_e3fzq45a_wpftmp.sourcelink.json
+|   |       |   CoA_CS_eb2dps2w_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_eb2dps2w_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_eb2dps2w_wpftmp.assets.cache
+|   |       |   CoA_CS_eb2dps2w_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_eb2dps2w_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_eb2dps2w_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_eb2dps2w_wpftmp.sourcelink.json
+|   |       |   CoA_CS_lyenz1um_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_lyenz1um_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_lyenz1um_wpftmp.assets.cache
+|   |       |   CoA_CS_lyenz1um_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_lyenz1um_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_lyenz1um_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_lyenz1um_wpftmp.sourcelink.json
+|   |       |   CoA_CS_m1shu5uh_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_m1shu5uh_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_m1shu5uh_wpftmp.assets.cache
+|   |       |   CoA_CS_m1shu5uh_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_m1shu5uh_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_m1shu5uh_wpftmp.sourcelink.json
+|   |       |   CoA_CS_MarkupCompile.cache
+|   |       |   CoA_CS_MarkupCompile.i.cache
+|   |       |   CoA_CS_MarkupCompile.lref
+|   |       |   CoA_CS_nms15sk5_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_nms15sk5_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_nms15sk5_wpftmp.assets.cache
+|   |       |   CoA_CS_nms15sk5_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_nms15sk5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_nms15sk5_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_nms15sk5_wpftmp.sourcelink.json
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.assets.cache
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_nv0tkdvg_wpftmp.sourcelink.json
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.assets.cache
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_o4bzoj2c_wpftmp.sourcelink.json
+|   |       |   CoA_CS_oookbwl5_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_oookbwl5_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_oookbwl5_wpftmp.assets.cache
+|   |       |   CoA_CS_oookbwl5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_oookbwl5_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_oookbwl5_wpftmp.sourcelink.json
+|   |       |   CoA_CS_paqfiui3_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_paqfiui3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_paqfiui3_wpftmp.assets.cache
+|   |       |   CoA_CS_paqfiui3_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_paqfiui3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_paqfiui3_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_paqfiui3_wpftmp.sourcelink.json
+|   |       |   CoA_CS_qakwllk1_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_qakwllk1_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_qakwllk1_wpftmp.assets.cache
+|   |       |   CoA_CS_qakwllk1_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_qakwllk1_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_qakwllk1_wpftmp.sourcelink.json
+|   |       |   CoA_CS_uw151o5d_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_uw151o5d_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_uw151o5d_wpftmp.assets.cache
+|   |       |   CoA_CS_uw151o5d_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_uw151o5d_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_uw151o5d_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_uw151o5d_wpftmp.sourcelink.json
+|   |       |   CoA_CS_v3frow45_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_v3frow45_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_v3frow45_wpftmp.assets.cache
+|   |       |   CoA_CS_v3frow45_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_v3frow45_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_v3frow45_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_v3frow45_wpftmp.sourcelink.json
+|   |       |   CoA_CS_vafpd0zl_wpftmp.AssemblyInfo.cs
+|   |       |   CoA_CS_vafpd0zl_wpftmp.AssemblyInfoInputs.cache
+|   |       |   CoA_CS_vafpd0zl_wpftmp.assets.cache
+|   |       |   CoA_CS_vafpd0zl_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   CoA_CS_vafpd0zl_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   CoA_CS_vafpd0zl_wpftmp.GlobalUsings.g.cs
+|   |       |   CoA_CS_vafpd0zl_wpftmp.sourcelink.json
+|   |       |   CodeListView.baml
+|   |       |   CodeListView.g.cs
+|   |       |   CodeListView.g.i.cs
+|   |       |   DatabaseSchemaView.baml
+|   |       |   DatabaseSchemaView.g.cs
+|   |       |   DatabaseSchemaView.g.i.cs
+|   |       |   DatabaseSchemaWindow.baml
+|   |       |   DatabaseSchemaWindow.g.cs
+|   |       |   DatabaseSchemaWindow.g.i.cs
+|   |       |   ItemListView.baml
+|   |       |   ItemListView.g.cs
+|   |       |   ItemListView.g.i.cs
+|   |       |   MainWindow.baml
+|   |       |   MainWindow.g.cs
+|   |       |   MainWindow.g.i.cs
+|   |       |   MsdsInventoryExportView.baml
+|   |       |   MsdsInventoryExportView.g.cs
+|   |       |   MsdsInventoryExportView.g.i.cs
+|   |       |   MsdsManagementView.baml
+|   |       |   MsdsManagementView.g.cs
+|   |       |   MsdsManagementView.g.i.cs
+|   |       |   MsdsRegistrationView.baml
+|   |       |   MsdsRegistrationView.g.cs
+|   |       |   MsdsRegistrationView.g.i.cs
+|   |       |   QCS.AssemblyInfo.cs
+|   |       |   QCS.AssemblyInfoInputs.cache
+|   |       |   QCS.assets.cache
+|   |       |   QCS.csproj.AssemblyReference.cache
+|   |       |   QCS.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS.csproj.CoreCompileInputs.cache
+|   |       |   QCS.csproj.FileListAbsolute.txt
+|   |       |   QCS.csproj.Up2Date
+|   |       |   QCS.designer.deps.json
+|   |       |   QCS.designer.runtimeconfig.json
+|   |       |   QCS.dll
+|   |       |   QCS.g.resources
+|   |       |   QCS.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS.genruntimeconfig.cache
+|   |       |   QCS.GlobalUsings.g.cs
+|   |       |   QCS.pdb
+|   |       |   QCS.sourcelink.json
+|   |       |   QCS_03bpxp4d_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_03bpxp4d_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_03bpxp4d_wpftmp.assets.cache
+|   |       |   QCS_03bpxp4d_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_03bpxp4d_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_03bpxp4d_wpftmp.sourcelink.json
+|   |       |   QCS_04gmj2bw_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_04gmj2bw_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_04gmj2bw_wpftmp.assets.cache
+|   |       |   QCS_04gmj2bw_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_04gmj2bw_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_04gmj2bw_wpftmp.sourcelink.json
+|   |       |   QCS_0adjq524_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_0adjq524_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_0adjq524_wpftmp.assets.cache
+|   |       |   QCS_0adjq524_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_0adjq524_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_0adjq524_wpftmp.sourcelink.json
+|   |       |   QCS_0der4vii_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_0der4vii_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_0der4vii_wpftmp.assets.cache
+|   |       |   QCS_0der4vii_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_0der4vii_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_0der4vii_wpftmp.sourcelink.json
+|   |       |   QCS_0uhzg3vt_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_0uhzg3vt_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_0uhzg3vt_wpftmp.assets.cache
+|   |       |   QCS_0uhzg3vt_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_0uhzg3vt_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_0uhzg3vt_wpftmp.sourcelink.json
+|   |       |   QCS_0xotqlnd_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_0xotqlnd_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_0xotqlnd_wpftmp.assets.cache
+|   |       |   QCS_0xotqlnd_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_0xotqlnd_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_0xotqlnd_wpftmp.sourcelink.json
+|   |       |   QCS_0yfzngyx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_0yfzngyx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_0yfzngyx_wpftmp.assets.cache
+|   |       |   QCS_0yfzngyx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_0yfzngyx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_0yfzngyx_wpftmp.sourcelink.json
+|   |       |   QCS_1fzcz0ij_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1fzcz0ij_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1fzcz0ij_wpftmp.assets.cache
+|   |       |   QCS_1fzcz0ij_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1fzcz0ij_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1fzcz0ij_wpftmp.sourcelink.json
+|   |       |   QCS_1lcgqhjy_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1lcgqhjy_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1lcgqhjy_wpftmp.assets.cache
+|   |       |   QCS_1lcgqhjy_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1lcgqhjy_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1lcgqhjy_wpftmp.sourcelink.json
+|   |       |   QCS_1re4v5cv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1re4v5cv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1re4v5cv_wpftmp.assets.cache
+|   |       |   QCS_1re4v5cv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1re4v5cv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1re4v5cv_wpftmp.sourcelink.json
+|   |       |   QCS_1sytuko2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1sytuko2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1sytuko2_wpftmp.assets.cache
+|   |       |   QCS_1sytuko2_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_1sytuko2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1sytuko2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1sytuko2_wpftmp.sourcelink.json
+|   |       |   QCS_1ticyshx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1ticyshx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1ticyshx_wpftmp.assets.cache
+|   |       |   QCS_1ticyshx_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_1ticyshx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1ticyshx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1ticyshx_wpftmp.sourcelink.json
+|   |       |   QCS_1vib0qjf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_1vib0qjf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_1vib0qjf_wpftmp.assets.cache
+|   |       |   QCS_1vib0qjf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_1vib0qjf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_1vib0qjf_wpftmp.sourcelink.json
+|   |       |   QCS_22fjhamd_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_22fjhamd_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_22fjhamd_wpftmp.assets.cache
+|   |       |   QCS_22fjhamd_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_22fjhamd_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_22fjhamd_wpftmp.sourcelink.json
+|   |       |   QCS_2c5yfmpx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_2c5yfmpx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_2c5yfmpx_wpftmp.assets.cache
+|   |       |   QCS_2c5yfmpx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_2c5yfmpx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_2c5yfmpx_wpftmp.sourcelink.json
+|   |       |   QCS_2dqxpyaa_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_2dqxpyaa_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_2dqxpyaa_wpftmp.assets.cache
+|   |       |   QCS_2dqxpyaa_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_2dqxpyaa_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_2dqxpyaa_wpftmp.sourcelink.json
+|   |       |   QCS_2sxq4gjx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_2sxq4gjx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_2sxq4gjx_wpftmp.assets.cache
+|   |       |   QCS_2sxq4gjx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_2sxq4gjx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_2sxq4gjx_wpftmp.sourcelink.json
+|   |       |   QCS_3i3yrsrf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_3i3yrsrf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_3i3yrsrf_wpftmp.assets.cache
+|   |       |   QCS_3i3yrsrf_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_3i3yrsrf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_3i3yrsrf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_3i3yrsrf_wpftmp.sourcelink.json
+|   |       |   QCS_40m5c2mf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_40m5c2mf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_40m5c2mf_wpftmp.assets.cache
+|   |       |   QCS_40m5c2mf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_40m5c2mf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_40m5c2mf_wpftmp.sourcelink.json
+|   |       |   QCS_44f1quvv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_44f1quvv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_44f1quvv_wpftmp.assets.cache
+|   |       |   QCS_44f1quvv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_44f1quvv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_44f1quvv_wpftmp.sourcelink.json
+|   |       |   QCS_44u05dej_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_44u05dej_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_44u05dej_wpftmp.assets.cache
+|   |       |   QCS_44u05dej_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_44u05dej_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_44u05dej_wpftmp.sourcelink.json
+|   |       |   QCS_4b3domoa_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4b3domoa_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4b3domoa_wpftmp.assets.cache
+|   |       |   QCS_4b3domoa_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4b3domoa_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4b3domoa_wpftmp.sourcelink.json
+|   |       |   QCS_4gz2pc0u_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4gz2pc0u_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4gz2pc0u_wpftmp.assets.cache
+|   |       |   QCS_4gz2pc0u_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4gz2pc0u_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4gz2pc0u_wpftmp.sourcelink.json
+|   |       |   QCS_4qvh0fvc_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4qvh0fvc_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4qvh0fvc_wpftmp.assets.cache
+|   |       |   QCS_4qvh0fvc_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4qvh0fvc_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4qvh0fvc_wpftmp.sourcelink.json
+|   |       |   QCS_4rloly1z_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4rloly1z_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4rloly1z_wpftmp.assets.cache
+|   |       |   QCS_4rloly1z_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4rloly1z_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4rloly1z_wpftmp.sourcelink.json
+|   |       |   QCS_4sfj52g1_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4sfj52g1_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4sfj52g1_wpftmp.assets.cache
+|   |       |   QCS_4sfj52g1_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4sfj52g1_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4sfj52g1_wpftmp.sourcelink.json
+|   |       |   QCS_4yq0t5bp_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_4yq0t5bp_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_4yq0t5bp_wpftmp.assets.cache
+|   |       |   QCS_4yq0t5bp_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_4yq0t5bp_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_4yq0t5bp_wpftmp.sourcelink.json
+|   |       |   QCS_50pazj0z_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_50pazj0z_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_50pazj0z_wpftmp.assets.cache
+|   |       |   QCS_50pazj0z_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_50pazj0z_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_50pazj0z_wpftmp.sourcelink.json
+|   |       |   QCS_5hzos5is_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_5hzos5is_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_5hzos5is_wpftmp.assets.cache
+|   |       |   QCS_5hzos5is_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_5hzos5is_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_5hzos5is_wpftmp.sourcelink.json
+|   |       |   QCS_5qiqzjdz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_5qiqzjdz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_5qiqzjdz_wpftmp.assets.cache
+|   |       |   QCS_5qiqzjdz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_5qiqzjdz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_5qiqzjdz_wpftmp.sourcelink.json
+|   |       |   QCS_a05f5vjy_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_a05f5vjy_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_a05f5vjy_wpftmp.assets.cache
+|   |       |   QCS_a05f5vjy_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_a05f5vjy_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_a05f5vjy_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_a05f5vjy_wpftmp.sourcelink.json
+|   |       |   QCS_a3t20vwr_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_a3t20vwr_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_a3t20vwr_wpftmp.assets.cache
+|   |       |   QCS_a3t20vwr_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_a3t20vwr_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_a3t20vwr_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_a3t20vwr_wpftmp.sourcelink.json
+|   |       |   QCS_ad2so2qu_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ad2so2qu_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ad2so2qu_wpftmp.assets.cache
+|   |       |   QCS_ad2so2qu_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ad2so2qu_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ad2so2qu_wpftmp.sourcelink.json
+|   |       |   QCS_apbwlo5m_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_apbwlo5m_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_apbwlo5m_wpftmp.assets.cache
+|   |       |   QCS_apbwlo5m_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_apbwlo5m_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_apbwlo5m_wpftmp.sourcelink.json
+|   |       |   QCS_ay155xcs_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ay155xcs_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ay155xcs_wpftmp.assets.cache
+|   |       |   QCS_ay155xcs_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ay155xcs_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ay155xcs_wpftmp.sourcelink.json
+|   |       |   QCS_b3ksniir_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_b3ksniir_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_b3ksniir_wpftmp.assets.cache
+|   |       |   QCS_b3ksniir_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_b3ksniir_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_b3ksniir_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_b3ksniir_wpftmp.sourcelink.json
+|   |       |   QCS_bh2t5sy4_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_bh2t5sy4_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_bh2t5sy4_wpftmp.assets.cache
+|   |       |   QCS_bh2t5sy4_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_bh2t5sy4_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_bh2t5sy4_wpftmp.sourcelink.json
+|   |       |   QCS_bo3t00bw_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_bo3t00bw_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_bo3t00bw_wpftmp.assets.cache
+|   |       |   QCS_bo3t00bw_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_bo3t00bw_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_bo3t00bw_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_bo3t00bw_wpftmp.sourcelink.json
+|   |       |   QCS_bppjm11o_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_bppjm11o_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_bppjm11o_wpftmp.assets.cache
+|   |       |   QCS_bppjm11o_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_bppjm11o_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_bppjm11o_wpftmp.sourcelink.json
+|   |       |   QCS_brmryhwt_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_brmryhwt_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_brmryhwt_wpftmp.assets.cache
+|   |       |   QCS_brmryhwt_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_brmryhwt_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_brmryhwt_wpftmp.sourcelink.json
+|   |       |   QCS_bs5jbull_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_bs5jbull_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_bs5jbull_wpftmp.assets.cache
+|   |       |   QCS_bs5jbull_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_bs5jbull_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_bs5jbull_wpftmp.sourcelink.json
+|   |       |   QCS_bvhzcdhr_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_bvhzcdhr_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_bvhzcdhr_wpftmp.assets.cache
+|   |       |   QCS_bvhzcdhr_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_bvhzcdhr_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_bvhzcdhr_wpftmp.sourcelink.json
+|   |       |   QCS_cjnzpbvm_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_cjnzpbvm_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_cjnzpbvm_wpftmp.assets.cache
+|   |       |   QCS_cjnzpbvm_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_cjnzpbvm_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_cjnzpbvm_wpftmp.sourcelink.json
+|   |       |   QCS_cmr0vj52_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_cmr0vj52_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_cmr0vj52_wpftmp.assets.cache
+|   |       |   QCS_cmr0vj52_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_cmr0vj52_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_cmr0vj52_wpftmp.sourcelink.json
+|   |       |   QCS_Content.g.cs
+|   |       |   QCS_Content.g.i.cs
+|   |       |   QCS_cvl2qizr_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_cvl2qizr_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_cvl2qizr_wpftmp.assets.cache
+|   |       |   QCS_cvl2qizr_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_cvl2qizr_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_cvl2qizr_wpftmp.sourcelink.json
+|   |       |   QCS_cygfaeux_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_cygfaeux_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_cygfaeux_wpftmp.assets.cache
+|   |       |   QCS_cygfaeux_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_cygfaeux_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_cygfaeux_wpftmp.sourcelink.json
+|   |       |   QCS_ddvfqocv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ddvfqocv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ddvfqocv_wpftmp.assets.cache
+|   |       |   QCS_ddvfqocv_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_ddvfqocv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ddvfqocv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ddvfqocv_wpftmp.sourcelink.json
+|   |       |   QCS_drhthgky_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_drhthgky_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_drhthgky_wpftmp.assets.cache
+|   |       |   QCS_drhthgky_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_drhthgky_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_drhthgky_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_drhthgky_wpftmp.sourcelink.json
+|   |       |   QCS_e5jsugma_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_e5jsugma_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_e5jsugma_wpftmp.assets.cache
+|   |       |   QCS_e5jsugma_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_e5jsugma_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_e5jsugma_wpftmp.sourcelink.json
+|   |       |   QCS_etaq5oda_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_etaq5oda_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_etaq5oda_wpftmp.assets.cache
+|   |       |   QCS_etaq5oda_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_etaq5oda_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_etaq5oda_wpftmp.sourcelink.json
+|   |       |   QCS_ewcvsaaz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ewcvsaaz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ewcvsaaz_wpftmp.assets.cache
+|   |       |   QCS_ewcvsaaz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ewcvsaaz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ewcvsaaz_wpftmp.sourcelink.json
+|   |       |   QCS_ffykgqwn_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ffykgqwn_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ffykgqwn_wpftmp.assets.cache
+|   |       |   QCS_ffykgqwn_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ffykgqwn_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ffykgqwn_wpftmp.sourcelink.json
+|   |       |   QCS_fidj1mrv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_fidj1mrv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_fidj1mrv_wpftmp.assets.cache
+|   |       |   QCS_fidj1mrv_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_fidj1mrv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_fidj1mrv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_fidj1mrv_wpftmp.sourcelink.json
+|   |       |   QCS_fqhynlwf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_fqhynlwf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_fqhynlwf_wpftmp.assets.cache
+|   |       |   QCS_fqhynlwf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_fqhynlwf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_fqhynlwf_wpftmp.sourcelink.json
+|   |       |   QCS_fvzeuec1_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_fvzeuec1_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_fvzeuec1_wpftmp.assets.cache
+|   |       |   QCS_fvzeuec1_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_fvzeuec1_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_fvzeuec1_wpftmp.sourcelink.json
+|   |       |   QCS_g4fccoia_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_g4fccoia_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_g4fccoia_wpftmp.assets.cache
+|   |       |   QCS_g4fccoia_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_g4fccoia_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_g4fccoia_wpftmp.sourcelink.json
+|   |       |   QCS_gk0h5rr2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_gk0h5rr2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_gk0h5rr2_wpftmp.assets.cache
+|   |       |   QCS_gk0h5rr2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_gk0h5rr2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_gk0h5rr2_wpftmp.sourcelink.json
+|   |       |   QCS_glnx05qs_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_glnx05qs_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_glnx05qs_wpftmp.assets.cache
+|   |       |   QCS_glnx05qs_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_glnx05qs_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_glnx05qs_wpftmp.sourcelink.json
+|   |       |   QCS_gmu2yr2l_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_gmu2yr2l_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_gmu2yr2l_wpftmp.assets.cache
+|   |       |   QCS_gmu2yr2l_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_gmu2yr2l_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_gmu2yr2l_wpftmp.sourcelink.json
+|   |       |   QCS_gosiwhxy_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_gosiwhxy_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_gosiwhxy_wpftmp.assets.cache
+|   |       |   QCS_gosiwhxy_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_gosiwhxy_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_gosiwhxy_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_gosiwhxy_wpftmp.sourcelink.json
+|   |       |   QCS_gquyhxgo_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_gquyhxgo_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_gquyhxgo_wpftmp.assets.cache
+|   |       |   QCS_gquyhxgo_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_gquyhxgo_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_gquyhxgo_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_gquyhxgo_wpftmp.sourcelink.json
+|   |       |   QCS_gwx1xgkv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_gwx1xgkv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_gwx1xgkv_wpftmp.assets.cache
+|   |       |   QCS_gwx1xgkv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_gwx1xgkv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_gwx1xgkv_wpftmp.sourcelink.json
+|   |       |   QCS_hp3qz12z_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_hp3qz12z_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_hp3qz12z_wpftmp.assets.cache
+|   |       |   QCS_hp3qz12z_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_hp3qz12z_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_hp3qz12z_wpftmp.sourcelink.json
+|   |       |   QCS_htt4vkm3_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_htt4vkm3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_htt4vkm3_wpftmp.assets.cache
+|   |       |   QCS_htt4vkm3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_htt4vkm3_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_htt4vkm3_wpftmp.sourcelink.json
+|   |       |   QCS_hukf4def_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_hukf4def_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_hukf4def_wpftmp.assets.cache
+|   |       |   QCS_hukf4def_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_hukf4def_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_hukf4def_wpftmp.sourcelink.json
+|   |       |   QCS_hw0pezvx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_hw0pezvx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_hw0pezvx_wpftmp.assets.cache
+|   |       |   QCS_hw0pezvx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_hw0pezvx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_hw0pezvx_wpftmp.sourcelink.json
+|   |       |   QCS_i2n1iagw_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_i2n1iagw_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_i2n1iagw_wpftmp.assets.cache
+|   |       |   QCS_i2n1iagw_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_i2n1iagw_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_i2n1iagw_wpftmp.sourcelink.json
+|   |       |   QCS_i4lpxkcy_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_i4lpxkcy_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_i4lpxkcy_wpftmp.assets.cache
+|   |       |   QCS_i4lpxkcy_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_i4lpxkcy_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_i4lpxkcy_wpftmp.sourcelink.json
+|   |       |   QCS_ifv0q5ej_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ifv0q5ej_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ifv0q5ej_wpftmp.assets.cache
+|   |       |   QCS_ifv0q5ej_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ifv0q5ej_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ifv0q5ej_wpftmp.sourcelink.json
+|   |       |   QCS_ihxg4a1g_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ihxg4a1g_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ihxg4a1g_wpftmp.assets.cache
+|   |       |   QCS_ihxg4a1g_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ihxg4a1g_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ihxg4a1g_wpftmp.sourcelink.json
+|   |       |   QCS_ipql4idu_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ipql4idu_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ipql4idu_wpftmp.assets.cache
+|   |       |   QCS_ipql4idu_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ipql4idu_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ipql4idu_wpftmp.sourcelink.json
+|   |       |   QCS_ivhskxd3_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ivhskxd3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ivhskxd3_wpftmp.assets.cache
+|   |       |   QCS_ivhskxd3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ivhskxd3_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ivhskxd3_wpftmp.sourcelink.json
+|   |       |   QCS_j43fjnva_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_j43fjnva_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_j43fjnva_wpftmp.assets.cache
+|   |       |   QCS_j43fjnva_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_j43fjnva_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_j43fjnva_wpftmp.sourcelink.json
+|   |       |   QCS_j4xrsbb2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_j4xrsbb2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_j4xrsbb2_wpftmp.assets.cache
+|   |       |   QCS_j4xrsbb2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_j4xrsbb2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_j4xrsbb2_wpftmp.sourcelink.json
+|   |       |   QCS_jbqsgngx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jbqsgngx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jbqsgngx_wpftmp.assets.cache
+|   |       |   QCS_jbqsgngx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jbqsgngx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jbqsgngx_wpftmp.sourcelink.json
+|   |       |   QCS_jcc2irbj_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jcc2irbj_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jcc2irbj_wpftmp.assets.cache
+|   |       |   QCS_jcc2irbj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jcc2irbj_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jcc2irbj_wpftmp.sourcelink.json
+|   |       |   QCS_jk1s4svn_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jk1s4svn_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jk1s4svn_wpftmp.assets.cache
+|   |       |   QCS_jk1s4svn_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jk1s4svn_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jk1s4svn_wpftmp.sourcelink.json
+|   |       |   QCS_jqijqbes_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jqijqbes_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jqijqbes_wpftmp.assets.cache
+|   |       |   QCS_jqijqbes_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_jqijqbes_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jqijqbes_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jqijqbes_wpftmp.sourcelink.json
+|   |       |   QCS_jugar2zn_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jugar2zn_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jugar2zn_wpftmp.assets.cache
+|   |       |   QCS_jugar2zn_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jugar2zn_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jugar2zn_wpftmp.sourcelink.json
+|   |       |   QCS_jypgsjp3_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_jypgsjp3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_jypgsjp3_wpftmp.assets.cache
+|   |       |   QCS_jypgsjp3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_jypgsjp3_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_jypgsjp3_wpftmp.sourcelink.json
+|   |       |   QCS_kr13t1yc_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_kr13t1yc_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_kr13t1yc_wpftmp.assets.cache
+|   |       |   QCS_kr13t1yc_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_kr13t1yc_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_kr13t1yc_wpftmp.sourcelink.json
+|   |       |   QCS_krwibaeb_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_krwibaeb_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_krwibaeb_wpftmp.assets.cache
+|   |       |   QCS_krwibaeb_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_krwibaeb_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_krwibaeb_wpftmp.sourcelink.json
+|   |       |   QCS_kscboezc_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_kscboezc_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_kscboezc_wpftmp.assets.cache
+|   |       |   QCS_kscboezc_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_kscboezc_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_kscboezc_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_kscboezc_wpftmp.sourcelink.json
+|   |       |   QCS_l55cjezw_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_l55cjezw_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_l55cjezw_wpftmp.assets.cache
+|   |       |   QCS_l55cjezw_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_l55cjezw_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_l55cjezw_wpftmp.sourcelink.json
+|   |       |   QCS_lekxk0c5_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_lekxk0c5_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_lekxk0c5_wpftmp.assets.cache
+|   |       |   QCS_lekxk0c5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_lekxk0c5_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_lekxk0c5_wpftmp.sourcelink.json
+|   |       |   QCS_lmqlwakt_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_lmqlwakt_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_lmqlwakt_wpftmp.assets.cache
+|   |       |   QCS_lmqlwakt_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_lmqlwakt_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_lmqlwakt_wpftmp.sourcelink.json
+|   |       |   QCS_m0vlhqox_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_m0vlhqox_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_m0vlhqox_wpftmp.assets.cache
+|   |       |   QCS_m0vlhqox_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_m0vlhqox_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_m0vlhqox_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_m0vlhqox_wpftmp.sourcelink.json
+|   |       |   QCS_MarkupCompile.cache
+|   |       |   QCS_MarkupCompile.i.cache
+|   |       |   QCS_MarkupCompile.lref
+|   |       |   QCS_mqvjpq15_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_mqvjpq15_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_mqvjpq15_wpftmp.assets.cache
+|   |       |   QCS_mqvjpq15_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_mqvjpq15_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_mqvjpq15_wpftmp.sourcelink.json
+|   |       |   QCS_mrnawofx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_mrnawofx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_mrnawofx_wpftmp.assets.cache
+|   |       |   QCS_mrnawofx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_mrnawofx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_mrnawofx_wpftmp.sourcelink.json
+|   |       |   QCS_mvhvi1wt_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_mvhvi1wt_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_mvhvi1wt_wpftmp.assets.cache
+|   |       |   QCS_mvhvi1wt_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_mvhvi1wt_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_mvhvi1wt_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_mvhvi1wt_wpftmp.sourcelink.json
+|   |       |   QCS_nnikizuj_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_nnikizuj_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_nnikizuj_wpftmp.assets.cache
+|   |       |   QCS_nnikizuj_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_nnikizuj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_nnikizuj_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_nnikizuj_wpftmp.sourcelink.json
+|   |       |   QCS_nq0k051x_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_nq0k051x_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_nq0k051x_wpftmp.assets.cache
+|   |       |   QCS_nq0k051x_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_nq0k051x_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_nq0k051x_wpftmp.sourcelink.json
+|   |       |   QCS_nqb4iom3_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_nqb4iom3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_nqb4iom3_wpftmp.assets.cache
+|   |       |   QCS_nqb4iom3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_nqb4iom3_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_nqb4iom3_wpftmp.sourcelink.json
+|   |       |   QCS_nvs0aoby_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_nvs0aoby_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_nvs0aoby_wpftmp.assets.cache
+|   |       |   QCS_nvs0aoby_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_nvs0aoby_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_nvs0aoby_wpftmp.sourcelink.json
+|   |       |   QCS_nwshvhqu_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_nwshvhqu_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_nwshvhqu_wpftmp.assets.cache
+|   |       |   QCS_nwshvhqu_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_nwshvhqu_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_nwshvhqu_wpftmp.sourcelink.json
+|   |       |   QCS_o2l4i15x_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_o2l4i15x_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_o2l4i15x_wpftmp.assets.cache
+|   |       |   QCS_o2l4i15x_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_o2l4i15x_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_o2l4i15x_wpftmp.sourcelink.json
+|   |       |   QCS_o4mlogrt_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_o4mlogrt_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_o4mlogrt_wpftmp.assets.cache
+|   |       |   QCS_o4mlogrt_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_o4mlogrt_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_o4mlogrt_wpftmp.sourcelink.json
+|   |       |   QCS_obsemx23_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_obsemx23_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_obsemx23_wpftmp.assets.cache
+|   |       |   QCS_obsemx23_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_obsemx23_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_obsemx23_wpftmp.sourcelink.json
+|   |       |   QCS_oclxpgi2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_oclxpgi2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_oclxpgi2_wpftmp.assets.cache
+|   |       |   QCS_oclxpgi2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_oclxpgi2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_oclxpgi2_wpftmp.sourcelink.json
+|   |       |   QCS_oebmopwj_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_oebmopwj_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_oebmopwj_wpftmp.assets.cache
+|   |       |   QCS_oebmopwj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_oebmopwj_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_oebmopwj_wpftmp.sourcelink.json
+|   |       |   QCS_onwlzojq_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_onwlzojq_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_onwlzojq_wpftmp.assets.cache
+|   |       |   QCS_onwlzojq_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_onwlzojq_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_onwlzojq_wpftmp.sourcelink.json
+|   |       |   QCS_oo1j3kbh_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_oo1j3kbh_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_oo1j3kbh_wpftmp.assets.cache
+|   |       |   QCS_oo1j3kbh_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_oo1j3kbh_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_oo1j3kbh_wpftmp.sourcelink.json
+|   |       |   QCS_p1ayjncz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_p1ayjncz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_p1ayjncz_wpftmp.assets.cache
+|   |       |   QCS_p1ayjncz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_p1ayjncz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_p1ayjncz_wpftmp.sourcelink.json
+|   |       |   QCS_p3fzwyog_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_p3fzwyog_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_p3fzwyog_wpftmp.assets.cache
+|   |       |   QCS_p3fzwyog_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_p3fzwyog_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_p3fzwyog_wpftmp.sourcelink.json
+|   |       |   QCS_p45kspsu_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_p45kspsu_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_p45kspsu_wpftmp.assets.cache
+|   |       |   QCS_p45kspsu_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_p45kspsu_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_p45kspsu_wpftmp.sourcelink.json
+|   |       |   QCS_pb3ddrn5_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_pb3ddrn5_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_pb3ddrn5_wpftmp.assets.cache
+|   |       |   QCS_pb3ddrn5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_pb3ddrn5_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_pb3ddrn5_wpftmp.sourcelink.json
+|   |       |   QCS_pczwz54x_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_pczwz54x_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_pczwz54x_wpftmp.assets.cache
+|   |       |   QCS_pczwz54x_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_pczwz54x_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_pczwz54x_wpftmp.sourcelink.json
+|   |       |   QCS_ptiaemkx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ptiaemkx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ptiaemkx_wpftmp.assets.cache
+|   |       |   QCS_ptiaemkx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ptiaemkx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ptiaemkx_wpftmp.sourcelink.json
+|   |       |   QCS_pukdn04h_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_pukdn04h_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_pukdn04h_wpftmp.assets.cache
+|   |       |   QCS_pukdn04h_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_pukdn04h_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_pukdn04h_wpftmp.sourcelink.json
+|   |       |   QCS_pw0vjmt5_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_pw0vjmt5_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_pw0vjmt5_wpftmp.assets.cache
+|   |       |   QCS_pw0vjmt5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_pw0vjmt5_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_pw0vjmt5_wpftmp.sourcelink.json
+|   |       |   QCS_qdczonjf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_qdczonjf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_qdczonjf_wpftmp.assets.cache
+|   |       |   QCS_qdczonjf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_qdczonjf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_qdczonjf_wpftmp.sourcelink.json
+|   |       |   QCS_qg32vpex_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_qg32vpex_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_qg32vpex_wpftmp.assets.cache
+|   |       |   QCS_qg32vpex_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_qg32vpex_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_qg32vpex_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_qg32vpex_wpftmp.sourcelink.json
+|   |       |   QCS_qpfyrzce_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_qpfyrzce_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_qpfyrzce_wpftmp.assets.cache
+|   |       |   QCS_qpfyrzce_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_qpfyrzce_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_qpfyrzce_wpftmp.sourcelink.json
+|   |       |   QCS_qvbstqxx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_qvbstqxx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_qvbstqxx_wpftmp.assets.cache
+|   |       |   QCS_qvbstqxx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_qvbstqxx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_qvbstqxx_wpftmp.sourcelink.json
+|   |       |   QCS_qwtuyj2d_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_qwtuyj2d_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_qwtuyj2d_wpftmp.assets.cache
+|   |       |   QCS_qwtuyj2d_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_qwtuyj2d_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_qwtuyj2d_wpftmp.sourcelink.json
+|   |       |   QCS_r530ujyg_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_r530ujyg_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_r530ujyg_wpftmp.assets.cache
+|   |       |   QCS_r530ujyg_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_r530ujyg_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_r530ujyg_wpftmp.sourcelink.json
+|   |       |   QCS_rlazb5y4_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_rlazb5y4_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_rlazb5y4_wpftmp.assets.cache
+|   |       |   QCS_rlazb5y4_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_rlazb5y4_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_rlazb5y4_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_rlazb5y4_wpftmp.sourcelink.json
+|   |       |   QCS_rxftxcmf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_rxftxcmf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_rxftxcmf_wpftmp.assets.cache
+|   |       |   QCS_rxftxcmf_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_rxftxcmf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_rxftxcmf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_rxftxcmf_wpftmp.sourcelink.json
+|   |       |   QCS_ryibgpcx_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ryibgpcx_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ryibgpcx_wpftmp.assets.cache
+|   |       |   QCS_ryibgpcx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ryibgpcx_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ryibgpcx_wpftmp.sourcelink.json
+|   |       |   QCS_s4tzdvml_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_s4tzdvml_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_s4tzdvml_wpftmp.assets.cache
+|   |       |   QCS_s4tzdvml_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_s4tzdvml_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_s4tzdvml_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_s4tzdvml_wpftmp.sourcelink.json
+|   |       |   QCS_sodih1hz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_sodih1hz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_sodih1hz_wpftmp.assets.cache
+|   |       |   QCS_sodih1hz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_sodih1hz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_sodih1hz_wpftmp.sourcelink.json
+|   |       |   QCS_squuhc4s_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_squuhc4s_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_squuhc4s_wpftmp.assets.cache
+|   |       |   QCS_squuhc4s_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_squuhc4s_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_squuhc4s_wpftmp.sourcelink.json
+|   |       |   QCS_tc5cpuim_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_tc5cpuim_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_tc5cpuim_wpftmp.assets.cache
+|   |       |   QCS_tc5cpuim_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_tc5cpuim_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_tc5cpuim_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_tc5cpuim_wpftmp.sourcelink.json
+|   |       |   QCS_tkpkd2zf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_tkpkd2zf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_tkpkd2zf_wpftmp.assets.cache
+|   |       |   QCS_tkpkd2zf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_tkpkd2zf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_tkpkd2zf_wpftmp.sourcelink.json
+|   |       |   QCS_ttmnqcz2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_ttmnqcz2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_ttmnqcz2_wpftmp.assets.cache
+|   |       |   QCS_ttmnqcz2_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_ttmnqcz2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_ttmnqcz2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_ttmnqcz2_wpftmp.sourcelink.json
+|   |       |   QCS_u4lqppuo_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_u4lqppuo_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_u4lqppuo_wpftmp.assets.cache
+|   |       |   QCS_u4lqppuo_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_u4lqppuo_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_u4lqppuo_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_u4lqppuo_wpftmp.sourcelink.json
+|   |       |   QCS_uk0a1unr_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_uk0a1unr_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_uk0a1unr_wpftmp.assets.cache
+|   |       |   QCS_uk0a1unr_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_uk0a1unr_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_uk0a1unr_wpftmp.sourcelink.json
+|   |       |   QCS_um3xv4ce_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_um3xv4ce_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_um3xv4ce_wpftmp.assets.cache
+|   |       |   QCS_um3xv4ce_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_um3xv4ce_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_um3xv4ce_wpftmp.sourcelink.json
+|   |       |   QCS_uvfgsb2m_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_uvfgsb2m_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_uvfgsb2m_wpftmp.assets.cache
+|   |       |   QCS_uvfgsb2m_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_uvfgsb2m_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_uvfgsb2m_wpftmp.sourcelink.json
+|   |       |   QCS_v1mbzby0_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_v1mbzby0_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_v1mbzby0_wpftmp.assets.cache
+|   |       |   QCS_v1mbzby0_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_v1mbzby0_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_v1mbzby0_wpftmp.sourcelink.json
+|   |       |   QCS_vddg0ler_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vddg0ler_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vddg0ler_wpftmp.assets.cache
+|   |       |   QCS_vddg0ler_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vddg0ler_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vddg0ler_wpftmp.sourcelink.json
+|   |       |   QCS_vgijtyhi_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vgijtyhi_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vgijtyhi_wpftmp.assets.cache
+|   |       |   QCS_vgijtyhi_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vgijtyhi_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vgijtyhi_wpftmp.sourcelink.json
+|   |       |   QCS_vm3vb1bc_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vm3vb1bc_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vm3vb1bc_wpftmp.assets.cache
+|   |       |   QCS_vm3vb1bc_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vm3vb1bc_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vm3vb1bc_wpftmp.sourcelink.json
+|   |       |   QCS_vq1gerjd_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vq1gerjd_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vq1gerjd_wpftmp.assets.cache
+|   |       |   QCS_vq1gerjd_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vq1gerjd_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vq1gerjd_wpftmp.sourcelink.json
+|   |       |   QCS_vqy4oeax_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vqy4oeax_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vqy4oeax_wpftmp.assets.cache
+|   |       |   QCS_vqy4oeax_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_vqy4oeax_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vqy4oeax_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vqy4oeax_wpftmp.sourcelink.json
+|   |       |   QCS_vr1xzszc_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vr1xzszc_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vr1xzszc_wpftmp.assets.cache
+|   |       |   QCS_vr1xzszc_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vr1xzszc_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vr1xzszc_wpftmp.sourcelink.json
+|   |       |   QCS_vtvtgebf_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vtvtgebf_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vtvtgebf_wpftmp.assets.cache
+|   |       |   QCS_vtvtgebf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vtvtgebf_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vtvtgebf_wpftmp.sourcelink.json
+|   |       |   QCS_vu05lmss_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vu05lmss_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vu05lmss_wpftmp.assets.cache
+|   |       |   QCS_vu05lmss_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_vu05lmss_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vu05lmss_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vu05lmss_wpftmp.sourcelink.json
+|   |       |   QCS_vxhmcio3_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_vxhmcio3_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_vxhmcio3_wpftmp.assets.cache
+|   |       |   QCS_vxhmcio3_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_vxhmcio3_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_vxhmcio3_wpftmp.sourcelink.json
+|   |       |   QCS_w2cbydlo_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_w2cbydlo_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_w2cbydlo_wpftmp.assets.cache
+|   |       |   QCS_w2cbydlo_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_w2cbydlo_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_w2cbydlo_wpftmp.sourcelink.json
+|   |       |   QCS_wdo0muud_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_wdo0muud_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_wdo0muud_wpftmp.assets.cache
+|   |       |   QCS_wdo0muud_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_wdo0muud_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_wdo0muud_wpftmp.sourcelink.json
+|   |       |   QCS_wjd0w3la_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_wjd0w3la_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_wjd0w3la_wpftmp.assets.cache
+|   |       |   QCS_wjd0w3la_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_wjd0w3la_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_wjd0w3la_wpftmp.sourcelink.json
+|   |       |   QCS_wjityo2b_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_wjityo2b_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_wjityo2b_wpftmp.assets.cache
+|   |       |   QCS_wjityo2b_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_wjityo2b_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_wjityo2b_wpftmp.sourcelink.json
+|   |       |   QCS_x2pk3mk2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_x2pk3mk2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_x2pk3mk2_wpftmp.assets.cache
+|   |       |   QCS_x2pk3mk2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_x2pk3mk2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_x2pk3mk2_wpftmp.sourcelink.json
+|   |       |   QCS_x30rntyg_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_x30rntyg_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_x30rntyg_wpftmp.assets.cache
+|   |       |   QCS_x30rntyg_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_x30rntyg_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_x30rntyg_wpftmp.sourcelink.json
+|   |       |   QCS_xc53410m_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xc53410m_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xc53410m_wpftmp.assets.cache
+|   |       |   QCS_xc53410m_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xc53410m_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xc53410m_wpftmp.sourcelink.json
+|   |       |   QCS_xcyrhh24_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xcyrhh24_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xcyrhh24_wpftmp.assets.cache
+|   |       |   QCS_xcyrhh24_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xcyrhh24_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xcyrhh24_wpftmp.sourcelink.json
+|   |       |   QCS_xhgmrfdh_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xhgmrfdh_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xhgmrfdh_wpftmp.assets.cache
+|   |       |   QCS_xhgmrfdh_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xhgmrfdh_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xhgmrfdh_wpftmp.sourcelink.json
+|   |       |   QCS_xlzc0usj_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xlzc0usj_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xlzc0usj_wpftmp.assets.cache
+|   |       |   QCS_xlzc0usj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xlzc0usj_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xlzc0usj_wpftmp.sourcelink.json
+|   |       |   QCS_xonudmhl_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xonudmhl_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xonudmhl_wpftmp.assets.cache
+|   |       |   QCS_xonudmhl_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xonudmhl_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xonudmhl_wpftmp.sourcelink.json
+|   |       |   QCS_xq3rre4a_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xq3rre4a_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xq3rre4a_wpftmp.assets.cache
+|   |       |   QCS_xq3rre4a_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xq3rre4a_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xq3rre4a_wpftmp.sourcelink.json
+|   |       |   QCS_xvfnmttz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xvfnmttz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xvfnmttz_wpftmp.assets.cache
+|   |       |   QCS_xvfnmttz_wpftmp.csproj.BuildWithSkipAnalyzers
+|   |       |   QCS_xvfnmttz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xvfnmttz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xvfnmttz_wpftmp.sourcelink.json
+|   |       |   QCS_xwseujn2_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_xwseujn2_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_xwseujn2_wpftmp.assets.cache
+|   |       |   QCS_xwseujn2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_xwseujn2_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_xwseujn2_wpftmp.sourcelink.json
+|   |       |   QCS_yah1pzpi_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_yah1pzpi_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_yah1pzpi_wpftmp.assets.cache
+|   |       |   QCS_yah1pzpi_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_yah1pzpi_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_yah1pzpi_wpftmp.sourcelink.json
+|   |       |   QCS_yt2tkuby_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_yt2tkuby_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_yt2tkuby_wpftmp.assets.cache
+|   |       |   QCS_yt2tkuby_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_yt2tkuby_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_yt2tkuby_wpftmp.sourcelink.json
+|   |       |   QCS_z01t2qiv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_z01t2qiv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_z01t2qiv_wpftmp.assets.cache
+|   |       |   QCS_z01t2qiv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_z01t2qiv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_z01t2qiv_wpftmp.sourcelink.json
+|   |       |   QCS_z1442z2k_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_z1442z2k_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_z1442z2k_wpftmp.assets.cache
+|   |       |   QCS_z1442z2k_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_z1442z2k_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_z1442z2k_wpftmp.sourcelink.json
+|   |       |   QCS_zo4xalxz_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_zo4xalxz_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_zo4xalxz_wpftmp.assets.cache
+|   |       |   QCS_zo4xalxz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_zo4xalxz_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_zo4xalxz_wpftmp.sourcelink.json
+|   |       |   QCS_zyexk1cv_wpftmp.AssemblyInfo.cs
+|   |       |   QCS_zyexk1cv_wpftmp.AssemblyInfoInputs.cache
+|   |       |   QCS_zyexk1cv_wpftmp.assets.cache
+|   |       |   QCS_zyexk1cv_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|   |       |   QCS_zyexk1cv_wpftmp.GlobalUsings.g.cs
+|   |       |   QCS_zyexk1cv_wpftmp.sourcelink.json
+|   |       |   ReferenceDataView.baml
+|   |       |   ReferenceDataView.g.cs
+|   |       |   ReferenceDataView.g.i.cs
+|   |       |   RmInventoryExportView.g.i.cs
+|   |       |   TestResultListView.baml
+|   |       |   TestResultListView.g.cs
+|   |       |   TestResultListView.g.i.cs
+|   |       |   UserManagementView.baml
+|   |       |   UserManagementView.g.cs
+|   |       |   UserManagementView.g.i.cs
+|   |       |   UserSwitchView.baml
+|   |       |   UserSwitchView.g.cs
+|   |       |   UserSwitchView.g.i.cs
+|   |       |   
+|   |       +---ref
+|   |       |       CoA_CS.dll
+|   |       |       QCS.dll
+|   |       |       
+|   |       +---refint
+|   |       |       CoA_CS.dll
+|   |       |       QCS.dll
+|   |       |       
+|   |       \---Styles
+|   |               QcsCommonStyles.baml
+|   |               
+|   +---publish
+|   |   +---win-x64
+|   |   |       project.assets.json
+|   |   |       project.nuget.cache
+|   |   |       QCS.csproj.nuget.dgspec.json
+|   |   |       QCS.csproj.nuget.g.props
+|   |   |       QCS.csproj.nuget.g.targets
+|   |   |       
+|   |   \---win-x86
+|   |           CoA_CS.csproj.nuget.dgspec.json
+|   |           CoA_CS.csproj.nuget.g.props
+|   |           CoA_CS.csproj.nuget.g.targets
+|   |           project.assets.json
+|   |           project.nuget.cache
+|   |           
+|   \---Release
+|       \---net9.0-windows7.0
+|           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|           |   AccessPermissionView.baml
+|           |   AccessPermissionView.g.cs
+|           |   AccessPermissionView.g.i.cs
+|           |   AdminManagementView.baml
+|           |   AdminManagementView.g.cs
+|           |   AdminManagementView.g.i.cs
+|           |   App.baml
+|           |   App.g.cs
+|           |   App.g.i.cs
+|           |   apphost.exe
+|           |   CoARegistryView.baml
+|           |   CoARegistryView.g.cs
+|           |   CoARegistryView.g.i.cs
+|           |   CoA_CS.AssemblyInfo.cs
+|           |   CoA_CS.AssemblyInfoInputs.cache
+|           |   CoA_CS.assets.cache
+|           |   CoA_CS.csproj.AssemblyReference.cache
+|           |   CoA_CS.csproj.CoreCompileInputs.cache
+|           |   CoA_CS.csproj.FileListAbsolute.txt
+|           |   CoA_CS.csproj.Up2Date
+|           |   CoA_CS.designer.deps.json
+|           |   CoA_CS.designer.runtimeconfig.json
+|           |   CoA_CS.dll
+|           |   CoA_CS.g.resources
+|           |   CoA_CS.GeneratedMSBuildEditorConfig.editorconfig
+|           |   CoA_CS.genruntimeconfig.cache
+|           |   CoA_CS.GlobalUsings.g.cs
+|           |   CoA_CS.pdb
+|           |   CoA_CS.sourcelink.json
+|           |   CoA_CS_5ubxdxiu_wpftmp.AssemblyInfo.cs
+|           |   CoA_CS_5ubxdxiu_wpftmp.AssemblyInfoInputs.cache
+|           |   CoA_CS_5ubxdxiu_wpftmp.assets.cache
+|           |   CoA_CS_5ubxdxiu_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   CoA_CS_5ubxdxiu_wpftmp.GlobalUsings.g.cs
+|           |   CoA_CS_5ubxdxiu_wpftmp.sourcelink.json
+|           |   CoA_CS_e33dmh4u_wpftmp.AssemblyInfo.cs
+|           |   CoA_CS_e33dmh4u_wpftmp.AssemblyInfoInputs.cache
+|           |   CoA_CS_e33dmh4u_wpftmp.assets.cache
+|           |   CoA_CS_e33dmh4u_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   CoA_CS_e33dmh4u_wpftmp.GlobalUsings.g.cs
+|           |   CoA_CS_e33dmh4u_wpftmp.sourcelink.json
+|           |   CoA_CS_lsbxl3tj_wpftmp.AssemblyInfo.cs
+|           |   CoA_CS_lsbxl3tj_wpftmp.AssemblyInfoInputs.cache
+|           |   CoA_CS_lsbxl3tj_wpftmp.assets.cache
+|           |   CoA_CS_lsbxl3tj_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   CoA_CS_lsbxl3tj_wpftmp.GlobalUsings.g.cs
+|           |   CoA_CS_lsbxl3tj_wpftmp.sourcelink.json
+|           |   CoA_CS_lwrojejl_wpftmp.AssemblyInfo.cs
+|           |   CoA_CS_lwrojejl_wpftmp.AssemblyInfoInputs.cache
+|           |   CoA_CS_lwrojejl_wpftmp.assets.cache
+|           |   CoA_CS_lwrojejl_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   CoA_CS_lwrojejl_wpftmp.GlobalUsings.g.cs
+|           |   CoA_CS_lwrojejl_wpftmp.sourcelink.json
+|           |   CoA_CS_MarkupCompile.cache
+|           |   CoA_CS_MarkupCompile.i.cache
+|           |   CoA_CS_MarkupCompile.lref
+|           |   CodeListView.baml
+|           |   CodeListView.g.cs
+|           |   CodeListView.g.i.cs
+|           |   DatabaseSchemaView.baml
+|           |   DatabaseSchemaView.g.cs
+|           |   DatabaseSchemaView.g.i.cs
+|           |   DatabaseSchemaWindow.baml
+|           |   DatabaseSchemaWindow.g.cs
+|           |   DatabaseSchemaWindow.g.i.cs
+|           |   ItemListView.baml
+|           |   ItemListView.g.cs
+|           |   ItemListView.g.i.cs
+|           |   MainWindow.baml
+|           |   MainWindow.g.cs
+|           |   MainWindow.g.i.cs
+|           |   MsdsInventoryExportView.baml
+|           |   MsdsInventoryExportView.g.cs
+|           |   MsdsInventoryExportView.g.i.cs
+|           |   MsdsManagementView.baml
+|           |   MsdsManagementView.g.cs
+|           |   MsdsManagementView.g.i.cs
+|           |   MsdsRegistrationView.baml
+|           |   MsdsRegistrationView.g.cs
+|           |   MsdsRegistrationView.g.i.cs
+|           |   PublishOutputs.7a91e0d405.txt
+|           |   QCS.AssemblyInfo.cs
+|           |   QCS.AssemblyInfoInputs.cache
+|           |   QCS.assets.cache
+|           |   QCS.csproj.AssemblyReference.cache
+|           |   QCS.csproj.CoreCompileInputs.cache
+|           |   QCS.csproj.FileListAbsolute.txt
+|           |   QCS.csproj.Up2Date
+|           |   QCS.dll
+|           |   QCS.g.resources
+|           |   QCS.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS.genruntimeconfig.cache
+|           |   QCS.GlobalUsings.g.cs
+|           |   QCS.pdb
+|           |   QCS.sourcelink.json
+|           |   QCS_a0lbhrxr_wpftmp.AssemblyInfo.cs
+|           |   QCS_a0lbhrxr_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_a0lbhrxr_wpftmp.assets.cache
+|           |   QCS_a0lbhrxr_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_a0lbhrxr_wpftmp.GlobalUsings.g.cs
+|           |   QCS_a0lbhrxr_wpftmp.sourcelink.json
+|           |   QCS_au4sioe2_wpftmp.AssemblyInfo.cs
+|           |   QCS_au4sioe2_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_au4sioe2_wpftmp.assets.cache
+|           |   QCS_au4sioe2_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_au4sioe2_wpftmp.GlobalUsings.g.cs
+|           |   QCS_au4sioe2_wpftmp.sourcelink.json
+|           |   QCS_Content.g.cs
+|           |   QCS_Content.g.i.cs
+|           |   QCS_g4iv55vm_wpftmp.AssemblyInfo.cs
+|           |   QCS_g4iv55vm_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_g4iv55vm_wpftmp.assets.cache
+|           |   QCS_g4iv55vm_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_g4iv55vm_wpftmp.GlobalUsings.g.cs
+|           |   QCS_g4iv55vm_wpftmp.sourcelink.json
+|           |   QCS_hr0uk2xx_wpftmp.AssemblyInfo.cs
+|           |   QCS_hr0uk2xx_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_hr0uk2xx_wpftmp.assets.cache
+|           |   QCS_hr0uk2xx_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_hr0uk2xx_wpftmp.GlobalUsings.g.cs
+|           |   QCS_hr0uk2xx_wpftmp.sourcelink.json
+|           |   QCS_MarkupCompile.cache
+|           |   QCS_MarkupCompile.i.cache
+|           |   QCS_MarkupCompile.i.lref
+|           |   QCS_MarkupCompile.lref
+|           |   QCS_oho5res4_wpftmp.AssemblyInfo.cs
+|           |   QCS_oho5res4_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_oho5res4_wpftmp.assets.cache
+|           |   QCS_oho5res4_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_oho5res4_wpftmp.GlobalUsings.g.cs
+|           |   QCS_oho5res4_wpftmp.sourcelink.json
+|           |   QCS_poikjcha_wpftmp.AssemblyInfo.cs
+|           |   QCS_poikjcha_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_poikjcha_wpftmp.assets.cache
+|           |   QCS_poikjcha_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_poikjcha_wpftmp.GlobalUsings.g.cs
+|           |   QCS_poikjcha_wpftmp.sourcelink.json
+|           |   QCS_qyzkjeld_wpftmp.AssemblyInfo.cs
+|           |   QCS_qyzkjeld_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_qyzkjeld_wpftmp.assets.cache
+|           |   QCS_qyzkjeld_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_qyzkjeld_wpftmp.GlobalUsings.g.cs
+|           |   QCS_qyzkjeld_wpftmp.sourcelink.json
+|           |   QCS_r0dcch4x_wpftmp.AssemblyInfo.cs
+|           |   QCS_r0dcch4x_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_r0dcch4x_wpftmp.assets.cache
+|           |   QCS_r0dcch4x_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_r0dcch4x_wpftmp.GlobalUsings.g.cs
+|           |   QCS_r0dcch4x_wpftmp.sourcelink.json
+|           |   QCS_wsmlg3do_wpftmp.AssemblyInfo.cs
+|           |   QCS_wsmlg3do_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_wsmlg3do_wpftmp.assets.cache
+|           |   QCS_wsmlg3do_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_wsmlg3do_wpftmp.GlobalUsings.g.cs
+|           |   QCS_wsmlg3do_wpftmp.sourcelink.json
+|           |   QCS_wu2gr1eb_wpftmp.AssemblyInfo.cs
+|           |   QCS_wu2gr1eb_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_wu2gr1eb_wpftmp.assets.cache
+|           |   QCS_wu2gr1eb_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_wu2gr1eb_wpftmp.GlobalUsings.g.cs
+|           |   QCS_wu2gr1eb_wpftmp.sourcelink.json
+|           |   QCS_yknd1xxb_wpftmp.AssemblyInfo.cs
+|           |   QCS_yknd1xxb_wpftmp.AssemblyInfoInputs.cache
+|           |   QCS_yknd1xxb_wpftmp.assets.cache
+|           |   QCS_yknd1xxb_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   QCS_yknd1xxb_wpftmp.GlobalUsings.g.cs
+|           |   QCS_yknd1xxb_wpftmp.sourcelink.json
+|           |   ReferenceDataView.baml
+|           |   ReferenceDataView.g.cs
+|           |   ReferenceDataView.g.i.cs
+|           |   TestResultListView.baml
+|           |   TestResultListView.g.cs
+|           |   TestResultListView.g.i.cs
+|           |   UserManagementView.baml
+|           |   UserManagementView.g.cs
+|           |   UserManagementView.g.i.cs
+|           |   UserSwitchView.baml
+|           |   UserSwitchView.g.cs
+|           |   UserSwitchView.g.i.cs
+|           |   
+|           +---ref
+|           |       CoA_CS.dll
+|           |       QCS.dll
+|           |       
+|           +---refint
+|           |       CoA_CS.dll
+|           |       QCS.dll
+|           |       
+|           +---Styles
+|           |       QcsCommonStyles.baml
+|           |       
+|           +---win-x64
+|           |   |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|           |   |   AccessPermissionView.baml
+|           |   |   AccessPermissionView.g.cs
+|           |   |   AccessPermissionView.g.i.cs
+|           |   |   AdminManagementView.baml
+|           |   |   AdminManagementView.g.cs
+|           |   |   AdminManagementView.g.i.cs
+|           |   |   App.baml
+|           |   |   App.g.cs
+|           |   |   App.g.i.cs
+|           |   |   apphost.exe
+|           |   |   CoARegistryView.baml
+|           |   |   CoARegistryView.g.cs
+|           |   |   CoARegistryView.g.i.cs
+|           |   |   CodeListView.baml
+|           |   |   CodeListView.g.cs
+|           |   |   CodeListView.g.i.cs
+|           |   |   DatabaseSchemaView.baml
+|           |   |   DatabaseSchemaView.g.cs
+|           |   |   DatabaseSchemaView.g.i.cs
+|           |   |   DatabaseSchemaWindow.baml
+|           |   |   DatabaseSchemaWindow.g.cs
+|           |   |   DatabaseSchemaWindow.g.i.cs
+|           |   |   ItemListView.baml
+|           |   |   ItemListView.g.cs
+|           |   |   ItemListView.g.i.cs
+|           |   |   MainWindow.baml
+|           |   |   MainWindow.g.cs
+|           |   |   MainWindow.g.i.cs
+|           |   |   MsdsInventoryExportView.baml
+|           |   |   MsdsInventoryExportView.g.cs
+|           |   |   MsdsInventoryExportView.g.i.cs
+|           |   |   MsdsManagementView.baml
+|           |   |   MsdsManagementView.g.cs
+|           |   |   MsdsManagementView.g.i.cs
+|           |   |   MsdsRegistrationView.baml
+|           |   |   MsdsRegistrationView.g.cs
+|           |   |   MsdsRegistrationView.g.i.cs
+|           |   |   PublishOutputs.a5d6e92d11.txt
+|           |   |   QCS.AssemblyInfo.cs
+|           |   |   QCS.AssemblyInfoInputs.cache
+|           |   |   QCS.assets.cache
+|           |   |   QCS.csproj.AssemblyReference.cache
+|           |   |   QCS.csproj.CoreCompileInputs.cache
+|           |   |   QCS.csproj.FileListAbsolute.txt
+|           |   |   QCS.csproj.Up2Date
+|           |   |   QCS.deps.json
+|           |   |   QCS.dll
+|           |   |   QCS.g.resources
+|           |   |   QCS.genbundle.cache
+|           |   |   QCS.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS.genpublishdeps.cache
+|           |   |   QCS.genruntimeconfig.cache
+|           |   |   QCS.GlobalUsings.g.cs
+|           |   |   QCS.pdb
+|           |   |   QCS.sourcelink.json
+|           |   |   QCS_3wsneljs_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_3wsneljs_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_3wsneljs_wpftmp.assets.cache
+|           |   |   QCS_3wsneljs_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_3wsneljs_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_3wsneljs_wpftmp.sourcelink.json
+|           |   |   QCS_5cxbqzwf_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_5cxbqzwf_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_5cxbqzwf_wpftmp.assets.cache
+|           |   |   QCS_5cxbqzwf_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_5cxbqzwf_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_5cxbqzwf_wpftmp.sourcelink.json
+|           |   |   QCS_Content.g.cs
+|           |   |   QCS_Content.g.i.cs
+|           |   |   QCS_ewqkrtw5_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_ewqkrtw5_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_ewqkrtw5_wpftmp.assets.cache
+|           |   |   QCS_ewqkrtw5_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_ewqkrtw5_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_ewqkrtw5_wpftmp.sourcelink.json
+|           |   |   QCS_g4p0juwa_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_g4p0juwa_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_g4p0juwa_wpftmp.assets.cache
+|           |   |   QCS_g4p0juwa_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_g4p0juwa_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_g4p0juwa_wpftmp.sourcelink.json
+|           |   |   QCS_gwxujmom_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_gwxujmom_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_gwxujmom_wpftmp.assets.cache
+|           |   |   QCS_gwxujmom_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_gwxujmom_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_gwxujmom_wpftmp.sourcelink.json
+|           |   |   QCS_MarkupCompile.cache
+|           |   |   QCS_MarkupCompile.lref
+|           |   |   QCS_ojq5ijsg_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_ojq5ijsg_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_ojq5ijsg_wpftmp.assets.cache
+|           |   |   QCS_ojq5ijsg_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_ojq5ijsg_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_ojq5ijsg_wpftmp.sourcelink.json
+|           |   |   QCS_qz1qgdhn_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_qz1qgdhn_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_qz1qgdhn_wpftmp.assets.cache
+|           |   |   QCS_qz1qgdhn_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_qz1qgdhn_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_qz1qgdhn_wpftmp.sourcelink.json
+|           |   |   QCS_sarc4wwh_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_sarc4wwh_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_sarc4wwh_wpftmp.assets.cache
+|           |   |   QCS_sarc4wwh_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_sarc4wwh_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_sarc4wwh_wpftmp.sourcelink.json
+|           |   |   QCS_sgt1vzd0_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_sgt1vzd0_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_sgt1vzd0_wpftmp.assets.cache
+|           |   |   QCS_sgt1vzd0_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_sgt1vzd0_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_sgt1vzd0_wpftmp.sourcelink.json
+|           |   |   QCS_uxxixj2e_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_uxxixj2e_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_uxxixj2e_wpftmp.assets.cache
+|           |   |   QCS_uxxixj2e_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_uxxixj2e_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_uxxixj2e_wpftmp.sourcelink.json
+|           |   |   QCS_wqv2rymq_wpftmp.AssemblyInfo.cs
+|           |   |   QCS_wqv2rymq_wpftmp.AssemblyInfoInputs.cache
+|           |   |   QCS_wqv2rymq_wpftmp.assets.cache
+|           |   |   QCS_wqv2rymq_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|           |   |   QCS_wqv2rymq_wpftmp.GlobalUsings.g.cs
+|           |   |   QCS_wqv2rymq_wpftmp.sourcelink.json
+|           |   |   ReferenceDataView.baml
+|           |   |   ReferenceDataView.g.cs
+|           |   |   ReferenceDataView.g.i.cs
+|           |   |   singlefilehost.exe
+|           |   |   TestResultListView.baml
+|           |   |   TestResultListView.g.cs
+|           |   |   TestResultListView.g.i.cs
+|           |   |   UserManagementView.baml
+|           |   |   UserManagementView.g.cs
+|           |   |   UserManagementView.g.i.cs
+|           |   |   UserSwitchView.baml
+|           |   |   UserSwitchView.g.cs
+|           |   |   UserSwitchView.g.i.cs
+|           |   |   
+|           |   +---ref
+|           |   |       QCS.dll
+|           |   |       
+|           |   +---refint
+|           |   |       QCS.dll
+|           |   |       
+|           |   \---Styles
+|           |           QcsCommonStyles.baml
+|           |           
+|           \---win-x86
+|               |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|               |   App.g.cs
+|               |   App.g.i.cs
+|               |   apphost.exe
+|               |   CoARegistryView.baml
+|               |   CoARegistryView.g.cs
+|               |   CoARegistryView.g.i.cs
+|               |   CoA_CS.AssemblyInfo.cs
+|               |   CoA_CS.AssemblyInfoInputs.cache
+|               |   CoA_CS.assets.cache
+|               |   CoA_CS.csproj.AssemblyReference.cache
+|               |   CoA_CS.csproj.CoreCompileInputs.cache
+|               |   CoA_CS.csproj.FileListAbsolute.txt
+|               |   CoA_CS.csproj.Up2Date
+|               |   CoA_CS.deps.json
+|               |   CoA_CS.dll
+|               |   CoA_CS.g.resources
+|               |   CoA_CS.genbundle.cache
+|               |   CoA_CS.GeneratedMSBuildEditorConfig.editorconfig
+|               |   CoA_CS.genpublishdeps.cache
+|               |   CoA_CS.genruntimeconfig.cache
+|               |   CoA_CS.GlobalUsings.g.cs
+|               |   CoA_CS.pdb
+|               |   CoA_CS.sourcelink.json
+|               |   CoA_CS_g3fpeqzl_wpftmp.AssemblyInfo.cs
+|               |   CoA_CS_g3fpeqzl_wpftmp.AssemblyInfoInputs.cache
+|               |   CoA_CS_g3fpeqzl_wpftmp.assets.cache
+|               |   CoA_CS_g3fpeqzl_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+|               |   CoA_CS_g3fpeqzl_wpftmp.GlobalUsings.g.cs
+|               |   CoA_CS_g3fpeqzl_wpftmp.sourcelink.json
+|               |   CoA_CS_MarkupCompile.cache
+|               |   CoA_CS_MarkupCompile.lref
+|               |   CodeListView.baml
+|               |   CodeListView.g.cs
+|               |   CodeListView.g.i.cs
+|               |   ItemListView.baml
+|               |   ItemListView.g.cs
+|               |   ItemListView.g.i.cs
+|               |   MainWindow.baml
+|               |   MainWindow.g.cs
+|               |   MainWindow.g.i.cs
+|               |   PublishOutputs.7a91e0d405.txt
+|               |   singlefilehost.exe
+|               |   TestResultListView.baml
+|               |   TestResultListView.g.cs
+|               |   TestResultListView.g.i.cs
+|               |   
+|               +---ref
+|               |       CoA_CS.dll
+|               |       
+|               \---refint
+|                       CoA_CS.dll
+|                       
++---Properties
+|   \---PublishProfiles
+|           FolderProfile.pubxml
+|           FolderProfile.pubxml.user
+|           
++---Resources
+|   \---Icons
+|           coa_create.png
+|           coa_create.svg
+|           coa_search.png
+|           coa_search.svg
+|           common_code.png
+|           common_code.svg
+|           data_export.png
+|           data_export.svg
+|           data_import.png
+|           data_import.svg
+|           inventory_print.png
+|           inventory_print.svg
+|           item_list.png
+|           item_list.svg
+|           msds_register.png
+|           msds_register.svg
+|           msds_search.png
+|           msds_search.svg
+|           reference_manage.png
+|           reference_manage.svg
+|           test_result.png
+|           test_result.svg
+|           
+\---Styles
+        QcsBatchChoiceDialog.cs
+        QcsCommonStyles.xaml
+        QcsModal.cs
+        
