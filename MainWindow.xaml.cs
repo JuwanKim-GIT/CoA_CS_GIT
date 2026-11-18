@@ -49,7 +49,7 @@ namespace QCS
             RunStatusText.Text = message ?? string.Empty;
         }
 
-        public void SetDatabaseStatus(int connected, int total, string details = null)
+        public void SetDatabaseStatus(int connected, int total, string? details = null)
         {
             if (total <= 0 || connected < 0 || connected > total)
                 throw new ArgumentOutOfRangeException(nameof(connected));
@@ -142,7 +142,7 @@ namespace QCS
         // 🧱 XAML 연결용 실구현 영역 (탭 동적 생성 및 연동)
         // ===================================================================
 
-        private void AddOrSelectTab(string tabHeader, UIElement customContent = null)
+        private void AddOrSelectTab(string tabHeader, UIElement? customContent = null)
         {
             foreach (TabItem item in MainTabControl.Items)
             {

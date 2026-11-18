@@ -60,7 +60,7 @@ namespace QCS
                     string checkQuery = "SELECT COUNT(*) FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_Start_Num';";
                     using (var cmd = new Microsoft.Data.Sqlite.SqliteCommand(checkQuery, conn))
                     {
-                        long count = (long)cmd.ExecuteScalar();
+                        long count = (long)(cmd.ExecuteScalar() ?? throw new InvalidOperationException("COUNT query returned null."));
                         if (count > 0) hasConfig = true;
                     }
 
@@ -311,11 +311,11 @@ namespace QCS
                             {
                                 if (reader.Read())
                                 {
-                                    desc1Val = reader["pt2_desc1"] != DBNull.Value ? reader["pt2_desc1"].ToString().Trim() : "";
-                                    desc2Val = reader["pt2_desc2"] != DBNull.Value ? reader["pt2_desc2"].ToString().Trim() : "";
-                                    shelfVal = reader["pt2_shelf"] != DBNull.Value ? reader["pt2_shelf"].ToString().Trim() : "0";
-                                    conv1Val = reader["pt2_conv1"] != DBNull.Value ? reader["pt2_conv1"].ToString().Trim() : "0";
-                                    string mstrColor = reader["pt2_color_code"] != DBNull.Value ? reader["pt2_color_code"].ToString().Trim() : "";
+                                    desc1Val = reader["pt2_desc1"] != DBNull.Value ? reader["pt2_desc1"].ToString()?.Trim() ?? "" : "";
+                                    desc2Val = reader["pt2_desc2"] != DBNull.Value ? reader["pt2_desc2"].ToString()?.Trim() ?? "" : "";
+                                    shelfVal = reader["pt2_shelf"] != DBNull.Value ? reader["pt2_shelf"].ToString()?.Trim() ?? "" : "0";
+                                    conv1Val = reader["pt2_conv1"] != DBNull.Value ? reader["pt2_conv1"].ToString()?.Trim() ?? "" : "0";
+                                    string mstrColor = reader["pt2_color_code"] != DBNull.Value ? reader["pt2_color_code"].ToString()?.Trim() ?? "" : "";
 
                                     if (string.IsNullOrEmpty(colorCodeVal) || colorCodeVal == "-")
                                     {
@@ -391,13 +391,13 @@ namespace QCS
                                     }
                                     catch { }
 
-                                    string zxDesc2 = zxReader["zx_code_desc2"] != DBNull.Value ? zxReader["zx_code_desc2"].ToString().Trim() : "";
+                                    string zxDesc2 = zxReader["zx_code_desc2"] != DBNull.Value ? zxReader["zx_code_desc2"].ToString()?.Trim() ?? "" : "";
                                     if (!string.IsNullOrEmpty(zxDesc2))
                                     {
                                         desc2Val = zxDesc2;
                                     }
 
-                                    string zxCmmt = zxReader["zx_code_cmmt"] != DBNull.Value ? zxReader["zx_code_cmmt"].ToString().Trim() : "";
+                                    string zxCmmt = zxReader["zx_code_cmmt"] != DBNull.Value ? zxReader["zx_code_cmmt"].ToString()?.Trim() ?? "" : "";
                                     if ((string.IsNullOrEmpty(colorCodeVal) || colorCodeVal == "-") && !string.IsNullOrEmpty(zxCmmt))
                                     {
                                         colorCodeVal = zxCmmt;
@@ -436,8 +436,8 @@ namespace QCS
                                 if (qmirReader.Read())
                                 {
                                     isBatchValid = true;
-                                    dbMfDate = qmirReader["qmir_mf_date"] != DBNull.Value ? qmirReader["qmir_mf_date"].ToString().Trim() : "";
-                                    rawQmirItem = qmirReader["qmir_part"] != DBNull.Value ? qmirReader["qmir_part"].ToString().Trim() : "";
+                                    dbMfDate = qmirReader["qmir_mf_date"] != DBNull.Value ? qmirReader["qmir_mf_date"].ToString()?.Trim() ?? "" : "";
+                                    rawQmirItem = qmirReader["qmir_part"] != DBNull.Value ? qmirReader["qmir_part"].ToString()?.Trim() ?? "" : "";
                                 }
                             }
                         }
@@ -509,7 +509,7 @@ namespace QCS
                                             if (finiReader.Read())
                                             {
                                                 isQmirPtValid = true;
-                                                mfgPartVal = finiReader["pt2_mfg_part"] != DBNull.Value ? finiReader["pt2_mfg_part"].ToString().Trim() : "";
+                                                mfgPartVal = finiReader["pt2_mfg_part"] != DBNull.Value ? finiReader["pt2_mfg_part"].ToString()?.Trim() ?? "" : "";
                                             }
                                         }
                                     }
@@ -563,12 +563,12 @@ namespace QCS
                 {
                     Valid = statusVal,
                     ErrorMsg = msgVal,
-                    BaseItemCode = inputItem.BaseItemCode,
+                    BaseItemCode = inputItem.BaseItemCode ?? "",
                     Desc = finalDesc,
-                    BatchNumber = inputItem.BatchNumber,
-                    ChsCode = inputItem.ChsCode,
+                    BatchNumber = inputItem.BatchNumber ?? "",
+                    ChsCode = inputItem.ChsCode ?? "",
                     ColorCode = string.IsNullOrEmpty(colorCodeVal) ? "" : colorCodeVal,
-                    Qty = inputItem.Qty,
+                    Qty = inputItem.Qty ?? "",
                     LtQty = ltqtyVal,
                     MfDate = string.IsNullOrEmpty(mfDateVal) ? "" : mfDateVal,
                     Shelf = shelfVal,
@@ -671,22 +671,22 @@ namespace QCS
                                     string FormatTo5(object val)
                                     {
                                         if (val == DBNull.Value || val == null) return "";
-                                        string raw = val.ToString().Replace("?", "").Trim();
+                                        string raw = (val.ToString() ?? "").Replace("?", "").Trim();
                                         if (double.TryParse(raw, out double d)) return d.ToString("F5");
                                         return raw;
                                     }
 
                                     DetailItem detail = new DetailItem
                                     {
-                                        No = reader["qmir_no"] != DBNull.Value ? reader["qmir_no"].ToString().Trim() : "",
-                                        Characteristic = reader["qmir_charac"] != DBNull.Value ? reader["qmir_charac"].ToString().Trim() : "",
+                                        No = reader["qmir_no"] != DBNull.Value ? reader["qmir_no"].ToString()?.Trim() ?? "" : "",
+                                        Characteristic = reader["qmir_charac"] != DBNull.Value ? reader["qmir_charac"].ToString()?.Trim() ?? "" : "",
                                         FirstValue = FormatTo5(reader["qmir_first_value"]),
                                         LastValue = FormatTo5(reader["qmir_last_value"]),
-                                        Uom = reader["qmir_uom"] != DBNull.Value ? reader["qmir_uom"].ToString().Trim() : "",
+                                        Uom = reader["qmir_uom"] != DBNull.Value ? reader["qmir_uom"].ToString()?.Trim() ?? "" : "",
                                         LowerLimit = FormatTo5(reader["qmir_ltol"]),
                                         UpperLimit = FormatTo5(reader["qmir_utol"]),
-                                        MfDateDetail = reader["qmir_mf_date"] != DBNull.Value ? reader["qmir_mf_date"].ToString().Trim() : "",
-                                        ItemCode = reader["qmir_part"] != DBNull.Value ? reader["qmir_part"].ToString().Trim() : ""
+                                        MfDateDetail = reader["qmir_mf_date"] != DBNull.Value ? reader["qmir_mf_date"].ToString()?.Trim() ?? "" : "",
+                                        ItemCode = reader["qmir_part"] != DBNull.Value ? reader["qmir_part"].ToString()?.Trim() ?? "" : ""
                                     };
 
                                     detailList.Add(detail);
@@ -786,15 +786,15 @@ namespace QCS
             else if (RdoJa.IsChecked == true) templateFile = "New_CoA_form_Jpn.xltm";
 
             // zx_code_mstr에서 CoA_CS_xltm_path 조회 (없으면 등록 요청)
-            string xltmBaseDir = null;
+            string? xltmBaseDir = null;
             using (var connPath = DatabaseManager.OpenConnection("coa"))
             {
                 string queryPath = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_xltm_path' LIMIT 1;";
                 using (var cmdPath = new SqliteCommand(queryPath, connPath))
                 {
                     var resultPath = cmdPath.ExecuteScalar();
-                    if (resultPath != null && resultPath != DBNull.Value && !string.IsNullOrEmpty(resultPath.ToString().Trim()))
-                        xltmBaseDir = resultPath.ToString().Trim();
+                    if (resultPath != null && resultPath != DBNull.Value && !string.IsNullOrEmpty(resultPath.ToString()?.Trim()))
+                        xltmBaseDir = resultPath.ToString()?.Trim();
                 }
             }
 
@@ -827,8 +827,8 @@ namespace QCS
             string saveFilename = $"{coaMasterNo}.xlsx";
             string savePath = System.IO.Path.Combine(docsDir, saveFilename).Replace("/", "\\");
 
-            Excel.Application excelApp = null;
-            Excel.Workbook wb = null;
+            Excel.Application? excelApp = null;
+            Excel.Workbook? wb = null;
 
             try
             {
@@ -856,7 +856,7 @@ namespace QCS
                     validLineIdx++;
                     string sheetCoaId = $"{coaMasterNo}-{validLineIdx:D3}";
 
-                    Excel.Worksheet ws = null;
+                    Excel.Worksheet ws;
                     if (validLineIdx == 1)
                     {
                         ws = baseWs;
@@ -973,7 +973,7 @@ namespace QCS
                             using (var reader = detCmd.ExecuteReader())
                             {
                                 // 🎯 [교정] ? 문자가 들어오면 엑셀에 블랭크("")로 치환하는 로컬 헬퍼 함수
-                                string FilterQuestionMark(string text)
+                                string FilterQuestionMark(string? text)
                                 {
                                     if (string.IsNullOrEmpty(text)) return "";
                                     string clean = text.Trim();
@@ -1197,7 +1197,7 @@ namespace QCS
         /// <summary>
         /// 🎯 [추가] Clear 버튼 클릭 시 상단 입력 그리드와 하단 프리뷰를 싹 초기화
         /// </summary>
-        private void BtnClear_Click(object sender, RoutedEventArgs e)
+        private void BtnClear_Click(object? sender, RoutedEventArgs? e)
         {
             // 상단 입력 데이터 컬렉션 완전히 비우기
             _inputList.Clear();
@@ -1252,12 +1252,12 @@ namespace QCS
             {
                 e.Handled = true; // WPF 기본 붙여넣기 동작 차단
 
-                List<List<string>> parsedTable = null;
+                List<List<string>>? parsedTable = null;
 
                 // 1. 아웃룩/웹메일 HTML 표 우선 파싱
                 if (Clipboard.ContainsData(DataFormats.Html))
                 {
-                    string htmlText = Clipboard.GetData(DataFormats.Html) as string;
+                    string? htmlText = Clipboard.GetData(DataFormats.Html) as string;
                     if (!string.IsNullOrEmpty(htmlText))
                     {
                         parsedTable = ParseHtmlTable(htmlText);
@@ -1280,7 +1280,7 @@ namespace QCS
 
                 // 3. 선택한 행(Row) 시작 위치 계산
                 int startRowIndex = DgInput.SelectedIndex;
-                if (startRowIndex < 0 && DgInput.CurrentCell != null && DgInput.CurrentCell.Item != null)
+                if (startRowIndex < 0 && DgInput.CurrentCell.IsValid && DgInput.CurrentCell.Item != null)
                 {
                     startRowIndex = DgInput.Items.IndexOf(DgInput.CurrentCell.Item);
                 }
@@ -1288,7 +1288,7 @@ namespace QCS
 
                 // 4. 선택한 열(Column) 시작 위치 추적
                 int startColumnIndex = 0;
-                if (DgInput.CurrentCell != null && DgInput.CurrentCell.Column != null)
+                if (DgInput.CurrentCell.IsValid && DgInput.CurrentCell.Column != null)
                 {
                     startColumnIndex = DgInput.CurrentCell.Column.DisplayIndex;
                 }
@@ -1299,7 +1299,7 @@ namespace QCS
                     List<string> rowCells = parsedTable[i];
                     int targetRowIndex = startRowIndex + i;
 
-                    PreviewItem targetItem = null;
+                    PreviewItem? targetItem = null;
 
                     if (targetRowIndex < _inputList.Count)
                     {

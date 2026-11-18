@@ -257,7 +257,7 @@ namespace QCS
                 ?? throw new InvalidOperationException("Microsoft Excel이 설치되어 있지 않습니다.");
             dynamic excel = Activator.CreateInstance(excelType)
                 ?? throw new InvalidOperationException("Microsoft Excel을 실행할 수 없습니다.");
-            dynamic rmBook = null, fgBook = null;
+            dynamic? rmBook = null, fgBook = null;
             try
             {
                 excel.Visible = false;
@@ -483,7 +483,7 @@ namespace QCS
 
             dynamic excel = Activator.CreateInstance(excelType)
                 ?? throw new InvalidOperationException("Microsoft Excel을 실행할 수 없습니다.");
-            dynamic workbook = null;
+            dynamic? workbook = null;
             try
             {
                 excel.Visible = false;

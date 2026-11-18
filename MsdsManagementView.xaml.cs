@@ -634,7 +634,7 @@ namespace QCS
            if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 삭제 대상이 변경되었습니다.");
            continue;
          }
-         var editable=DetailGrid.Columns.OfType<DataGridBoundColumn>().Select(c=>(c.Binding as Binding)?.Path?.Path?.Trim('[',']')).Where(c=>!string.IsNullOrWhiteSpace(c) && detailColumns.Contains(c!)).Distinct().ToList();
+         var editable=DetailGrid.Columns.OfType<DataGridBoundColumn>().Select(c=>(c.Binding as Binding)?.Path?.Path?.Trim('[',']')).OfType<string>().Where(c=>!string.IsNullOrWhiteSpace(c) && detailColumns.Contains(c)).Distinct().ToList();
          if(row.RowState==DataRowState.Added)
          {
            var keys=editable.Concat(new[]{"msds_comp_parent_msds_id","msds_comp_sort_order"}).Where(detailColumns.Contains).Distinct().ToList();

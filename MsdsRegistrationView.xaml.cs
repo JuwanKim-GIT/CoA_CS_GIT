@@ -576,6 +576,7 @@ namespace QCS
                 if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox) && !ReferenceEquals(box, GracoCodeBox))
                     box.IsReadOnly = analyzing;
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
+            AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
             RefreshAiModelAvailability();
             UpdateCount();
             UpdateNavigation();
@@ -791,6 +792,7 @@ namespace QCS
             ClearAdditionalFields();
             _loadingFields = false;
             SaveCurrentButton.IsEnabled = false;
+            AiCorrectionButton.IsEnabled = false;
             UpdateActionButtons();
             if (PdfBrowser.CoreWebView2 != null)
                 PdfBrowser.CoreWebView2.Navigate("about:blank");
@@ -1054,7 +1056,7 @@ namespace QCS
                         SetAnalysisResult(item, parsed);
                         if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
                         if (result.HasExtractableText)
-                            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 후보 필드 {item.Parsed.Fields.Count(f => f.Value != null)}건, CAS {item.Parsed.Ingredients.Count}건 (원문 확인 필요)");
+                            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 후보 필드 {parsed.Fields.Count(f => f.Value != null)}건, CAS {parsed.Ingredients.Count}건 (원문 확인 필요)");
                         string detail = result.HasExtractableText
                             ? $"{result.PageCount}페이지, 텍스트 {result.FullText.Length:N0}자"
                             : $"{result.PageCount}페이지, 텍스트 없음 (수동 입력 대상)";
@@ -1115,6 +1117,38 @@ namespace QCS
             return "";
         }
 
+        private async void AiCorrection_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isAnalyzing || _displayedItem?.Parsed == null) return;
+            var item = _displayedItem;
+            try
+            {
+                var pdfText = await _textExtractor.ExtractAsync(item.FullPath);
+                if (!ReferenceEquals(_displayedItem, item)) return;
+                var values = CaptureFields();
+                var window = new MsdsAiCorrectionWindow(item.FileName, item.FullPath,
+                    pdfText, item.Parsed, values, _editableFieldNames);
+                window.Owner = System.Windows.Window.GetWindow(this);
+                if (window.ShowDialog() != true) return;
+                _loadingFields = true;
+                try
+                {
+                    foreach (var entry in window.CorrectedValues)
+                        if (FindName(entry.Key) is System.Windows.Controls.TextBox box)
+                            box.Text = entry.Value;
+                }
+                finally { _loadingFields = false; }
+                MarkDirty();
+                PublishStatus($"AI 교정값 {window.CorrectedValues.Count}개 항목 적용: {item.FileName} (DB 저장 전)");
+            }
+            catch (Exception ex)
+            {
+                PublishStatus("AI 교정 실행 실패: " + ex.Message);
+                System.Windows.MessageBox.Show("AI 교정 화면을 열 수 없습니다.\n" + ex.Message,
+                    "AI 교정", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void ShowExtractedFields(PdfItem item)
         {
             _loadingFields = true;
@@ -1162,6 +1196,7 @@ namespace QCS
             _loadingFields = false;
             LoadCasReferences();
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
+            AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
             UpdateActionButtons();
         }
 

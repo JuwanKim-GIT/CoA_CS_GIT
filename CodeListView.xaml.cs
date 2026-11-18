@@ -27,7 +27,7 @@ namespace QCS
     {
         private DataTable _dtSource = new DataTable();
         private DataGrid _dataGrid = new DataGrid();
-        private TextBlock _changeStatus;
+        private TextBlock? _changeStatus;
 
         private void CommitPendingEdits()
         {
@@ -412,9 +412,9 @@ namespace QCS
                     return;
                 }
 
-                Excel.Application excelApp = null;
-                Excel.Workbook wb = null;
-                Excel.Worksheet ws = null;
+                Excel.Application? excelApp = null;
+                Excel.Workbook? wb = null;
+                Excel.Worksheet? ws = null;
 
                 try
                 {
@@ -492,12 +492,12 @@ namespace QCS
             {
                 e.Handled = true; // WPF 기본 붙여넣기 차단
 
-                List<List<string>> parsedTable = null;
+                List<List<string>>? parsedTable = null;
 
                 // 1. 아웃룩/웹메일 HTML 표 데이터 우선 처리 (HTML 포맷이 존재하는 경우)
                 if (Clipboard.ContainsData(DataFormats.Html))
                 {
-                    string htmlText = Clipboard.GetData(DataFormats.Html) as string;
+                    string? htmlText = Clipboard.GetData(DataFormats.Html) as string;
                     if (!string.IsNullOrEmpty(htmlText))
                     {
                         parsedTable = ParseHtmlTable(htmlText);
@@ -523,7 +523,7 @@ namespace QCS
                 if (startRowIndex < 0) startRowIndex = _dtSource.Rows.Count;
 
                 int startColumnIndex = 0;
-                if (_dataGrid.CurrentCell != null && _dataGrid.CurrentCell.Column != null)
+                if (_dataGrid.CurrentCell.IsValid && _dataGrid.CurrentCell.Column != null)
                 {
                     startColumnIndex = _dataGrid.CurrentCell.Column.DisplayIndex;
                 }
@@ -534,7 +534,7 @@ namespace QCS
                     List<string> rowCells = parsedTable[i];
                     int targetRowIndex = startRowIndex + i;
 
-                    DataRow targetRow = null;
+                    DataRow? targetRow = null;
 
                     if (targetRowIndex < _dtSource.Rows.Count)
                     {

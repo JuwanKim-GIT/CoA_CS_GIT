@@ -384,9 +384,9 @@ namespace QCS
                     return;
                 }
 
-                Excel.Application excelApp = null;
-                Excel.Workbook wb = null;
-                Excel.Worksheet ws = null;
+                Excel.Application? excelApp = null;
+                Excel.Workbook? wb = null;
+                Excel.Worksheet? ws = null;
 
                 try
                 {
@@ -459,12 +459,12 @@ namespace QCS
             {
                 e.Handled = true; // WPF 순정 기본 셀 붙여넣기 차단
 
-                List<List<string>> parsedTable = null;
+                List<List<string>>? parsedTable = null;
 
                 // 1. 아웃룩/웹메일 HTML 표 우선 파싱
                 if (Clipboard.ContainsData(DataFormats.Html))
                 {
-                    string htmlText = Clipboard.GetData(DataFormats.Html) as string;
+                    string? htmlText = Clipboard.GetData(DataFormats.Html) as string;
                     if (!string.IsNullOrEmpty(htmlText))
                     {
                         parsedTable = ParseHtmlTable(htmlText);
@@ -490,7 +490,7 @@ namespace QCS
                 if (startRowIndex < 0) startRowIndex = _dtSource.Rows.Count;
 
                 int startColumnIndex = 0;
-                if (_dataGrid.CurrentCell != null && _dataGrid.CurrentCell.Column != null)
+                if (_dataGrid.CurrentCell.IsValid && _dataGrid.CurrentCell.Column != null)
                 {
                     startColumnIndex = _dataGrid.CurrentCell.Column.DisplayIndex;
                 }
@@ -501,7 +501,7 @@ namespace QCS
                     List<string> rowCells = parsedTable[i];
                     int targetRowIndex = startRowIndex + i;
 
-                    DataRow targetRow = null;
+                    DataRow? targetRow = null;
 
                     // Target 행 찾기 또는 새 행 생성
                     if (targetRowIndex < _dtSource.Rows.Count)

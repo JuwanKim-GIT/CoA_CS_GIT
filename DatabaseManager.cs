@@ -318,7 +318,7 @@ namespace QCS
                 if (reader.EndOfStream)
                     return;
 
-                string firstLine = reader.ReadLine();
+                string? firstLine = reader.ReadLine();
                 if (string.IsNullOrWhiteSpace(firstLine))
                     return;
 
@@ -346,7 +346,7 @@ namespace QCS
 
                         while (!parser.EndOfData)
                         {
-                            string[] fields = parser.ReadFields();
+                            string[]? fields = parser.ReadFields();
                             if (fields == null || fields.Length == 0)
                                 continue;
 
