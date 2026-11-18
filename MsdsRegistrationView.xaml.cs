@@ -336,6 +336,11 @@ namespace QCS
             item.AnalysisDisplay = "대기";
             item.Status = "대기";
         }
+        private void ApplySameDocumentLearning(PdfItem item, MsdsAnalysisResult result)
+        {
+            try { var count=MsdsSameDocumentLearning.Apply(item.FullPath,result); LogList.Items.Insert(0,$"{DateTime.Now:HH:mm:ss}  {item.FileName}: 동일 PDF 학습 {count}필드 반영"); }
+            catch(Exception ex) { LogList.Items.Insert(0,$"{DateTime.Now:HH:mm:ss}  {item.FileName}: 학습 조회 실패 (기존 분석 유지) - {ex.Message}"); }
+        }
         private void SetAnalysisResult(PdfItem item, MsdsAnalysisResult result)
         {
             item.Parsed = result;
@@ -916,6 +921,7 @@ namespace QCS
                         try
                         {
                             var aiResult = await analyzer.AnalyzeAsync(item.FullPath, _analysisCts!.Token);
+                            ApplySameDocumentLearning(item, aiResult);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -989,6 +995,7 @@ namespace QCS
                                 throw new InvalidOperationException("PDF에 추출 가능한 텍스트가 없습니다. (OCR 미지원)");
                             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {extracted.PageCount}페이지, 텍스트 {extracted.FullText.Length:N0}자 → AI 전달");
                             var aiResult = await analyzer.AnalyzeTextAsync(item.FullPath, extracted.FullText, _analysisCts.Token);
+                            ApplySameDocumentLearning(item, aiResult);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1168,8 +1175,8 @@ namespace QCS
             LelBox.Text = Get("msds_lel");
             UelBox.Text = Get("msds_uel");
             FlashPointBox.Text = Get("msds_flash_point");
-            CorrosivityBox.Text = "";
-            PersonalProtectionBox.Text = "";
+            CorrosivityBox.Text = Get("msds_corrosive_flag");
+            PersonalProtectionBox.Text = Get("msds_ppe");
             if (item.SavedValues != null)
                 foreach (var entry in item.SavedValues)
                     if (FindName(entry.Key) is System.Windows.Controls.TextBox box) box.Text = entry.Value;
