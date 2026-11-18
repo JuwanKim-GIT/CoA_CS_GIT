@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
@@ -53,6 +53,7 @@ namespace QCS
         internal static int ParseLevel(string? value) => (value ?? "").Trim() switch
         {
             "9" => 9,
+            "8" => 8,
             "1" => 1,
             _ => 0 // Legacy O/X or unexpected values require explicit DB migration.
         };
@@ -96,7 +97,7 @@ namespace QCS
             if (!reader.Read()) return null;
             string Get(int index) => reader.IsDBNull(index) ? "" : reader.GetValue(index).ToString() ?? "";
             int level = ParseLevel(Get(3));
-            if (level != 1 && level != 9) return null;
+            if (!QcsAuthorizationService.IsActive(level)) return null;
             if (!string.Equals(Get(6), password, StringComparison.Ordinal)) return null;
             return new QcsUser(Get(0), Get(1), Get(2), level, Get(4), Get(5));
         }

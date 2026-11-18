@@ -397,6 +397,12 @@ namespace QCS
         }
         private void Apply(object sender,RoutedEventArgs e)
         {
+            var user = (Owner as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
+            if (!QcsAuthorizationService.CanAccessProgram(user, QcsAuthorizationService.AiCorrectionProgramId))
+            {
+                WpfMessageBox.Show("AI 교정 및 학습데이터 저장 권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             var changed=_rows.Where(r=>r.Value!=r.Original || r.Approved).ToList();
             if (changed.Count==0) { DialogResult=true;return; }
             if (WpfMessageBox.Show($"변경된 {changed.Count}개 항목을 등록 화면에 적용하시겠습니까?",

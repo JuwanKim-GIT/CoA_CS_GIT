@@ -560,6 +560,12 @@ namespace QCS
                 { SelectFile(index); FileSearchBox.Dispatcher.BeginInvoke(new Action(() => FileSearchBox.Focus()), System.Windows.Threading.DispatcherPriority.Input); return; }
             }
         }
+        private bool CanUseAiCorrection()
+        {
+            var user = (Window.GetWindow(this) as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
+            return QcsAuthorizationService.CanAccessProgram(user, QcsAuthorizationService.AiCorrectionProgramId);
+        }
+
         private void SetAnalysisUi(bool analyzing)
         {
             _isAnalyzing = analyzing;
@@ -581,7 +587,7 @@ namespace QCS
                 if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox) && !ReferenceEquals(box, GracoCodeBox))
                     box.IsReadOnly = analyzing;
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
-            AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
+            AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null && CanUseAiCorrection();
             RefreshAiModelAvailability();
             UpdateCount();
             UpdateNavigation();
@@ -1127,6 +1133,12 @@ namespace QCS
         private async void AiCorrection_Click(object sender, RoutedEventArgs e)
         {
             if (_isAnalyzing || _displayedItem?.Parsed == null) return;
+            if (!CanUseAiCorrection())
+            {
+                PublishStatus("AI 교정 접근 제한: 프로그램 사용권한이 없습니다.");
+                System.Windows.MessageBox.Show("AI 교정 기능의 사용권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             var item = _displayedItem;
             try
             {
@@ -1203,7 +1215,7 @@ namespace QCS
             _loadingFields = false;
             LoadCasReferences();
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
-            AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
+            AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null && CanUseAiCorrection();
             UpdateActionButtons();
         }
 

@@ -30,6 +30,8 @@
 	  <None Remove="CoA_xltm\New_CoA_Form_Kor.xltm" />
 	  <None Remove="CoA_xltm\New_CoA_form_Rus.xltm" />
 	  <None Remove="QCS_MSDS_7개테이블_추가.sql" />
+	  <None Remove="Resources\Icons\msds_revision.png" />
+	  <None Remove="Resources\Icons\user_code.png" />
 	  <None Remove="Resources\Icons\coa_create.png" />
 	  <None Remove="Resources\Icons\coa_search.png" />
 	  <None Remove="Resources\Icons\common_code.png" />
@@ -90,6 +92,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Resource Include="Resources\Icons\msds_revision.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Resources\Icons\user_code.png">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
 	  <Resource Include="Resources\Icons\coa_create.png">
 	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </Resource>

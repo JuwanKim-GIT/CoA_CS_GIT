@@ -1,4 +1,4 @@
-﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -26,6 +26,16 @@ namespace QCS
     public partial class MainWindow : Window
     {
         private QcsUser? _switchedUser;
+        private static readonly Dictionary<string, string> ProgramIds = new(StringComparer.Ordinal)
+        {
+            ["CoA 발행"] = "CoARegistryView.xaml.cs", ["CoA 조회"] = "MainWindow.xaml.cs#Menu_CoaInq_Click",
+            ["아이템 목록 관리"] = "ItemListView.xaml.cs", ["Test Result 목록 관리"] = "TestResultListView.xaml.cs",
+            ["MSDS 등록"] = "MsdsRegistrationView.xaml.cs", ["MSDS 조회/관리"] = "MsdsManagementView.xaml.cs",
+            ["MSDS 대장출력"] = "MsdsInventoryExportView.xaml.cs", ["대장 개정관리"] = "AuditHistoryView.xaml.cs",
+            ["참조자료 관리"] = "ReferenceDataView.xaml.cs", ["공통코드 관리"] = "CodeListView.xaml.cs", ["업무코드 관리"] = "UserCodeListView.xaml.cs",
+            ["DB 스키마 조회"] = "DatabaseSchemaView.xaml.cs", ["Data Import"] = "MainWindow.xaml.cs#MenuDataImport_Click",
+            ["Data Export"] = "MainWindow.xaml.cs#MenuDataExport_Click"
+        };
         public MainWindow()
         {
             InitializeComponent();
@@ -81,7 +91,7 @@ namespace QCS
 
         public void SetCurrentUser(string windowsId, string name, int userLevel)
         {
-            string role = userLevel == 9 ? "관리자" : userLevel == 1 ? "일반사용자" : "비활성";
+            string role = userLevel == 9 ? "IT 관리자" : userLevel == 8 ? "시스템관리자" : userLevel == 1 ? "일반사용자" : "비활성";
             CurrentUserText.Text = $"{name}({windowsId}, {role})";
             UserStatusIcon.Fill = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(
@@ -89,10 +99,22 @@ namespace QCS
             UserStatusIcon.ToolTip = role;
         }
 
+        internal QcsUser? GetCurrentUser() => _switchedUser ?? StartupUserService.FindCurrentUser();
+
         public void RefreshCurrentUserStatus()
         {
-            var current = _switchedUser ?? StartupUserService.FindCurrentUser();
+            var current = GetCurrentUser();
             if (current != null) SetCurrentUser(current.WindowsId, current.Name, current.UserLevel);
+        }
+
+        private bool RequireProgramAccess(string tabHeader)
+        {
+            if (!ProgramIds.TryGetValue(tabHeader, out var programId)) return true;
+            var current = GetCurrentUser();
+            if (QcsAuthorizationService.CanAccessProgram(current, programId)) return true;
+            SetRunStatus($"접근 제한: {tabHeader} 프로그램 사용권한이 없습니다.");
+            MessageBox.Show("해당 프로그램의 사용권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
         }
 
         // ===================================================================
@@ -101,6 +123,7 @@ namespace QCS
 
         private void MenuDataImport_Click(object sender, RoutedEventArgs e)
         {
+            if (!RequireProgramAccess("Data Import")) return;
             string currentFolder = AppDomain.CurrentDomain.BaseDirectory;
 
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -135,6 +158,7 @@ namespace QCS
 
         private void MenuDataExport_Click(object sender, RoutedEventArgs e)
         {
+            if (!RequireProgramAccess("Data Export")) return;
             MessageBox.Show("Data Export 기능은 현재 준비 중입니다.", "안내", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -144,6 +168,7 @@ namespace QCS
 
         private void AddOrSelectTab(string tabHeader, UIElement? customContent = null)
         {
+            if (!RequireProgramAccess(tabHeader)) return;
             foreach (TabItem item in MainTabControl.Items)
             {
                 if (item.Tag != null && item.Tag.ToString() == tabHeader)
@@ -193,6 +218,7 @@ namespace QCS
             btnClose.Click += (s, e) =>
             {
                 e.Handled = true;
+                if (newTab.Content is UserCodeListView view && !view.CanDiscardChanges()) return;
                 MainTabControl.Items.Remove(newTab);
             };
 
@@ -225,8 +251,14 @@ namespace QCS
             AddOrSelectTab("Test Result 목록 관리", testListView);
         }
 
+        private void Menu_UserCode_Click(object sender, RoutedEventArgs e)
+        {
+            if (RequireProgramAccess("업무코드 관리")) AddOrSelectTab("업무코드 관리", new UserCodeListView());
+        }
+
         private void Menu_Code_Click(object sender, RoutedEventArgs e)
         {
+            if (GetCurrentUser()?.UserLevel != 9) { SetRunStatus("공통코드 관리: Admin 전용입니다."); return; }
             CodeListView codeListView = new CodeListView();
             AddOrSelectTab("공통코드 관리", codeListView);
         }
@@ -278,16 +310,37 @@ namespace QCS
 
         private void Menu_UserManage_Click(object sender, RoutedEventArgs e)
         {
+            var current = GetCurrentUser();
+            if (current == null || !QcsAuthorizationService.CanManageUsers(current.UserLevel))
+            {
+                SetRunStatus("접근 제한: 사용자 관리는 시스템관리자 이상만 사용할 수 있습니다.");
+                MessageBox.Show("사용자 관리는 시스템관리자 이상만 사용할 수 있습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             AddOrSelectTab("사용자 관리", new UserManagementView());
         }
 
         private void Menu_AccessManage_Click(object sender, RoutedEventArgs e)
         {
+            var current = GetCurrentUser();
+            if (current == null || !QcsAuthorizationService.CanManageProgramPermissions(current.UserLevel))
+            {
+                SetRunStatus("접근 제한: 프로그램 권한 관리는 시스템관리자 이상만 사용할 수 있습니다.");
+                MessageBox.Show("프로그램 권한 관리는 시스템관리자 이상만 사용할 수 있습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             AddOrSelectTab("프로그램 접근 권한 관리", new AccessPermissionView());
         }
 
         private void Menu_AdminManage_Click(object sender, RoutedEventArgs e)
         {
+            var current = GetCurrentUser();
+            if (current?.UserLevel != QcsAuthorizationService.LevelAdmin)
+            {
+                SetRunStatus("접근 제한: Admin 관리는 IT 관리자 전용입니다.");
+                MessageBox.Show("Admin 관리는 IT 관리자만 사용할 수 있습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             AddOrSelectTab("Admin 관리", new AdminManagementView());
         }
 
@@ -353,6 +406,10 @@ namespace QCS
             dialog.Loaded += (_, _) => idInput.Focus();
             if (QcsModal.Show(dialog, this) == true && authenticated != null)
             {
+                foreach (var tab in MainTabControl.Items.OfType<TabItem>().ToList())
+                    if (tab.Content is UserCodeListView view && !view.CanDiscardChanges()) { SetRunStatus("사용자 전환 취소"); return; }
+                foreach (var tab in MainTabControl.Items.OfType<TabItem>().ToList())
+                    if (tab.Content is UserCodeListView) MainTabControl.Items.Remove(tab);
                 _switchedUser = authenticated;
                 RefreshCurrentUserStatus();
                 SetRunStatus($"사용자 전환 완료: {authenticated.Name} ({authenticated.WindowsId})");

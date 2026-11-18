@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using MessageBox = System.Windows.MessageBox;
@@ -27,12 +27,21 @@ namespace QCS
                     Shutdown(1); return;
                 }
 
+                QcsAuthorizationService.EnsureSecurityMetadata();
+
                 QcsUser? user = StartupUserService.FindCurrentUser();
                 if (user is null)
                 {
                     var registration = new FirstUserRegistrationWindow();
                     if (registration.ShowDialog() != true) { Shutdown(); return; }
                     user = registration.RegisteredUser;
+                }
+
+                if (user == null || !QcsAuthorizationService.IsActive(user.UserLevel))
+                {
+                    MessageBox.Show("비활성 계정은 QCS 프로그램을 사용할 수 없습니다.\n시스템관리자 또는 IT 관리자에게 활성화를 요청해 주세요.",
+                        "QCS 사용 제한", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Shutdown(); return;
                 }
 
                 var main = new MainWindow();
