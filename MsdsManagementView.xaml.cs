@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -7,6 +7,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Text.Json;
 using System.Windows.Data;
 using Binding = System.Windows.Data.Binding;
 using Clipboard = System.Windows.Clipboard;
@@ -30,6 +31,11 @@ namespace QCS
 {
  public partial class MsdsManagementView : UserControl
  {
+  private static bool IsLatest(DataRowView row)
+  {
+   var value = Value(row, "msds_is_latest");
+   return value == "1" || value.Equals("Y", StringComparison.OrdinalIgnoreCase);
+  }
   private DataTable _master = new DataTable();
   private string _selectedPdfPath = "";
   private bool _previewExpanded = true;
@@ -43,7 +49,38 @@ namespace QCS
    private DataTable? _detailTable;
    private long? _editingId;
    private DataRowView? _lockedMasterRow;
-  public MsdsManagementView() { InitializeComponent(); Loaded += (_, __) => RefreshData(); }
+  public MsdsManagementView()
+  {
+   InitializeComponent();
+   Loaded += (_, __) => { UpdateAdaptiveScale(); RefreshData(); };
+   SizeChanged += (_, __) => UpdateAdaptiveScale();
+  }
+  private void MaterialFilter_Checked(object sender, RoutedEventArgs e)
+  {
+   if (!IsLoaded || _editing || _master.Columns.Count == 0 || SearchText == null) return;
+   try { ApplyFilter(); }
+   catch (FormatException ex) { PublishStatus("검색 조건 오류: " + ex.Message); }
+  }
+  private IEnumerable<TextBox> BasicTextBoxes() => DescendantTextBoxes(BasicFields);
+  private static IEnumerable<TextBox> DescendantTextBoxes(System.Windows.DependencyObject root)
+  {
+   for (int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++)
+   {
+    var child=System.Windows.Media.VisualTreeHelper.GetChild(root,i);
+    if (child is TextBox box) yield return box;
+    else foreach(var nested in DescendantTextBoxes(child)) yield return nested;
+   }
+  }
+  private double _currentUiScale = 1.0;
+  private void UpdateAdaptiveScale()
+  {
+   if (ManagementRoot == null || ActualWidth <= 0 || ActualHeight <= 0) return;
+   double scale = Math.Min(1.0, Math.Min(ActualWidth / 1550.0, ActualHeight / 850.0));
+   scale = Math.Max(0.70, scale);
+   if (Math.Abs(scale - _currentUiScale) < 0.015) return;
+   _currentUiScale = scale;
+   ManagementRoot.LayoutTransform = new System.Windows.Media.ScaleTransform(scale, scale);
+  }
   private void DateField_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
    if (DateFrom == null || DateTo == null || DateField == null) return;
@@ -140,7 +177,8 @@ namespace QCS
     if (dateColumn != null && from.HasValue && to.HasValue && from > to) throw new FormatException("시작일은 종료일보다 늦을 수 없습니다.");
     var matched = _master.DefaultView.Cast<DataRowView>().Where(row =>
      (dateColumn == null || (!from.HasValue && !to.HasValue) || DateMatches(Value(row, dateColumn), from, to)) &&
-     (LatestOnly.IsChecked != true || Value(row, "msds_is_latest") == "1") &&
+     (LatestOnly.IsChecked != true || IsLatest(row)) &&
+     (TypeAll.IsChecked == true || (TypeFg.IsChecked == true && Value(row,"msds_material_type").Equals("FG", StringComparison.OrdinalIgnoreCase)) || (TypeRm.IsChecked == true && Value(row,"msds_material_type").Equals("RM", StringComparison.OrdinalIgnoreCase))) &&
      new SearchParser(query, term => Matches(row, term)).Evaluate()).ToList();
     // DataView.RowFilter cannot express multi-table AND/OR reliably; retain the complete master table.
     MasterGrid.ItemsSource = matched;
@@ -199,7 +237,7 @@ namespace QCS
   {
    if (_editing) return;
     _detailId = null;
-   foreach(var child in BasicFields.Children) if(child is TextBox box) box.Text="";
+   foreach(var box in BasicTextBoxes()) box.Text="";
    DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 (0건)";
    _selectedPdfPath=""; PdfFileName.Text="선택된 PDF 없음";
    _previewRequest++;
@@ -239,8 +277,8 @@ namespace QCS
    if(MasterGrid.SelectedItem is not DataRowView row || !long.TryParse(Value(row,"msds_msds_id"),out long id)) { ClearDetails(); return; }
    if (_detailId == id) return;
    _detailId = id;
-   foreach(var child in BasicFields.Children)
-    if(child is TextBox box && box.Tag is string key) box.Text=key=="msds_is_latest" ? (Value(row,key)=="1"?"예":"아니오") : Value(row,key);
+   foreach(var box in BasicTextBoxes())
+    if(box.Tag is string key) box.Text=key=="msds_is_latest" ? (IsLatest(row)?"예":"아니오") : key=="msds_material_type" ? (Value(row,key)=="RM" ? "원료(RM)" : Value(row,key)=="FG" ? "제품(FG)" : Value(row,key)) : Value(row,key);
    _selectedPdfPath=Value(row,"msds_file_path");
    PdfFileName.Text=Value(row,"msds_file_name");
    LoadPreview();
@@ -251,6 +289,52 @@ namespace QCS
     _detailTable=detail; detail.AcceptChanges(); DetailGrid.ItemsSource=detail.DefaultView; DetailCount.Text=$"구성성분 ({detail.Rows.Count}건) — MSDS ID: {id}";
    }
    catch(Exception ex) { DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 조회 실패"; StatusText.Text="구성성분 조회 실패: "+ex.Message; }
+  }
+  private static readonly string[] CasReferenceTypes = { "인체", "사고", "제한", "중점", "잔류", "배출량" };
+  private TextBox[] ReferenceBoxes => new[] { HumanReferenceBox, AccidentReferenceBox, RestrictReferenceBox, PriorityReferenceBox, PersistReferenceBox, EmissionReferenceBox };
+  private void DetailGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => LoadCasReferences();
+  private void DetailGrid_CurrentCellChanged(object? sender, EventArgs e) => LoadCasReferences();
+  private void LoadCasReferences()
+  {
+   foreach (var box in ReferenceBoxes) box.Clear();
+   // CellOrRowHeader 모드에서는 SelectedItem이 null이어도 CurrentCell.Item은 선택된 성분입니다.
+   var component = DetailGrid.CurrentCell.Item as DataRowView
+    ?? DetailGrid.SelectedItem as DataRowView
+    ?? DetailGrid.SelectedCells.Select(cell => cell.Item).OfType<DataRowView>().FirstOrDefault();
+   if (component == null) { CasReferenceStatus.Text = "  ·  구성성분 행을 선택하세요"; return; }
+   string cas = Value(component, "msds_comp_cas_no").Trim().Replace(" ", "");
+   if (cas.Length == 0 || cas == "-" || cas.Equals("NA", StringComparison.OrdinalIgnoreCase) || cas.Equals("NA--", StringComparison.OrdinalIgnoreCase))
+   { CasReferenceStatus.Text = "  ·  유효한 CAS 번호가 없습니다"; return; }
+   CasReferenceStatus.Text = "  ·  CAS " + cas + " 조회 중";
+   try
+   {
+    var builder = new SqliteConnectionStringBuilder { DataSource = DatabaseManager.GetDbPath("reference"), Mode = SqliteOpenMode.ReadOnly, Pooling = false };
+    using var conn = new SqliteConnection(builder.ToString()); conn.Open();
+    using var cmd = conn.CreateCommand();
+    // 참조관리 화면과 동일한 casref_value 필드를 사용합니다. 동일 CAS/유형의 첫 레코드만 적용합니다.
+    cmd.CommandText = @"SELECT casref_type, casref_value FROM casref_mstr
+      WHERE REPLACE(TRIM(casref_cas_no), ' ', '') = $cas
+        AND casref_type IN ('인체','사고','제한','중점','잔류','배출량')
+      ORDER BY casref_id";
+    cmd.Parameters.AddWithValue("$cas", cas);
+    var found = new Dictionary<string, string>(StringComparer.Ordinal);
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+     string type = reader.IsDBNull(0) ? "" : (Convert.ToString(reader.GetValue(0)) ?? "").Trim();
+     if (!CasReferenceTypes.Contains(type) || found.ContainsKey(type)) continue;
+     found[type] = reader.IsDBNull(1) ? "" : Convert.ToString(reader.GetValue(1)) ?? "";
+    }
+    for (int i = 0; i < CasReferenceTypes.Length; i++)
+     ReferenceBoxes[i].Text = found.TryGetValue(CasReferenceTypes[i], out string? value)
+      ? (string.IsNullOrWhiteSpace(value) ? "(참조자료 값 없음)" : value) : "(일치 자료 없음)";
+    CasReferenceStatus.Text = $"  ·  CAS {cas} / 일치 유형 {found.Count}건";
+   }
+   catch (Exception ex)
+   {
+    CasReferenceStatus.Text = "  ·  조회 오류: " + ex.Message;
+    PublishStatus("CAS 참조정보 조회 실패: " + ex.Message);
+   }
   }
   private async void LoadPreview()
   {
@@ -342,17 +426,18 @@ namespace QCS
      DetailGrid.IsReadOnly = !enabled;
      DetailGrid.CanUserAddRows = false;
      DetailGrid.CanUserDeleteRows = false;
-     foreach (var child in BasicFields.Children)
-       if (child is TextBox box && box.Tag is string key)
-         box.IsReadOnly = !enabled || key == "msds_msds_id" || key == "msds_file_name";
+     foreach (var box in BasicTextBoxes())
+       if (box.Tag is string key)
+         box.IsReadOnly = !enabled || key == "msds_msds_id" || key == "msds_file_name" || key == "msds_material_type";
      SearchText.IsEnabled = LatestOnly.IsEnabled = SearchButton.IsEnabled = !enabled;
+     TypeAll.IsEnabled = TypeFg.IsEnabled = TypeRm.IsEnabled = !enabled;
      DateField.IsEnabled = DateFrom.IsEnabled = DateTo.IsEnabled = !enabled;
      var normalBg = (SolidColorBrush)new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#EAF3FF"));
      var editableBg = (SolidColorBrush)new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFFFFF"));
-     foreach (var child in BasicFields.Children)
-       if (child is TextBox box && box.Tag is string key)
+     foreach (var box in BasicTextBoxes())
+       if (box.Tag is string key)
        {
-         bool locked = key == "msds_msds_id" || key == "msds_file_name";
+         bool locked = key == "msds_msds_id" || key == "msds_file_name" || key == "msds_material_type";
          box.Background = enabled && !locked ? editableBg : normalBg;
          box.Foreground = enabled && !locked ? System.Windows.Media.Brushes.Black : new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#1E3A5F"));
          box.BorderBrush = enabled && !locked ? new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#8DB4E8")) : new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#CED8E5"));
@@ -467,6 +552,38 @@ namespace QCS
      while(reader.Read()) cols.Add(reader.GetString(1));
      return cols;
    }
+   private static Dictionary<string, object?> ReadAuditMaster(SqliteConnection conn, SqliteTransaction tx, long id)
+   {
+    using var cmd=conn.CreateCommand();cmd.Transaction=tx;
+    cmd.CommandText="SELECT * FROM msds_mstr WHERE msds_msds_id=$id";cmd.Parameters.AddWithValue("$id",id);
+    using var reader=cmd.ExecuteReader();
+    var data=new Dictionary<string,object?>(StringComparer.OrdinalIgnoreCase);
+    if(reader.Read())for(int i=0;i<reader.FieldCount;i++)data[reader.GetName(i)]=reader.IsDBNull(i)?null:reader.GetValue(i);
+    return data;
+   }
+   private static Dictionary<long, Dictionary<string,object?>> ReadAuditComponents(SqliteConnection conn, SqliteTransaction tx, long id)
+   {
+    using var cmd=conn.CreateCommand();cmd.Transaction=tx;
+    cmd.CommandText="SELECT * FROM msds_comp_dtl WHERE msds_comp_parent_msds_id=$id";cmd.Parameters.AddWithValue("$id",id);
+    using var reader=cmd.ExecuteReader();
+    var rows=new Dictionary<long,Dictionary<string,object?>>();
+    while(reader.Read())
+    {
+     var row=new Dictionary<string,object?>(StringComparer.OrdinalIgnoreCase);
+     for(int i=0;i<reader.FieldCount;i++)row[reader.GetName(i)]=reader.IsDBNull(i)?null:reader.GetValue(i);
+     rows[Convert.ToInt64(row["msds_comp_msds_id"])]=row;
+    }
+    return rows;
+   }
+   private static void AddAuditDiff(List<object> changes,string table,long recordId,Dictionary<string,object?> before,Dictionary<string,object?> after)
+   {
+    foreach(var key in before.Keys.Union(after.Keys))
+    {
+     before.TryGetValue(key,out var oldValue);after.TryGetValue(key,out var newValue);
+     if(string.Equals(Convert.ToString(oldValue,CultureInfo.InvariantCulture),Convert.ToString(newValue,CultureInfo.InvariantCulture),StringComparison.Ordinal))continue;
+     changes.Add(new { table,record_id=recordId,field=key,old=oldValue,@new=newValue });
+    }
+   }
    private void SaveEdit_Click(object sender, RoutedEventArgs e)
    {
      if (!_editing || !_editingId.HasValue || _detailTable == null) return;
@@ -480,10 +597,13 @@ namespace QCS
        var builder=new SqliteConnectionStringBuilder { DataSource=dbPath, Mode=SqliteOpenMode.ReadWrite, DefaultTimeout=10, Pooling=false };
        using var conn=new SqliteConnection(builder.ToString()); conn.Open();
        using (var pragma=conn.CreateCommand()) { pragma.CommandText="PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"; pragma.ExecuteNonQuery(); }
+       var pendingAuditRevision=MsdsDbRegistration.GetPendingRevisionForAudit();
        var masterColumns=GetDbColumns(conn,"msds_mstr");
        var detailColumns=GetDbColumns(conn,"msds_comp_dtl");
        using var tx=conn.BeginTransaction();
-       var fields=BasicFields.Children.OfType<TextBox>().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && masterColumns.Contains(key)).ToList();
+       var beforeMaster=ReadAuditMaster(conn,tx,id);
+       var beforeComponents=ReadAuditComponents(conn,tx,id);
+       var fields=BasicTextBoxes().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && key!="msds_material_type" && masterColumns.Contains(key)).ToList();
        using (var cmd=conn.CreateCommand())
        {
          cmd.Transaction=tx;
@@ -528,6 +648,35 @@ namespace QCS
            cmd.Parameters.AddWithValue("@pk",row[pk]);cmd.Parameters.AddWithValue("@parent",id);
          }
          if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 저장 건수가 일치하지 않습니다.");
+       }
+       var afterMaster=ReadAuditMaster(conn,tx,id);
+       var afterComponents=ReadAuditComponents(conn,tx,id);
+       var changes=new List<object>();
+       AddAuditDiff(changes,"msds_mstr",id,beforeMaster,afterMaster);
+       foreach(var componentId in beforeComponents.Keys.Union(afterComponents.Keys))
+       {
+        beforeComponents.TryGetValue(componentId,out var oldRow);
+        afterComponents.TryGetValue(componentId,out var newRow);
+        AddAuditDiff(changes,"msds_comp_dtl",componentId,
+          oldRow??new Dictionary<string,object?>(),newRow??new Dictionary<string,object?>());
+       }
+       if(changes.Count>0)
+       {
+        var required=new[]{"audit_log_msds_id","audit_log_product_name","audit_log_content","audit_log_user_id","audit_log_action","audit_log_datetime","audit_log_graco_code","audit_log_rev_no"};
+        var auditCols=GetDbColumns(conn,"audit_log_hist");
+        if(required.Any(k=>!auditCols.Contains(k)))throw new InvalidOperationException("Audit DB 스키마에 필요한 컬럼이 없습니다.");
+        using var audit=conn.CreateCommand();audit.Transaction=tx;
+        audit.CommandText=@"INSERT INTO audit_log_hist
+         (audit_log_msds_id,audit_log_product_name,audit_log_content,audit_log_user_id,audit_log_action,audit_log_datetime,audit_log_graco_code,audit_log_rev_no)
+         VALUES ($id,$name,$content,$user,'UPDATE',$date,$code,$rev)";
+        audit.Parameters.AddWithValue("$id",id);
+        audit.Parameters.AddWithValue("$name",afterMaster.GetValueOrDefault("msds_product_name")??DBNull.Value);
+        audit.Parameters.AddWithValue("$content",JsonSerializer.Serialize(new { registration_type="EDIT",changes }));
+        audit.Parameters.AddWithValue("$user",Environment.UserName);
+        audit.Parameters.AddWithValue("$date",DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        audit.Parameters.AddWithValue("$code",afterMaster.GetValueOrDefault("msds_graco_code")??DBNull.Value);
+        audit.Parameters.AddWithValue("$rev", pendingAuditRevision);
+        audit.ExecuteNonQuery();
        }
        tx.Commit();
        ExitEditMode();

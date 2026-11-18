@@ -53,6 +53,7 @@
                 <MenuItem Header="MSDS 대장출력" Click="Menu_RmInventory_Click"/>
                 <Separator/>
                 <MenuItem Header="참조자료 관리" Click="Menu_MsdsReference_Click"/>
+                <MenuItem Header="대장 개정관리" Click="Menu_AuditHistory_Click"/>
             </MenuItem>
             <MenuItem Header="시스템">
                 <MenuItem Header="공통코드 관리" Click="Menu_Code_Click"/>

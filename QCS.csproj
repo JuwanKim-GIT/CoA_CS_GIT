@@ -123,4 +123,12 @@
 	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </Resource>
 	</ItemGroup>
+
+	<!-- Copy RM/FG Excel templates beside the executable on build/publish. -->
+	<ItemGroup>
+	  <None Update="QCS_xltm\*.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </None>
+	</ItemGroup>
 </Project>

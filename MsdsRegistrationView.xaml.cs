@@ -39,6 +39,8 @@ namespace QCS
                 }
             }
             public string FullPath { get; set; } = "";
+            public string MaterialType { get; set; } = "";
+            public string RegistrationKind { get; set; } = "확인중";
             public string Status { get; set; } = "대기";
             public MsdsAnalysisResult? Parsed { get; set; }
             public string AnalysisStatus { get; set; } = "대기";
@@ -55,6 +57,10 @@ namespace QCS
             public string Name { get; set; } = "";
             public string CasNumber { get; set; } = "";
             public string ConcentrationRaw { get; set; } = "";
+            public string Minimum => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item1);
+            public string Maximum => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item2);
+            public string Calculated => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item3);
+            private static string FormatAmount(double? value) => value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? "";
         }
 
         private PdfItem? _displayedItem;
@@ -65,7 +71,7 @@ namespace QCS
             "ProductNameBox", "SupplierNameBox", "GracoCodeBox", "RevisionDateBox",
             "RevisionNumberBox", "PhoneBox", "AddressBox", "UnNumberBox", "HazardCodesBox",
             "AutoIgnitionBox", "VaporPressureBox", "LelBox", "UelBox", "FlashPointBox",
-            "CorrosivityBox", "PersonalProtectionBox"
+            "CorrosivityBox", "PersonalProtectionBox", "MoelSubmissionBox"
         };
         private System.Collections.Generic.Dictionary<string, string> CaptureFields()
         {
@@ -99,13 +105,79 @@ namespace QCS
             RemoveIngredientButton.IsEnabled = canEditIngredients && IngredientsGrid?.SelectedItem != null;
         }
 
-        private void IngredientsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateActionButtons();
+        private static readonly string[] CasReferenceTypes = { "인체", "사고", "제한", "중점", "잔류", "배출량" };
+        private System.Windows.Controls.TextBox[] ReferenceBoxes => new[]
+        { HumanReferenceBox, AccidentReferenceBox, RestrictReferenceBox,
+          PriorityReferenceBox, PersistReferenceBox, EmissionReferenceBox };
+
+        private void ClearCasReferences()
+        {
+            foreach (var box in ReferenceBoxes) box.Clear();
+        }
+
+        private void LoadCasReferences()
+        {
+            ClearCasReferences();
+            if (IngredientsGrid.SelectedItem is not IngredientEdit ingredient ||
+                string.IsNullOrWhiteSpace(ingredient.CasNumber)) return;
+            try
+            {
+                var path = DatabaseManager.GetDbPath("reference");
+                var builder = new SqliteConnectionStringBuilder
+                {
+                    DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false
+                };
+                using var conn = new SqliteConnection(builder.ToString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT casref_type, casref_value FROM casref_mstr
+                    WHERE REPLACE(TRIM(casref_cas_no), ' ', '') = $cas
+                    AND casref_type IN ('인체','사고','제한','중점','잔류','배출량')
+                    ORDER BY casref_id";
+                cmd.Parameters.AddWithValue("$cas", ingredient.CasNumber.Trim().Replace(" ", ""));
+                var found = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string type = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    string value = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    if (string.IsNullOrWhiteSpace(value)) continue;
+                    if (!found.TryGetValue(type, out var entries)) found[type] = entries = new List<string>();
+                    if (!entries.Contains(value)) entries.Add(value);
+                }
+                for (int i = 0; i < CasReferenceTypes.Length; i++)
+                    if (found.TryGetValue(CasReferenceTypes[i], out var entries))
+                        ReferenceBoxes[i].Text = string.Join(Environment.NewLine, entries);
+            }
+            catch (Exception ex)
+            {
+                PublishStatus("CAS 참조정보 조회 실패: " + ex.Message);
+            }
+        }
+
+        private void IngredientsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateActionButtons();
+            LoadCasReferences();
+        }
 
         private void SaveDisplayed()
         {
             if (_displayedItem == null || _isAnalyzing || _displayedItem.Parsed == null) return;
             IngredientsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true);
             IngredientsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true);
+            try
+            {
+                _displayedItem.RegistrationKind = MsdsDbRegistration.GetRegistrationStatus(
+                    _displayedItem.MaterialType, Path.GetFileNameWithoutExtension(_displayedItem.FileName),
+                    RevisionNumberBox.Text, RevisionDateBox.Text);
+                FilesGrid.Items.Refresh();
+            }
+            catch (Exception ex)
+            {
+                PublishStatus("등록 구분 확인 실패: " + ex.Message);
+                return;
+            }
             _displayedItem.SavedValues = CaptureFields();
             _displayedItem.SavedIngredients = CaptureIngredients();
             _displayedItem.Confirmed = true;
@@ -153,10 +225,16 @@ namespace QCS
                     }).ToList();
                     var snapshot = new MsdsDbRegistration.Document
                     {
-                        FilePath = item.FullPath, Values = values, Ingredients = ingredients
+                        FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, Ingredients = ingredients
                     };
                     var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot));
-                    if (result.Success)
+                    if (result.Duplicate)
+                    {
+                        item.RegistrationKind = "중복";
+                        SetStatus(item, "중복");
+                        failed++;
+                    }
+                    else if (result.Success)
                     {
                         if (ReferenceEquals(_displayedItem, item)) _displayedItem = null;
                         _files.Remove(item);
@@ -213,7 +291,7 @@ namespace QCS
 
         private void EditableField_TextChanged(object sender, TextChangedEventArgs e) => MarkDirty();
         private void IngredientsGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e) =>
-            Dispatcher.BeginInvoke(new Action(MarkDirty), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(new Action(() => { IngredientsGrid.Items.Refresh(); MarkDirty(); }), System.Windows.Threading.DispatcherPriority.Background);
         private void MarkDirty()
         {
             if (_loadingFields || _isAnalyzing || _displayedItem?.Parsed == null) return;
@@ -377,12 +455,32 @@ namespace QCS
             }
             UpdateCount();
             UpdateActionButtons();
-            SizeChanged += (_, _) => UpdateResponsiveLayout();
-            Loaded += (_, _) => { UpdateResponsiveLayout(); UpdateLogHeight(); UpdateNavigation(); RefreshAiModelAvailability(); };
+            SizeChanged += (_, _) => { UpdateAdaptiveScale(); UpdateResponsiveLayout(); };
+            Loaded += (_, _) => { UpdateAdaptiveScale(); UpdateResponsiveLayout(); UpdateMaterialTypeDisplay(); UpdateLogHeight(); UpdateNavigation(); RefreshAiModelAvailability(); };
             SizeChanged += (_, _) => UpdateLogHeight();
         }
 
-        // null: 화면 너비에 따른 자동 상태, true/false: 사용자가 선택한 상태
+        // Session-only panel visibility and RM/FG choice. No automatic restoration.
+        private bool _restoringMaterialType;
+        private void MaterialType_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_restoringMaterialType || MaterialTypeRaw == null || MaterialTypeProduct == null) return;
+            if (_displayedItem == null) { UpdateMaterialTypeDisplay(); return; }
+            var selected = MaterialTypeRaw.IsChecked == true ? "RM" : "FG";
+            if (_displayedItem.MaterialType == selected) { UpdateMaterialTypeDisplay(); return; }
+            _displayedItem.MaterialType = selected;
+            UpdateMaterialTypeDisplay();
+            _displayedItem.Confirmed = false; // Reconfirm before DB save after classification change.
+            SetStatus(_displayedItem, "구분변경");
+            FilesGrid.Items.Refresh();
+            UpdateActionButtons();
+        }
+        private void UpdateMaterialTypeDisplay()
+        {
+            if (MaterialTypeDisplay == null || MaterialTypeRaw == null) return;
+            string type = _displayedItem?.MaterialType ?? (MaterialTypeRaw.IsChecked == true ? "RM" : "FG");
+            MaterialTypeDisplay.Text = type == "RM" ? "원료(RM)" : "제품(FG)";
+        }
         private bool? _filesOverride;
         private bool? _previewOverride;
 
@@ -463,6 +561,7 @@ namespace QCS
             FilesGrid.IsEnabled = true;
             FileSearchBox.IsEnabled = true;
             // 화면 내 데이터 수정 및 파일 추가/삭제를 모두 잠근다. 로그와 진행률은 유지한다.
+            StartAnalysisButton.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
             StopAnalysisButton.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
             StopAnalysisButton.IsHitTestVisible = true;
             foreach (var button in FindVisualChildren<System.Windows.Controls.Button>(FilesPanel))
@@ -470,9 +569,11 @@ namespace QCS
                     button.IsEnabled = !analyzing;
             BottomClearButton.IsEnabled = !analyzing;
             RailAddButton.IsEnabled = !analyzing;
+            MaterialTypeProduct.IsEnabled = !analyzing;
+            MaterialTypeRaw.IsEnabled = !analyzing;
             foreach (var check in FindVisualChildren<System.Windows.Controls.CheckBox>(this)) check.IsEnabled = !analyzing;
             foreach (var box in FindVisualChildren<System.Windows.Controls.TextBox>(this))
-                if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox))
+                if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox) && !ReferenceEquals(box, GracoCodeBox))
                     box.IsReadOnly = analyzing;
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
             RefreshAiModelAvailability();
@@ -495,6 +596,19 @@ namespace QCS
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  분석 중지 요청");
             PublishStatus("MSDS 분석 중지 요청");
         }
+        // Scale the MSDS registration workspace, not the user-selected panel visibility.
+        // Keep a readable minimum; scrollbars remain available for narrow layouts.
+        private void UpdateAdaptiveScale()
+        {
+            if (RegistrationRoot == null || ActualWidth <= 0 || ActualHeight <= 0) return;
+            double scale = Math.Min(1.0, Math.Min(ActualWidth / 1550.0, ActualHeight / 850.0));
+            scale = Math.Max(0.70, scale);
+            if (Math.Abs(_currentUiScale - scale) < 0.015) return;
+            _currentUiScale = scale;
+            RegistrationRoot.LayoutTransform = new System.Windows.Media.ScaleTransform(scale, scale);
+        }
+        private double _currentUiScale = 1.0;
+
         private void UpdateResponsiveLayout()
         {
             if (_layoutUpdating || WorkspaceGrid == null || FilesPanel == null ||
@@ -505,10 +619,8 @@ namespace QCS
             double width = ActualWidth - 16;
             if (width <= 0) return;
             int mode = width >= 1450 ? 2 : width >= 900 ? 1 : 0;
-            bool showFiles = _filesOverride ?? mode == 2;
-            bool showPreview = _previewOverride ?? mode >= 1;
-            if (showFiles && width < 1250 && _previewOverride != true)
-                showPreview = false;
+            bool showFiles = _filesOverride ?? true;
+            bool showPreview = _previewOverride ?? true;
 
             // 창 크기 변경 이벤트 중 반복해서 Star/Pixel 폭을 덮어쓰지 않는다.
             // 패널 표시 상태 또는 화면 구간이 바뀔 때만 재배치한다.
@@ -565,34 +677,35 @@ namespace QCS
 
         private void AddPaths(System.Collections.Generic.IEnumerable<string> paths)
         {
-            int added = 0, duplicate = 0;
-            HashSet<string> registeredNames;
-            try { registeredNames = MsdsDbRegistration.GetRegisteredFileNames(); }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show("DB 파일명 중복 확인에 실패하여 업로드를 중단합니다.\\n" + ex.Message,
-                    "PDF 업로드 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            var materialType = MaterialTypeRaw.IsChecked == true ? "RM" : "FG";
+            int added = 0, skipped = 0;
             foreach (var path in paths)
             {
                 if (!File.Exists(path)) continue;
-                string name = Path.GetFileName(path);
-                if (registeredNames.Contains(name) ||
-                    _files.Any(x => string.Equals(x.FileName, name, StringComparison.OrdinalIgnoreCase)))
+                var fullPath = Path.GetFullPath(path);
+                if (_files.Any(x => string.Equals(x.FullPath, fullPath, StringComparison.OrdinalIgnoreCase)))
                 {
-                    duplicate++;
+                    skipped++;
                     continue;
                 }
-                _files.Add(new PdfItem { Index = _files.Count + 1, FileName = name, FullPath = path });
+                string name = Path.GetFileName(path);
+                string gracoCode = Path.GetFileNameWithoutExtension(path);
+                string kind;
+                try { kind = MsdsDbRegistration.GetRegistrationStatus(materialType, gracoCode); }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show("MSDS 등록 상태 조회에 실패했습니다.\n" + ex.Message,
+                        "DB 조회 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                _files.Add(new PdfItem { Index = _files.Count + 1, FileName = name,
+                    FullPath = fullPath, MaterialType = materialType, RegistrationKind = kind });
                 added++;
             }
-            if (duplicate > 0)
-                System.Windows.MessageBox.Show($"이미 등록되었거나 목록에 있는 동일 파일명 PDF {duplicate}건을 제외했습니다.",
-                    "중복 파일명", MessageBoxButton.OK, MessageBoxImage.Information);
-            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  PDF {added}건 추가, 중복 {duplicate}건 제외");
+            FilesGrid.Items.Refresh();
+            LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  PDF {added}건 추가, 목록 중복 {skipped}건 제외");
             UpdateCount();
-            PublishStatus($"PDF 파일 {added}건 추가, 중복 {duplicate}건 제외");
+            PublishStatus($"PDF 파일 {added}건 추가, 목록 중복 {skipped}건 제외");
             if (FilesGrid.SelectedItem == null && _files.Count > 0) FilesGrid.SelectedIndex = 0;
         }
 
@@ -611,6 +724,14 @@ namespace QCS
             UpdateNavigation();
             if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); return; }
             _displayedItem = item;
+            _restoringMaterialType = true;
+            try
+            {
+                MaterialTypeRaw.IsChecked = item.MaterialType == "RM";
+                MaterialTypeProduct.IsChecked = item.MaterialType != "RM";
+            }
+            finally { _restoringMaterialType = false; }
+            UpdateMaterialTypeDisplay();
             UpdateActionButtons();
             FileNameBox.Text = item.FileName;
             ShowExtractedFields(item);
@@ -666,6 +787,7 @@ namespace QCS
             ProductNameBox.Clear();
             SupplierNameBox.Clear();
             IngredientsGrid.ItemsSource = null;
+            ClearCasReferences();
             ClearAdditionalFields();
             _loadingFields = false;
             SaveCurrentButton.IsEnabled = false;
@@ -976,15 +1098,33 @@ namespace QCS
                 CorrosivityBox, PersonalProtectionBox }) box.Clear();
         }
 
+        private static string ExtractMoelNumber(PdfItem item)
+        {
+            try
+            {
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(item.FullPath);
+                foreach (var page in pdf.GetPages())
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(page.Text,
+                        @"AA\s*\d{5}\s*-\s*\d{10}", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (match.Success)
+                        return System.Text.RegularExpressions.Regex.Replace(match.Value, @"\s+", "").ToUpperInvariant();
+                }
+            }
+            catch { /* Image-only PDFs require the existing AI extraction path. */ }
+            return "";
+        }
+
         private void ShowExtractedFields(PdfItem item)
         {
             _loadingFields = true;
             string Get(string key) => item.Parsed?.Fields.FirstOrDefault(f => f.FieldKey == key)?.Value ?? "";
             ProductNameBox.Text = Get("msds_product_name");
             SupplierNameBox.Text = Get("msds_supplier_name");
-            GracoCodeBox.Text = Get("msds_sds_code"); // SDS code는 Graco Code 후보: 사용자 검증 필요
+            GracoCodeBox.Text = Path.GetFileNameWithoutExtension(item.FileName);
             RevisionDateBox.Text = Get("msds_revision_date");
             RevisionNumberBox.Text = Get("msds_revision_number");
+            MoelSubmissionBox.Text = ExtractMoelNumber(item);
             PhoneBox.Text = Get("msds_supplier_phone");
             AddressBox.Text = Get("msds_supplier_address");
             UnNumberBox.Text = Get("msds_un_number");
@@ -999,6 +1139,20 @@ namespace QCS
             if (item.SavedValues != null)
                 foreach (var entry in item.SavedValues)
                     if (FindName(entry.Key) is System.Windows.Controls.TextBox box) box.Text = entry.Value;
+            if (item.Parsed != null)
+            {
+                try
+                {
+                    item.RegistrationKind = MsdsDbRegistration.GetRegistrationStatus(item.MaterialType,
+                        Path.GetFileNameWithoutExtension(item.FileName), RevisionNumberBox.Text, RevisionDateBox.Text);
+                    FilesGrid.Items.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    item.RegistrationKind = "확인필요";
+                    PublishStatus("등록 구분 확인 실패: " + ex.Message);
+                }
+            }
             IngredientsGrid.ItemsSource = item.SavedIngredients != null
                 ? item.SavedIngredients.Select(v => new IngredientEdit
                   { Index = v.Index, Name = v.Name, CasNumber = v.CasNumber, ConcentrationRaw = v.ConcentrationRaw }).ToList()
@@ -1006,6 +1160,7 @@ namespace QCS
                   { Index = i + 1, Name = v.Name ?? "", CasNumber = v.CasNumber ?? "",
                     ConcentrationRaw = v.ConcentrationRaw ?? "" }).ToList();
             _loadingFields = false;
+            LoadCasReferences();
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
             UpdateActionButtons();
         }
