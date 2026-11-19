@@ -262,6 +262,7 @@
                     </Grid>
                     <Grid Grid.Row="6">
                         <TextBlock Text="처리 진행 상태" Style="{StaticResource SubTitle}"/>
+                        <Button x:Name="OpenLogButton" Style="{StaticResource SecondaryButton}" Content="로그 열기" HorizontalAlignment="Right" Margin="0,0,84,0" Width="78" Height="26" Padding="3,1" Click="OpenLog_Click"/>
                         <Button x:Name="ToggleLogButton" Style="{StaticResource SecondaryButton}" Content="로그 접기 ▲" HorizontalAlignment="Right" Width="78" Height="26" Padding="3,1" Click="ToggleLog_Click"/>
                     </Grid>
 

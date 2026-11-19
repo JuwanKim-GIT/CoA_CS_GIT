@@ -705,7 +705,7 @@ namespace QCS
     { PublishStatus("MSDS 삭제 제한: 유효하지 않은 ID가 있습니다."); return; }
     if (MessageBox.Show($"선택한 MSDS {selected.Count}건을 DB에서 영구 삭제하시겠습니까?\n\n" +
       "관련 구성성분·규제·추출 결과 및 등록 이력도 삭제됩니다.\n" +
-      "보관된 PDF도 삭제를 시도합니다. PDF 삭제 실패 시 DB 레코드는 삭제됩니다.",
+      "AI 학습·적용이력 또는 다른 MSDS에서 참조하는 PDF는 보존합니다. 미참조 PDF만 삭제를 시도합니다.",
       "MSDS 일괄 삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
     { PublishStatus($"MSDS {selected.Count}건 삭제 취소"); return; }
     try
@@ -743,13 +743,23 @@ namespace QCS
       transaction.Commit();
      }
      var warnings = new List<string>();
+     int preserved = 0;
      foreach (var path in selected.Select(row => row.Path).Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
      {
-      try { if (File.Exists(path)) File.Delete(path); }
+      try {
+       // Fail closed when reference lookup fails. Hold the write reservation during the physical deletion.
+       using var guard = connection.BeginTransaction();
+       using var check = connection.CreateCommand(); check.Transaction = guard;
+       check.CommandText = @"SELECT EXISTS(SELECT 1 FROM ai_correctionh_hist WHERE ai_correctionh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_applyh_hist WHERE ai_applyh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM msds_mstr WHERE msds_file_path=$path COLLATE NOCASE)";
+       check.Parameters.AddWithValue("$path",path);
+       if (Convert.ToInt64(check.ExecuteScalar()) != 0) preserved++;
+       else if (File.Exists(path)) File.Delete(path);
+       guard.Commit();
+      }
       catch (Exception ex) { warnings.Add(Path.GetFileName(path) + ": " + ex.Message); }
      }
      RefreshData();
-     string message = $"MSDS {selected.Count}건 삭제 완료" + (warnings.Count > 0 ? $" (PDF 삭제 실패 {warnings.Count}건)" : "");
+     string message = $"MSDS {selected.Count}건 삭제 완료 (PDF 보존 {preserved}건)" + (warnings.Count > 0 ? $" (PDF 삭제 실패 {warnings.Count}건)" : "");
      StatusText.Text = message;
      PublishStatus(message);
      if (warnings.Count > 0) MessageBox.Show(string.Join("\n", warnings), "PDF 삭제 안내", MessageBoxButton.OK, MessageBoxImage.Warning);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -47,6 +47,9 @@ namespace QCS
             public string AnalysisDisplay { get; set; } = "대기";
             public bool Confirmed { get; set; }
             public bool Dirty { get; set; }
+            public List<MsdsLearningEntry> Applied { get; set; } = new();
+            public Dictionary<string,MsdsLearningEntry> Pending { get; set; } = new();
+            public Dictionary<string,MsdsLearningEntry> SavedLearning { get; set; } = new();
             public System.Collections.Generic.Dictionary<string, string>? SavedValues { get; set; }
             public System.Collections.Generic.List<IngredientEdit>? SavedIngredients { get; set; }
         }
@@ -179,6 +182,7 @@ namespace QCS
                 return;
             }
             _displayedItem.SavedValues = CaptureFields();
+            _displayedItem.SavedLearning = new(_displayedItem.Pending);
             _displayedItem.SavedIngredients = CaptureIngredients();
             _displayedItem.Confirmed = true;
             _displayedItem.Dirty = false;
@@ -225,7 +229,7 @@ namespace QCS
                     }).ToList();
                     var snapshot = new MsdsDbRegistration.Document
                     {
-                        FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, Ingredients = ingredients
+                        FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, Ingredients = ingredients, Learning = item.SavedLearning.Values.ToList(), Applied = item.Applied.ToList()
                     };
                     var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot));
                     if (result.Duplicate)
@@ -319,6 +323,7 @@ namespace QCS
             if (result == MessageBoxResult.Yes) SaveDisplayed();
             else
             {
+                _displayedItem.Pending = new(_displayedItem.SavedLearning);
                 _displayedItem.Dirty = false;
                 _displayedItem.Confirmed = _displayedItem.SavedValues != null;
                 SetStatus(_displayedItem, _displayedItem.Confirmed ? "확인완료" : _displayedItem.AnalysisDisplay);
@@ -327,6 +332,7 @@ namespace QCS
         }
         private void ClearWork(PdfItem item)
         {
+            item.Applied.Clear(); item.Pending.Clear(); item.SavedLearning.Clear();
             item.Parsed = null;
             item.SavedValues = null;
             item.SavedIngredients = null;
@@ -338,8 +344,19 @@ namespace QCS
         }
         private void ApplySameDocumentLearning(PdfItem item, MsdsAnalysisResult result)
         {
-            try { var count=MsdsSameDocumentLearning.Apply(item.FullPath,result); LogList.Items.Insert(0,$"{DateTime.Now:HH:mm:ss}  {item.FileName}: 동일 PDF 학습 {count}필드 반영"); }
+            try { item.Applied=MsdsSameDocumentLearning.Apply(item.FullPath,result); var count=item.Applied.Count; LogList.Items.Insert(0,$"{DateTime.Now:HH:mm:ss}  {item.FileName}: 동일 PDF 학습 {count}필드 반영"); }
             catch(Exception ex) { LogList.Items.Insert(0,$"{DateTime.Now:HH:mm:ss}  {item.FileName}: 학습 조회 실패 (기존 분석 유지) - {ex.Message}"); }
+        }
+        private async Task ApplySimilarDocumentLearningAsync(PdfItem item, MsdsAnalysisResult result, CancellationToken ct)
+        {
+            try
+            {
+                var entries = await MsdsSimilarDocumentLearning.ApplyAsync(item.FullPath, item.MaterialType, result, item.Applied, ct, message => LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 {message}"));
+                item.Applied.AddRange(entries);
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 유사 PDF 학습 {entries.Count}필드 반영 (검증 필요)");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex) { LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 학습 실패 (기존 분석 유지) - {ex.Message}"); }
         }
         private void SetAnalysisResult(PdfItem item, MsdsAnalysisResult result)
         {
@@ -450,6 +467,9 @@ namespace QCS
         public MsdsRegistrationView()
         {
             InitializeComponent();
+            OpenLogButton.IsEnabled = LogList.Items.Count > 0;
+            ((System.Collections.Specialized.INotifyCollectionChanged)LogList.Items).CollectionChanged += (_,__) => OpenLogButton.IsEnabled = LogList.Items.Count > 0;
+
             FilesGrid.ItemsSource = _files;
             AiModelComboBox.SelectionChanged += (_, _) => UpdateAnalysisModeDisplay();
             try { LoadAiModels(); }
@@ -508,6 +528,21 @@ namespace QCS
         private int _lastLayoutMode = -1;
         private bool _lastFilesVisible;
         private bool _lastPreviewVisible;
+
+        private void OpenLog_Click(object sender, RoutedEventArgs e)
+        {
+            if (LogList.Items.Count == 0) { PublishStatus("열 수 있는 분석 로그가 없습니다."); return; }
+            try
+            {
+                var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "QCS_Log_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Guid.NewGuid().ToString("N") + ".txt");
+                var text = string.Join(Environment.NewLine, LogList.Items.Cast<object>().Select(x=>x?.ToString() ?? ""));
+                try { var secret = GetAiSetting("MSDS_API_KEY"); if (!string.IsNullOrEmpty(secret)) text = text.Replace(secret, "[REDACTED]", StringComparison.Ordinal); } catch { /* No configured key available. */ }
+                System.IO.File.WriteAllText(path, text, new System.Text.UTF8Encoding(true));
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", "\"" + path + "\"") { UseShellExecute = true });
+                PublishStatus("분석 로그 열기 완료");
+            }
+            catch (Exception ex) { PublishStatus("분석 로그 열기 실패: " + ex.Message); }
+        }
 
         private void ToggleLog_Click(object sender, RoutedEventArgs e)
         {
@@ -928,6 +963,7 @@ namespace QCS
                         {
                             var aiResult = await analyzer.AnalyzeAsync(item.FullPath, _analysisCts!.Token);
                             ApplySameDocumentLearning(item, aiResult);
+                            await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1002,6 +1038,7 @@ namespace QCS
                             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {extracted.PageCount}페이지, 텍스트 {extracted.FullText.Length:N0}자 → AI 전달");
                             var aiResult = await analyzer.AnalyzeTextAsync(item.FullPath, extracted.FullText, _analysisCts.Token);
                             ApplySameDocumentLearning(item, aiResult);
+                            await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1157,6 +1194,8 @@ namespace QCS
                             box.Text = entry.Value;
                 }
                 finally { _loadingFields = false; }
+                foreach (var key in window.CorrectedValues.Keys) item.Pending.Remove(key);
+                foreach (var entry in window.PendingLearning) item.Pending[entry.Key]=entry;
                 MarkDirty();
                 PublishStatus($"AI 교정값 {window.CorrectedValues.Count}개 항목 적용: {item.FileName} (DB 저장 전)");
             }

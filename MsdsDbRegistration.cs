@@ -26,6 +26,8 @@ namespace QCS
             public string MaterialType { get; set; } = "";
             public Dictionary<string, string> Values { get; set; } = new();
             public List<Ingredient> Ingredients { get; set; } = new();
+            public List<MsdsLearningEntry> Learning { get; set; } = new();
+            public List<MsdsLearningEntry> Applied { get; set; } = new();
         }
         internal sealed class Result
         {
@@ -329,6 +331,7 @@ namespace QCS
                         };
                         AddChanges(changes, "msds_comp_dtl", childId, componentFields);
                     }
+                    MsdsLearningPersistence.Save(db, tx, doc, parentId, destination, hash);
                     // One DB save operation creates exactly one audit record.
                     // Registration of a new MSDS revision is an INSERT, not an UPDATE.
                     using var audit = db.CreateCommand();

@@ -106,6 +106,7 @@ namespace QCS
         private readonly CheckBox _approve = new() { Content = "원문과 최종값 검증 완료 (동일 PDF 학습 허용)" };
         private readonly List<string> _previewFiles = new();
         public Dictionary<string, string> CorrectedValues { get; } = new();
+        internal List<MsdsLearningEntry> PendingLearning { get; } = new();
 
         public MsdsAiCorrectionWindow(string fileName, string filePath, MsdsPdfTextResult pdf,
             MsdsAnalysisResult analysis, Dictionary<string,string> currentValues, IEnumerable<string> keys)
@@ -409,84 +410,26 @@ namespace QCS
                 "AI 교정 확인",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
             try
             {
-                SaveCorrections(changed);
+                CollectCorrections(changed);
                 foreach(var row in changed)CorrectedValues[row.Key]=row.Value;
                 DialogResult=true;
             }
             catch(Exception ex)
             {
-                WpfMessageBox.Show("교정 이력 저장에 실패하여 적용하지 않았습니다.\n"+ex.Message,
+                WpfMessageBox.Show("교정 정보 준비에 실패하여 적용하지 않았습니다.\n"+ex.Message,
                     "AI 교정 오류",MessageBoxButton.OK,MessageBoxImage.Error);
             }
         }
-        private void SaveCorrections(List<FieldRow> changed)
+        private void CollectCorrections(List<FieldRow> changed)
         {
-            using var conn=new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
-            conn.Open();
-            using var transaction=conn.BeginTransaction();
-            using(var create=conn.CreateCommand())
-            {
-                create.Transaction=transaction;
-                create.CommandText=@"CREATE TABLE IF NOT EXISTS ai_correctionh_hist (
-                    ai_correctionh_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ai_correctionh_pdf_path TEXT NOT NULL,
-                    ai_correctionh_field_key TEXT NOT NULL,
-                    ai_correctionh_original_value TEXT,
-                    ai_correctionh_corrected_value TEXT,
-                    ai_correctionh_corrected_at TEXT NOT NULL,
-                    ai_correctionh_source TEXT NOT NULL
-                )";
-                create.ExecuteNonQuery();
-            }
-            var fields = new Dictionary<string,string> {
-                ["pdf_hash"]="TEXT", ["source_label"]="TEXT", ["source_text"]="TEXT", ["source_context"]="TEXT",
-                ["source_page"]="INTEGER", ["candidate_value"]="TEXT", ["correction_method"]="TEXT",
-                ["corrected_by"]="TEXT", ["learning_status"]="TEXT NOT NULL DEFAULT 'PENDING'",
-                ["supplier_name"]="TEXT", ["product_name"]="TEXT" };
-            var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using(var check=conn.CreateCommand()) {
-                check.Transaction=transaction; check.CommandText="PRAGMA table_info(ai_correctionh_hist)";
-                using var reader=check.ExecuteReader(); while(reader.Read()) present.Add(reader.GetString(1));
-            }
-            foreach(var field in fields) {
-                var name="ai_correctionh_"+field.Key; if(present.Contains(name)) continue;
-                using var alter=conn.CreateCommand(); alter.Transaction=transaction;
-                alter.CommandText=$"ALTER TABLE ai_correctionh_hist ADD COLUMN {name} {field.Value}"; alter.ExecuteNonQuery();
-            }
-            using var pdfStream=System.IO.File.OpenRead(_filePath);
-            var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(pdfStream));
-            foreach(var row in changed)
-            {
-                using var cmd=conn.CreateCommand();
-                cmd.Transaction=transaction;
-                cmd.CommandText=@"INSERT INTO ai_correctionh_hist
-                    (ai_correctionh_pdf_path,ai_correctionh_field_key,ai_correctionh_original_value,
-                     ai_correctionh_corrected_value,ai_correctionh_corrected_at,ai_correctionh_source,
-                     ai_correctionh_pdf_hash,ai_correctionh_source_label,ai_correctionh_source_text,ai_correctionh_source_context,
-                     ai_correctionh_source_page,ai_correctionh_candidate_value,ai_correctionh_correction_method,
-                     ai_correctionh_corrected_by,ai_correctionh_learning_status,ai_correctionh_supplier_name,ai_correctionh_product_name)
-                    VALUES(@path,@key,@old,@new,@at,@source,@hash,@label,@text,@context,@page,@candidate,@method,@user,@learning,@supplier,@product)";
-                cmd.Parameters.AddWithValue("@path",_filePath);
-                cmd.Parameters.AddWithValue("@key",row.Key);
-                cmd.Parameters.AddWithValue("@old",row.Original);
-                cmd.Parameters.AddWithValue("@new",row.Value);
-                cmd.Parameters.AddWithValue("@at",DateTimeOffset.Now.ToString("O"));
-                cmd.Parameters.AddWithValue("@source","USER_CONFIRMED");
-                var evidence=row.Evidence;
-                cmd.Parameters.AddWithValue("@hash",hash);
-                cmd.Parameters.AddWithValue("@label",(object?)evidence?.Label??DBNull.Value);
-                cmd.Parameters.AddWithValue("@text",(object?)evidence?.Source??DBNull.Value);
-                cmd.Parameters.AddWithValue("@context",(object?)evidence?.Context??DBNull.Value);
-                cmd.Parameters.AddWithValue("@page",evidence is { Page: > 0 } ? (object)evidence.Page : DBNull.Value);
-                cmd.Parameters.AddWithValue("@candidate",(object?)evidence?.Value??DBNull.Value);
-                cmd.Parameters.AddWithValue("@method",evidence==null?"MANUAL":row.Value==evidence.Value?"SELECTED":"EDITED");
-                cmd.Parameters.AddWithValue("@user",Environment.UserName);
-                cmd.Parameters.AddWithValue("@learning",row.Approved ? "APPROVED" : "PENDING");
-                cmd.Parameters.AddWithValue("@supplier",_rows.FirstOrDefault(r=>r.Key=="SupplierNameBox")?.Value??"");
-                cmd.Parameters.AddWithValue("@product",_rows.FirstOrDefault(r=>r.Key=="ProductNameBox")?.Value??"");
-                cmd.ExecuteNonQuery();
-            }
-            transaction.Commit();
+            using var stream = System.IO.File.OpenRead(_filePath);
+            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+            foreach (var row in changed.Where(r => r.Approved))
+                PendingLearning.Add(new MsdsLearningEntry { Key=row.Key, Before=row.Original, After=row.Value,
+                    Hash=hash, Label=row.Evidence?.Label, Text=row.Evidence?.Source, Context=row.Evidence?.Context,
+                    Page=row.Evidence?.Page, Candidate=row.Evidence?.Value,
+                    Method=row.Evidence==null?"MANUAL":row.Value==row.Evidence.Value?"SELECTED":"EDITED",
+                    User=Environment.UserName, At=DateTimeOffset.Now.ToString("O") });
         }
     }
 }

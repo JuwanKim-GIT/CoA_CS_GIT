@@ -100,6 +100,14 @@ WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$id";
                 seed.CommandText = "UPDATE zx_code_mstr SET zx_code_char1='Y' WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value='CodeListView.xaml.cs'";
                 seed.ExecuteNonQuery();
             }
+            using (var learning = conn.CreateCommand())
+            {
+                learning.Transaction = tx;
+                learning.CommandText = @"INSERT OR IGNORE INTO zx_code_mstr
+(zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
+VALUES ('QCS_APPLICATIONS','MsdsLearningManagementView.xaml.cs','AI 교정학습 관리','MSDS > AI 교정학습 관리','','N','MENU')";
+                learning.ExecuteNonQuery();
+            }
             tx.Commit();
         }
 

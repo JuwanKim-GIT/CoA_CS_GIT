@@ -30,6 +30,7 @@ namespace QCS
         {
             ["CoA 발행"] = "CoARegistryView.xaml.cs", ["CoA 조회"] = "MainWindow.xaml.cs#Menu_CoaInq_Click",
             ["아이템 목록 관리"] = "ItemListView.xaml.cs", ["Test Result 목록 관리"] = "TestResultListView.xaml.cs",
+            ["AI 교정학습 관리"] = "MsdsLearningManagementView.xaml.cs",
             ["MSDS 등록"] = "MsdsRegistrationView.xaml.cs", ["MSDS 조회/관리"] = "MsdsManagementView.xaml.cs",
             ["MSDS 대장출력"] = "MsdsInventoryExportView.xaml.cs", ["대장 개정관리"] = "AuditHistoryView.xaml.cs",
             ["참조자료 관리"] = "ReferenceDataView.xaml.cs", ["공통코드 관리"] = "CodeListView.xaml.cs", ["업무코드 관리"] = "UserCodeListView.xaml.cs",
@@ -277,6 +278,11 @@ namespace QCS
         // =====================================================
         // MSDS 메뉴
         // =====================================================
+
+        private void Menu_MsdsLearning_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrSelectTab("AI 교정학습 관리", new MsdsLearningManagementView());
+        }
 
         private void Menu_MsdsReg_Click(object sender, RoutedEventArgs e)
         {

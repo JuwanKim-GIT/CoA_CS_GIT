@@ -52,6 +52,7 @@
                 <Separator/>
                 <MenuItem Header="참조자료 관리" Click="Menu_MsdsReference_Click"/>
                 <MenuItem Header="대장 개정관리" Click="Menu_AuditHistory_Click"/>
+                <MenuItem Header="AI 교정학습 관리" Tag="MsdsLearningManagementView.xaml.cs" Click="Menu_MsdsLearning_Click"/>
             </MenuItem>
             <MenuItem Header="시스템">
                 <MenuItem Header="공통코드 관리" Click="Menu_Code_Click"/>
@@ -128,6 +129,9 @@
                         <TextBlock Text="대장 개정관리" FontSize="10" Foreground="#334155"
                                    TextAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
+                </Button>
+                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="AI 교정학습 관리" Tag="MsdsLearningManagementView.xaml.cs" Click="Menu_MsdsLearning_Click">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center"><Image Source="/Resources/Icons/reference_manage.png" Width="36" Height="36" Stretch="Uniform"/><TextBlock Text="AI 교정학습 관리" FontSize="10" Foreground="#334155" TextAlignment="Center" Margin="0,2,0,0"/></StackPanel>
                 </Button>
                 <Border Width="1" Height="62" Background="#D7DBE5" Margin="12,5"/>
                 <Button Style="{StaticResource QcsToolbarButton}" ToolTip="공통코드 관리" Click="Menu_Code_Click">
