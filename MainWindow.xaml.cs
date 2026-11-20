@@ -40,6 +40,7 @@ namespace QCS
         public MainWindow()
         {
             InitializeComponent();
+            Closed += (_, _) => { foreach (var tab in MainTabControl.Items.OfType<System.Windows.Controls.TabItem>()) if (tab.Content is MsdsLearningManagementView learning) learning.CloseDiagnostic(); };
             // Windows identity can be shown without a database connection.
             // Name, department and activation state will be loaded from QCS_USERS
             // after DatabaseManager integration is available.
@@ -220,6 +221,7 @@ namespace QCS
             {
                 e.Handled = true;
                 if (newTab.Content is UserCodeListView view && !view.CanDiscardChanges()) return;
+                if (newTab.Content is MsdsLearningManagementView learning) learning.CloseDiagnostic();
                 MainTabControl.Items.Remove(newTab);
             };
 

@@ -131,7 +131,7 @@
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource QcsToolbarButton}" ToolTip="AI 교정학습 관리" Tag="MsdsLearningManagementView.xaml.cs" Click="Menu_MsdsLearning_Click">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center"><Image Source="/Resources/Icons/reference_manage.png" Width="36" Height="36" Stretch="Uniform"/><TextBlock Text="AI 교정학습 관리" FontSize="10" Foreground="#334155" TextAlignment="Center" Margin="0,2,0,0"/></StackPanel>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center"><Viewbox Width="36" Height="36"><Canvas Width="100" Height="100"><Rectangle Canvas.Left="23" Canvas.Top="20" Width="54" Height="54" RadiusX="9" RadiusY="9" Fill="#E4EDFF" Stroke="#2563EB" StrokeThickness="4"/><Path Data="M32,12 V20 M49,12 V20 M66,12 V20 M32,74 V82 M49,74 V82 M66,74 V82 M15,32 H23 M15,49 H23 M15,66 H23 M77,32 H85 M77,49 H85 M77,66 H85" Stroke="#2563EB" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/><TextBlock Canvas.Left="36" Canvas.Top="31" Text="AI" FontSize="25" FontWeight="Bold" Foreground="#2563EB"/><Path Data="M55,78 L79,45 L90,54 L66,87 L51,92 Z" Fill="#FFB52E" Stroke="#B8750D" StrokeThickness="2.5"/><Path Data="M51,92 L55,78 L66,87 Z" Fill="#334155"/></Canvas></Viewbox><TextBlock Text="AI 교정학습" FontSize="10" Foreground="#334155" TextAlignment="Center" Margin="0,2,0,0"/></StackPanel>
                 </Button>
                 <Border Width="1" Height="62" Background="#D7DBE5" Margin="12,5"/>
                 <Button Style="{StaticResource QcsToolbarButton}" ToolTip="공통코드 관리" Click="Menu_Code_Click">
