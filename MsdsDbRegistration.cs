@@ -19,6 +19,7 @@ namespace QCS
             public string Name { get; set; } = "";
             public string CasNumber { get; set; } = "";
             public string ConcentrationRaw { get; set; } = "";
+            public Ingredient? Original { get; set; }
             public string Twa { get; set; } = "";
             public string Stel { get; set; } = "";
             public string OralLd50 { get; set; } = "";
@@ -31,6 +32,7 @@ namespace QCS
             public string FilePath { get; set; } = "";
             public string MaterialType { get; set; } = "";
             public Dictionary<string, string> Values { get; set; } = new();
+            public Dictionary<string, string> OriginalValues { get; set; } = new();
             public List<Ingredient> Ingredients { get; set; } = new();
             public List<MsdsLearningEntry> Learning { get; set; } = new();
             public List<MsdsLearningEntry> Applied { get; set; } = new();
@@ -75,24 +77,53 @@ namespace QCS
             if (exact.Success) { var v=Parse(exact.Groups[1].Value); return (v,v,v); }
             return (null,null,null);
         }
-        // Migration is additive; existing MSDS records and their relationships remain unchanged.
+        // Schema is managed by the approved local DB migration, never altered during registration.
         private static void EnsureRegistrationColumns(SqliteConnection db)
         {
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "PRAGMA table_info(msds_mstr)";
+            using var reader = cmd.ExecuteReader();
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using (var cmd = db.CreateCommand())
-            {
-                cmd.CommandText = "PRAGMA table_info(msds_mstr)";
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read()) names.Add(reader.GetString(1));
-            }
-            foreach (var column in new[] { "msds_material_type", "msds_is_latest", "msds_moel_submission_no" })
-            {
-                if (names.Contains(column)) continue;
-                using var alter = db.CreateCommand();
-                alter.CommandText = $"ALTER TABLE msds_mstr ADD COLUMN {column} TEXT";
-                alter.ExecuteNonQuery();
-            }
+            while (reader.Read()) names.Add(reader.GetString(1));
+            if (!names.Contains("msds_product_name_ai") || !names.Contains("msds_product_name_mod"))
+                throw new InvalidOperationException("MSDS AI/MOD DB 스키마 변경 SQL을 먼저 적용해 주세요.");
         }
+
+        private static readonly (string Column, string UiKey, string AiKey)[] BasicFields =
+        {
+            ("moel_submission_no","MoelSubmissionBox","msds_moel_submission_no"),
+            ("product_name","ProductNameBox","msds_product_name"),
+            ("supplier_name","SupplierNameBox","msds_supplier_name"),
+            ("supplier_phone","PhoneBox","msds_supplier_phone"),
+            ("supplier_address","AddressBox","msds_supplier_address"),
+            ("revision_date","RevisionDateBox","msds_revision_date"),
+            ("revision_no","RevisionNumberBox","msds_revision_number"),
+            ("h_codes","HazardCodesBox","msds_hazard_codes"),
+            ("corrosive_flag","CorrosivityBox","msds_corrosive_flag"),
+            ("toxicity","ToxicityBox","msds_toxicity"),
+            ("ppe","PersonalProtectionBox","msds_ppe"),
+            ("lel","LelBox","msds_lel"),
+            ("uel","UelBox","msds_uel"),
+            ("flash_point","FlashPointBox","msds_flash_point"),
+            ("autoignition_temp","AutoIgnitionBox","msds_autoignition"),
+            ("vapor_pressure","VaporPressureBox","msds_vapor_pressure"),
+            ("un_number","UnNumberBox","msds_un_number"),
+            ("molecular_formula","MolecularFormulaBox","msds_molecular_formula"),
+            ("physical_state","PhysicalStateBox","msds_physical_state"),
+            ("hazardous_goods_class","HazardousGoodsBox","msds_hazardous_goods_class"),
+            ("reactivity","ReactivityBox","msds_reactivity")
+        };
+        private static object OriginalDbValue(string? value) => value == null ? DBNull.Value : value;
+        private static object ModifiedDbValue(string? original, string? edited) =>
+            string.Equals(original ?? "", edited ?? "", StringComparison.Ordinal) ? DBNull.Value : edited ?? "";
+        private static string? OriginalValue(Document doc, string uiKey, string aiKey)
+        {
+            if (doc.OriginalValues.TryGetValue(aiKey, out var value)) return value;
+            // Derived fields (e.g. MOEL number) are captured before user edits.
+            return doc.OriginalValues.TryGetValue(uiKey, out value) ? value : null;
+        }
+        private static string EffectiveRevision(string ai, string mod) =>
+            $"COALESCE({mod},{ai})";
 
         // The common code row stores the pending ledger revision in zx_code_num1.
         // zx_code_cmmt stores the last confirmed ledger revision for reference.
@@ -185,7 +216,7 @@ namespace QCS
             db.Open();
             EnsureRegistrationColumns(db);
             using var cmd = db.CreateCommand();
-            cmd.CommandText = @"SELECT msds_revision_no, msds_revision_date FROM msds_mstr
+            cmd.CommandText = @"SELECT COALESCE(msds_revision_no_mod,msds_revision_no_ai), COALESCE(msds_revision_date_mod,msds_revision_date_ai) FROM msds_mstr
                 WHERE msds_material_type=$type AND msds_graco_code=$code AND COALESCE(msds_is_deleted,0)=0";
             cmd.Parameters.AddWithValue("$type", materialType);
             cmd.Parameters.AddWithValue("$code", gracoCode.Trim());
@@ -238,7 +269,7 @@ namespace QCS
                 using (var check = db.CreateCommand())
                 {
                     check.Transaction = tx;
-                    check.CommandText = @"SELECT msds_revision_no, msds_revision_date FROM msds_mstr
+                    check.CommandText = @"SELECT COALESCE(msds_revision_no_mod,msds_revision_no_ai), COALESCE(msds_revision_date_mod,msds_revision_date_ai) FROM msds_mstr
                         WHERE msds_material_type=$type AND msds_graco_code=$code AND COALESCE(msds_is_deleted,0)=0";
                     check.Parameters.AddWithValue("$type", doc.MaterialType);
                     check.Parameters.AddWithValue("$code", gracoCode);
@@ -295,30 +326,17 @@ namespace QCS
                         ["msds_file_hash"] = hash,
                         ["msds_graco_code"] = gracoCode,
                         ["msds_material_type"] = doc.MaterialType, ["msds_is_latest"] = "Y",
-                        ["msds_moel_submission_no"] = DbValue(Value(doc,"MoelSubmissionBox")),
-                        ["msds_product_name"] = DbValue(Value(doc,"ProductNameBox")),
-                        ["msds_supplier_name"] = DbValue(Value(doc,"SupplierNameBox")),
-                        ["msds_supplier_phone"] = DbValue(Value(doc,"PhoneBox")),
-                        ["msds_supplier_address"] = DbValue(Value(doc,"AddressBox")),
-                        ["msds_revision_date"] = DbValue(Value(doc,"RevisionDateBox")),
-                        ["msds_revision_no"] = DbValue(Value(doc,"RevisionNumberBox")),
-                        ["msds_h_codes"] = DbValue(Value(doc,"HazardCodesBox")),
-                        ["msds_corrosive_flag"] = DbValue(Value(doc,"CorrosivityBox")),
-                        ["msds_toxicity"] = DbValue(Value(doc,"ToxicityBox")),
-                        ["msds_ppe"] = DbValue(Value(doc,"PersonalProtectionBox")),
-                        ["msds_lel"] = DbValue(Value(doc,"LelBox")),
-                        ["msds_uel"] = DbValue(Value(doc,"UelBox")),
-                        ["msds_flash_point"] = DbValue(Value(doc,"FlashPointBox")),
-                        ["msds_autoignition_temp"] = DbValue(Value(doc,"AutoIgnitionBox")),
-                        ["msds_vapor_pressure"] = DbValue(Value(doc,"VaporPressureBox")),
-                        ["msds_un_number"] = DbValue(Value(doc,"UnNumberBox")),
-                        ["msds_molecular_formula"] = DbValue(Value(doc,"MolecularFormulaBox")),
-                        ["msds_physical_state"] = DbValue(Value(doc,"PhysicalStateBox")),
-                        ["msds_hazardous_goods_class"] = DbValue(Value(doc,"HazardousGoodsBox")),
-                        ["msds_reactivity"] = DbValue(Value(doc,"ReactivityBox")),
+                        // AI extraction and user modifications are stored independently.
                         ["msds_registered_at"] = now, ["msds_updated_at"] = now,
                         ["msds_is_deleted"] = 0
                     };
+                    foreach (var field in BasicFields)
+                    {
+                        var original = OriginalValue(doc, field.UiKey, field.AiKey);
+                        var edited = Value(doc, field.UiKey);
+                        map["msds_" + field.Column + "_ai"] = OriginalDbValue(original);
+                        map["msds_" + field.Column + "_mod"] = ModifiedDbValue(original, edited);
+                    }
                     var cols = string.Join(",", map.Keys);
                     var pars = string.Join(",", map.Keys.Select(k => "$" + k));
                     cmd.CommandText = $"INSERT INTO msds_mstr ({cols}) VALUES ({pars}); SELECT last_insert_rowid();";
@@ -330,43 +348,35 @@ namespace QCS
                         var (min, max, calculated) = Amounts(ingredient.ConcentrationRaw);
                         using var child = db.CreateCommand();
                         child.Transaction = tx;
-                        child.CommandText = @"INSERT INTO msds_comp_dtl
-                            (msds_comp_parent_msds_id,msds_comp_name,msds_comp_cas_no,
-                             msds_comp_content_raw,msds_comp_content_min,msds_comp_content_max,
-                             msds_comp_content_calculated,msds_comp_sort_order,msds_comp_twa,msds_comp_stel,msds_comp_oral_ld50,msds_comp_dermal_ld50,msds_comp_inhalation_lc50)
-                            VALUES ($id,$name,$cas,$raw,$min,$max,$calc,$ord,$twa,$stel,$oral_ld50,$dermal_ld50,$inhalation_lc50)";
-                        child.Parameters.AddWithValue("$id", parentId);
-                        child.Parameters.AddWithValue("$name", DbValue(ingredient.Name));
-                        child.Parameters.AddWithValue("$cas", DbValue(ingredient.CasNumber));
-                        child.Parameters.AddWithValue("$raw", DbValue(ingredient.ConcentrationRaw));
-                        child.Parameters.AddWithValue("$min", Number(min));
-                        child.Parameters.AddWithValue("$max", Number(max));
-                        child.Parameters.AddWithValue("$calc", Number(calculated));
-                        child.Parameters.AddWithValue("$ord", ingredient.SortOrder);
-                        child.Parameters.AddWithValue("$twa", DbValue(ingredient.Twa));
-                        child.Parameters.AddWithValue("$stel", DbValue(ingredient.Stel));
-                        child.Parameters.AddWithValue("$oral_ld50", DbValue(ingredient.OralLd50));
-                        child.Parameters.AddWithValue("$dermal_ld50", DbValue(ingredient.DermalLd50));
-                        child.Parameters.AddWithValue("$inhalation_lc50", DbValue(ingredient.InhalationLc50));
-                        child.ExecuteNonQuery();
-                        child.CommandText = "SELECT last_insert_rowid()";
-                        var childId = Convert.ToInt64(child.ExecuteScalar());
+                        var original = ingredient.Original;
+                        var (oMin,oMax,oCalc) = Amounts(original?.ConcentrationRaw ?? "");
+                        static string NumText(double? number) => number?.ToString("0.##", CultureInfo.InvariantCulture) ?? "";
                         var componentFields = new Dictionary<string, object>
                         {
                             ["msds_comp_parent_msds_id"] = parentId,
                             ["msds_comp_name"] = DbValue(ingredient.Name),
                             ["msds_comp_cas_no"] = DbValue(ingredient.CasNumber),
-                            ["msds_comp_content_raw"] = DbValue(ingredient.ConcentrationRaw),
-                            ["msds_comp_content_min"] = Number(min),
-                            ["msds_comp_content_max"] = Number(max),
-                            ["msds_comp_content_calculated"] = Number(calculated),
-                            ["msds_comp_twa"] = DbValue(ingredient.Twa),
-                            ["msds_comp_stel"] = DbValue(ingredient.Stel),
-                            ["msds_comp_oral_ld50"] = DbValue(ingredient.OralLd50),
-                            ["msds_comp_dermal_ld50"] = DbValue(ingredient.DermalLd50),
-                            ["msds_comp_inhalation_lc50"] = DbValue(ingredient.InhalationLc50),
                             ["msds_comp_sort_order"] = ingredient.SortOrder
                         };
+                        void AddPair(string name, string? ai, string? edited)
+                        {
+                            componentFields["msds_comp_" + name + "_ai"] = OriginalDbValue(ai);
+                            componentFields["msds_comp_" + name + "_mod"] = ModifiedDbValue(ai, edited);
+                        }
+                        AddPair("content_raw", original?.ConcentrationRaw, ingredient.ConcentrationRaw);
+                        AddPair("content_min", original == null ? null : NumText(oMin), NumText(min));
+                        AddPair("content_max", original == null ? null : NumText(oMax), NumText(max));
+                        AddPair("content_calculated", original == null ? null : NumText(oCalc), NumText(calculated));
+                        AddPair("twa", original?.Twa, ingredient.Twa);
+                        AddPair("stel", original?.Stel, ingredient.Stel);
+                        AddPair("oral_ld50", original?.OralLd50, ingredient.OralLd50);
+                        AddPair("dermal_ld50", original?.DermalLd50, ingredient.DermalLd50);
+                        AddPair("inhalation_lc50", original?.InhalationLc50, ingredient.InhalationLc50);
+                        var colsChild = string.Join(",", componentFields.Keys);
+                        var parsChild = string.Join(",", componentFields.Keys.Select(k => "$" + k));
+                        child.CommandText = $"INSERT INTO msds_comp_dtl ({colsChild}) VALUES ({parsChild}); SELECT last_insert_rowid();";
+                        foreach (var entry in componentFields) child.Parameters.AddWithValue("$" + entry.Key, entry.Value);
+                        var childId = Convert.ToInt64(child.ExecuteScalar());
                         AddChanges(changes, "msds_comp_dtl", childId, componentFields);
                     }
                     MsdsLearningPersistence.Save(db, tx, doc, parentId, destination, hash);

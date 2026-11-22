@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 using System.Collections.Generic;
@@ -34,6 +34,39 @@ namespace QCS
             { "msds", "coa", "quality", "reference", "common", "message" };
 
         private static readonly Lazy<DatabaseSettings> Settings = new(LoadSettings);
+        private static readonly Lazy<int> DatabaseMode = new(LoadDatabaseMode);
+
+        private static int LoadDatabaseMode()
+        {
+            string exePath = Environment.ProcessPath
+                ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
+            string iniPath = Path.Combine(Path.GetDirectoryName(exePath)!, "QCS.ini");
+            if (!File.Exists(iniPath))
+                throw new FileNotFoundException($"DB 실행환경 설정 파일이 없습니다: {iniPath}", iniPath);
+
+            bool inDatabaseSection = false;
+            foreach (string rawLine in File.ReadAllLines(iniPath))
+            {
+                string line = rawLine.Trim().TrimStart('\uFEFF');
+                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+                if (line.StartsWith("[") && line.EndsWith("]"))
+                {
+                    inDatabaseSection = line.Equals("[Database]", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
+                if (!inDatabaseSection) continue;
+                int separator = line.IndexOf('=');
+                if (separator < 0 || !line[..separator].Trim().Equals("MOD", StringComparison.OrdinalIgnoreCase)) continue;
+                string value = line[(separator + 1)..].Trim();
+                if (value == "1") return 1;
+                if (value == "2") return 2;
+                throw new InvalidDataException("QCS.ini: MOD는 1(Network) 또는 2(Local)만 허용합니다.");
+            }
+            throw new InvalidDataException("QCS.ini: [Database] 섹션에 MOD 설정이 없습니다.");
+        }
+
+        public static int ActiveDatabaseMode => DatabaseMode.Value;
+
         private static DatabaseSettings Config => Settings.Value;
         private static Dictionary<string, string> DbFiles => Config.Databases;
 
@@ -57,7 +90,7 @@ namespace QCS
                 throw new InvalidDataException($"Database.json 형식 오류: {ex.Message}", ex);
             }
 
-            if (string.IsNullOrWhiteSpace(settings.NetworkDbFolder))
+            if (DatabaseMode.Value == 1 && string.IsNullOrWhiteSpace(settings.NetworkDbFolder))
                 throw new InvalidDataException("Database.json: NetworkDbFolder가 비어 있습니다.");
             settings.Databases = new Dictionary<string, string>(settings.Databases ?? new(),
                 StringComparer.OrdinalIgnoreCase);
@@ -72,8 +105,42 @@ namespace QCS
             return settings;
         }
 
-        public static string GetDbPath(string module) =>
-            Path.Combine(Config.NetworkDbFolder, DbFiles[module]);
+        private static string GetLocalDbFolder()
+        {
+            // Visual Studio 빌드 출력(bin\Debug 또는 bin\Release)에서는 프로젝트 루트의 QCS_DB 사용.
+            // 게시/일반 EXE 실행 시에는 실제 프로세스 EXE가 위치한 폴더의 QCS_DB 사용.
+            // 단일 파일 실행 시 AppContext.BaseDirectory가 임시 추출 경로일 수 있으므로 사용하지 않는다.
+            string exePath = Environment.ProcessPath
+                ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
+            string exeFolder = Path.GetFullPath(Path.GetDirectoryName(exePath)!);
+            DirectoryInfo? current = new DirectoryInfo(exeFolder);
+            while (current != null)
+            {
+                if (current.Name.Equals("bin", StringComparison.OrdinalIgnoreCase))
+                {
+                    string relativePath = Path.GetRelativePath(current.FullName, exeFolder);
+                    string configuration = relativePath.Split(Path.DirectorySeparatorChar)[0];
+                    if ((configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase) ||
+                         configuration.Equals("Release", StringComparison.OrdinalIgnoreCase)) &&
+                        current.Parent != null &&
+                        File.Exists(Path.Combine(current.Parent.FullName, "QCS.csproj")))
+                    {
+                        return Path.Combine(current.Parent.FullName, "QCS_DB");
+                    }
+                    break;
+                }
+                current = current.Parent;
+            }
+            return Path.Combine(exeFolder, "QCS_DB");
+        }
+
+        public static string GetDbPath(string module)
+        {
+            string folder = DatabaseMode.Value == 1
+                ? Config.NetworkDbFolder
+                : GetLocalDbFolder();
+            return Path.Combine(folder, DbFiles[module]);
+        }
 
         public static string GetConnectionString(string module) =>
             new SqliteConnectionStringBuilder
@@ -142,7 +209,7 @@ namespace QCS
         /// <summary>현재 활성 DB 파일의 절대 경로</summary>
         public static string ActiveDbPath => _localDbPath;
 
-        /// <summary>로컬 DB 파일 전체 경로 (실행폴더\QCS_db\qcs.db)</summary>
+        /// <summary>선택된 DB 파일 전체 경로</summary>
         public static string LocalDbPath => _localDbPath;
 
         /// <summary>단일 로컬 DB 체제이므로 항상 true 반환</summary>
@@ -182,7 +249,7 @@ namespace QCS
         }
 
         /// <summary>
-        /// 앱 시작 시 1회 호출한다. Database.json을 읽고 공유폴더 DB 연결을 활성화한다.
+        /// 앱 시작 시 1회 호출한다. QCS.ini 모드에 따라 Database.json의 DB 파일명을 사용한다.
         /// </summary>
         public static void Initialize()
         {
@@ -210,7 +277,9 @@ namespace QCS
         public static void TryReconnectOnline()
         {
             System.Windows.MessageBox.Show(
-                "현재 네트워크 공유폴더의 6개 SQLite DB를 사용합니다.",
+                DatabaseMode.Value == 1
+                    ? "현재 네트워크 공유폴더의 6개 SQLite DB를 사용합니다."
+                    : $"로컬 QCS_DB 폴더({GetLocalDbFolder()})에 있는 6개 SQLite DB를 사용합니다.",
                 "DB 상태",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Information);

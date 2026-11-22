@@ -36,6 +36,38 @@ namespace QCS
    var value = Value(row, "msds_is_latest");
    return value == "1" || value.Equals("Y", StringComparison.OrdinalIgnoreCase);
   }
+  // UI keeps the existing field names; database persists AI and optional MOD separately.
+  private static readonly string[] BasicAiFields = {
+   "msds_moel_submission_no", "msds_product_name", "msds_supplier_name", "msds_supplier_phone",
+   "msds_supplier_address", "msds_revision_date", "msds_revision_no", "msds_h_codes",
+   "msds_corrosive_flag", "msds_toxicity", "msds_ppe", "msds_lel", "msds_uel",
+   "msds_flash_point", "msds_autoignition_temp", "msds_vapor_pressure", "msds_un_number",
+   "msds_molecular_formula", "msds_physical_state", "msds_hazardous_goods_class", "msds_reactivity"
+  };
+  private static readonly string[] ComponentAiFields = {
+   "msds_comp_content_raw", "msds_comp_content_min", "msds_comp_content_max",
+   "msds_comp_content_calculated", "msds_comp_twa", "msds_comp_stel",
+   "msds_comp_oral_ld50", "msds_comp_dermal_ld50", "msds_comp_inhalation_lc50"
+  };
+  private static void AddEffectiveColumns(DataTable table, IEnumerable<string> fields)
+  {
+   foreach (var field in fields)
+   {
+    if (table.Columns.Contains(field)) continue;
+    if (!table.Columns.Contains(field + "_ai") || !table.Columns.Contains(field + "_mod"))
+     throw new InvalidOperationException("MSDS AI/MOD DB 필드 누락: " + field);
+    table.Columns.Add(field, typeof(string));
+    foreach (DataRow row in table.Rows)
+     row[field] = row.IsNull(field + "_mod") ? Convert.ToString(row[field + "_ai"]) ?? "" : Convert.ToString(row[field + "_mod"]) ?? "";
+   }
+   table.AcceptChanges();
+  }
+  private static void WriteModifiedValue(SqliteCommand cmd, List<string> sets, string field, string finalValue, object? originalAi)
+  {
+   var original = originalAi is null || originalAi is DBNull ? "" : Convert.ToString(originalAi) ?? "";
+   sets.Add("\"" + field + "_mod\"=@" + field + "_mod");
+   cmd.Parameters.AddWithValue("@" + field + "_mod", finalValue == original ? DBNull.Value : finalValue);
+  }
   private DataTable _master = new DataTable();
   private string _selectedPdfPath = "";
   private bool _previewExpanded = true;
@@ -200,7 +232,7 @@ namespace QCS
    if (id.HasValue) cmd.Parameters.AddWithValue("$id", id.Value);
    using var reader=cmd.ExecuteReader(); var result=new DataTable();
    for(int i=0;i<reader.FieldCount;i++) result.Columns.Add(reader.GetName(i), typeof(string));
-   while(reader.Read()) { var row=result.NewRow(); for(int i=0;i<reader.FieldCount;i++) row[i]=reader.IsDBNull(i)?"":Convert.ToString(reader.GetValue(i))??""; result.Rows.Add(row); }
+   while(reader.Read()) { var row=result.NewRow(); for(int i=0;i<reader.FieldCount;i++) row[i]=reader.IsDBNull(i)?DBNull.Value:Convert.ToString(reader.GetValue(i))??""; result.Rows.Add(row); }
    return result;
   }
   private static SqliteConnection OpenReadOnly()
@@ -217,6 +249,7 @@ namespace QCS
    {
     using var connection=OpenReadOnly();
     _master=ReadTable(connection,"SELECT * FROM msds_mstr ORDER BY msds_msds_id DESC");
+    AddEffectiveColumns(_master, BasicAiFields);
     _componentSearch.Clear();
     var components = ReadTable(connection, "SELECT msds_comp_parent_msds_id, msds_comp_name, msds_comp_cas_no FROM msds_comp_dtl");
     foreach (DataRow component in components.Rows)
@@ -286,6 +319,7 @@ namespace QCS
    {
     using var connection=OpenReadOnly();
     var detail=ReadTable(connection,"SELECT * FROM msds_comp_dtl WHERE msds_comp_parent_msds_id = $id ORDER BY msds_comp_sort_order, msds_comp_msds_id",id);
+    AddEffectiveColumns(detail, ComponentAiFields);
     _detailTable=detail; detail.AcceptChanges(); DetailGrid.ItemsSource=detail.DefaultView; DetailCount.Text=$"구성성분 ({detail.Rows.Count}건) — MSDS ID: {id}";
    }
    catch(Exception ex) { DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 조회 실패"; StatusText.Text="구성성분 조회 실패: "+ex.Message; }
@@ -605,7 +639,7 @@ namespace QCS
        var beforeComponents=ReadAuditComponents(conn,tx,id);
        // Never silently discard an editable value because a DB column is absent.
        var editableBoxes=BasicTextBoxes().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && key!="msds_material_type").ToList();
-       var missingColumns=editableBoxes.Where(b=>b.Tag is string key && !masterColumns.Contains(key)).Select(b=>(string)b.Tag).Distinct().ToArray();
+       var missingColumns=editableBoxes.Where(b=>b.Tag is string key && !masterColumns.Contains(key) && !(BasicAiFields.Contains(key) && masterColumns.Contains(key+"_ai") && masterColumns.Contains(key+"_mod"))).Select(b=>(string)b.Tag).Distinct().ToArray();
        if(missingColumns.Length>0) throw new InvalidOperationException("MSDS 기본정보 DB 필드 누락: "+string.Join(", ",missingColumns));
        var fields=editableBoxes;
        using (var cmd=conn.CreateCommand())
@@ -615,8 +649,13 @@ namespace QCS
          foreach(var box in fields)
          {
            string key=(string)box.Tag;
-           sets.Add($"\"{key}\"=@{key}");
-           cmd.Parameters.AddWithValue("@"+key, key=="msds_is_latest" ? (box.Text.Trim()=="예" || box.Text.Trim()=="1" ? "1":"0") : box.Text);
+           if (BasicAiFields.Contains(key))
+            WriteModifiedValue(cmd, sets, key, box.Text, beforeMaster.GetValueOrDefault(key + "_ai"));
+           else
+           {
+            sets.Add($"\"{key}\"=@{key}");
+            cmd.Parameters.AddWithValue("@"+key, key=="msds_is_latest" ? (box.Text.Trim()=="예" || box.Text.Trim()=="1" ? "1":"0") : box.Text);
+           }
          }
          if (sets.Count>0)
          {
@@ -638,17 +677,43 @@ namespace QCS
            if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 삭제 대상이 변경되었습니다.");
            continue;
          }
-         var editable=DetailGrid.Columns.OfType<DataGridBoundColumn>().Select(c=>(c.Binding as Binding)?.Path?.Path?.Trim('[',']')).OfType<string>().Where(c=>!string.IsNullOrWhiteSpace(c) && detailColumns.Contains(c)).Distinct().ToList();
+         var visible=DetailGrid.Columns.OfType<DataGridBoundColumn>()
+          .Select(c=>(c.Binding as Binding)?.Path?.Path?.Trim('[',']'))
+          .OfType<string>().Where(c=>!string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+         var direct=visible.Where(c=>!ComponentAiFields.Contains(c) && detailColumns.Contains(c)).ToList();
+         var aiFields=visible.Where(ComponentAiFields.Contains).ToList();
          if(row.RowState==DataRowState.Added)
          {
-           var keys=editable.Concat(new[]{"msds_comp_parent_msds_id","msds_comp_sort_order"}).Where(detailColumns.Contains).Distinct().ToList();
+           var keys=direct.Concat(new[]{"msds_comp_parent_msds_id","msds_comp_sort_order"})
+            .Concat(aiFields.Select(c=>c+"_mod")).Where(detailColumns.Contains).Distinct().ToList();
            cmd.CommandText="INSERT INTO msds_comp_dtl ("+string.Join(",",keys.Select(k=>"\""+k+"\""))+") VALUES ("+string.Join(",",keys.Select((k,i)=>"@p"+i))+")";
-           for(int i=0;i<keys.Count;i++)cmd.Parameters.AddWithValue("@p"+i,keys[i]=="msds_comp_parent_msds_id" ? id : row[keys[i]] is DBNull ? DBNull.Value : row[keys[i]]);
+           for(int i=0;i<keys.Count;i++)
+           {
+            string key=keys[i];
+            object value=key=="msds_comp_parent_msds_id" ? id : key.EndsWith("_mod",StringComparison.Ordinal)
+             ? (string.IsNullOrEmpty(Convert.ToString(row[key[..^4]])) ? DBNull.Value : row[key[..^4]])
+             : row[key] is DBNull ? DBNull.Value : row[key];
+            cmd.Parameters.AddWithValue("@p"+i,value);
+           }
          }
          else
          {
-           cmd.CommandText="UPDATE msds_comp_dtl SET "+string.Join(",",editable.Select((k,i)=>"\""+k+"\"=@p"+i))+" WHERE \""+pk+"\"=@pk AND msds_comp_parent_msds_id=@parent";
-           for(int i=0;i<editable.Count;i++)cmd.Parameters.AddWithValue("@p"+i,row[editable[i]!]);
+           var sets=new List<string>();
+           int i=0;
+           foreach(var key in direct)
+           {
+            sets.Add("\""+key+"\"=@p"+i);
+            cmd.Parameters.AddWithValue("@p"+i,row[key]); i++;
+           }
+           foreach(var key in aiFields)
+           {
+            sets.Add("\""+key+"_mod\"=@p"+i);
+            string original=Convert.ToString(row[key+"_ai"])??"";
+            string edited=Convert.ToString(row[key])??"";
+            cmd.Parameters.AddWithValue("@p"+i,edited==original ? DBNull.Value : edited); i++;
+           }
+           if(sets.Count==0) continue;
+           cmd.CommandText="UPDATE msds_comp_dtl SET "+string.Join(",",sets)+" WHERE "+"\""+pk+"\"=@pk AND msds_comp_parent_msds_id=@parent";
            cmd.Parameters.AddWithValue("@pk",row[pk]);cmd.Parameters.AddWithValue("@parent",id);
          }
          if(cmd.ExecuteNonQuery()!=1) throw new InvalidOperationException("구성성분 저장 건수가 일치하지 않습니다.");
@@ -674,7 +739,7 @@ namespace QCS
          (audit_log_msds_id,audit_log_product_name,audit_log_content,audit_log_user_id,audit_log_action,audit_log_datetime,audit_log_graco_code,audit_log_rev_no)
          VALUES ($id,$name,$content,$user,'UPDATE',$date,$code,$rev)";
         audit.Parameters.AddWithValue("$id",id);
-        audit.Parameters.AddWithValue("$name",afterMaster.GetValueOrDefault("msds_product_name")??DBNull.Value);
+        audit.Parameters.AddWithValue("$name",afterMaster.GetValueOrDefault("msds_product_name_mod")??afterMaster.GetValueOrDefault("msds_product_name_ai")??DBNull.Value);
         audit.Parameters.AddWithValue("$content",JsonSerializer.Serialize(new { registration_type="EDIT",changes }));
         audit.Parameters.AddWithValue("$user",Environment.UserName);
         audit.Parameters.AddWithValue("$date",DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));

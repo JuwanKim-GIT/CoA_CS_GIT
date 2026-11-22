@@ -58,6 +58,16 @@ namespace QCS
             this.Content = CreateTestResultListView();
         }
 
+        // 기존 메인 상태표시줄을 사용하며, 긴 동기 조회 직전 메시지를 화면에 반영합니다.
+        private void ReportLoadStatus(string message)
+        {
+            if (System.Windows.Window.GetWindow(this) is MainWindow main)
+            {
+                main.SetRunStatus(message);
+                Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() => { }));
+            }
+        }
+
         private UIElement CreateTestResultListView()
         {
             DockPanel mainPanel = new DockPanel();
@@ -316,9 +326,11 @@ namespace QCS
 
                 try
                 {
+                    ReportLoadStatus("TestResult: DB 연결 중...");
                     using (var conn = new SqliteConnection(DatabaseManager.GetConnectionString("quality")))
                     {
                         conn.Open();
+                        ReportLoadStatus("TestResult: SQL 조회 준비 중...");
 
                         StringBuilder sql = new StringBuilder();
                         sql.AppendLine("SELECT ");
@@ -375,8 +387,10 @@ namespace QCS
                             if (dateFrom.SelectedDate.HasValue) cmd.Parameters.AddWithValue("@dateFrom", dateFrom.SelectedDate.Value.ToString("yyyy-MM-dd"));
                             if (dateTo.SelectedDate.HasValue) cmd.Parameters.AddWithValue("@dateTo", dateTo.SelectedDate.Value.ToString("yyyy-MM-dd"));
 
+                            ReportLoadStatus("TestResult: SQL 실행 중...");
                             using (var reader = cmd.ExecuteReader())
                             {
+                                ReportLoadStatus("TestResult: 조회 데이터 적재 중...");
                                 loadedTable.Load(reader);
                             }
                         }
@@ -386,16 +400,19 @@ namespace QCS
                     if (hasMore) loadedTable.Rows.RemoveAt(loadedTable.Rows.Count - 1);
                     resultTruncated = hasMore;
                     currentRowLimit = rowLimit;
+                    ReportLoadStatus($"TestResult: DataGrid 표시 중... ({loadedTable.Rows.Count:N0}건)");
                     _dtSource = loadedTable;
                     _dataGrid.AutoGenerateColumns = true;
                     _dataGrid.ItemsSource = null;
                     _dataGrid.ItemsSource = _dtSource.DefaultView;
                     refreshArchiveCount();
                     watchTable(_dtSource);
+                    ReportLoadStatus($"TestResult: 조회 완료 ({_dtSource.Rows.Count:N0}건)");
 
                 }
                 catch (Exception ex)
                 {
+                    ReportLoadStatus("TestResult: 조회 실패 - " + ex.Message);
                     MessageBox.Show($"데이터 조회 중 에러 발생:\n{ex.Message}", "조회 오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             };
@@ -660,7 +677,15 @@ namespace QCS
                 }
             };
 
-            ActionSearch();
+            // 메인 윈도우에 연결된 뒤 초기 조회하여 공통 상태표시줄을 사용할 수 있게 합니다.
+            System.Windows.RoutedEventHandler initialSearch = null;
+            initialSearch = (sender, args) =>
+            {
+                Loaded -= initialSearch;
+                ReportLoadStatus("TestResult: 초기 조회 준비 중...");
+                ActionSearch();
+            };
+            Loaded += initialSearch;
 
             btnSearch.Click += (s, e) => ActionSearch();
             btnAll.Click += (s, e) =>

@@ -1,4 +1,4 @@
-// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -66,15 +66,17 @@ namespace QCS
             if (total <= 0 || connected < 0 || connected > total)
                 throw new ArgumentOutOfRangeException(nameof(connected));
 
+            string dbMode = DatabaseManager.ActiveDatabaseMode == 1 ? "Network" : "Local";
             DatabaseStatusText.Text = connected == total
-                ? $"DB 연결: {connected}/{total} 정상"
+                ? $"DB 연결: {connected}/{total} 정상 ({dbMode})"
                 : connected == 0
-                    ? $"DB 연결: {connected}/{total} 연결 오류"
-                    : $"DB 연결: {connected}/{total} 일부 오류";
+                    ? $"DB 연결: {connected}/{total} 연결 오류 ({dbMode})"
+                    : $"DB 연결: {connected}/{total} 일부 오류 ({dbMode})";
             DatabaseStatusIcon.Fill = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(
                     connected == total ? "#16A34A" : connected == 0 ? "#DC2626" : "#EAB308"));
-            DatabaseStatusText.ToolTip = details ?? DatabaseStatusText.Text;
+            string dbFolder = System.IO.Path.GetDirectoryName(DatabaseManager.GetDbPath("common")) ?? "";
+            DatabaseStatusText.ToolTip = $"접속 DB: {dbMode}\nDB 폴더: {dbFolder}\n{details ?? DatabaseStatusText.Text}";
         }
 
         // Compatibility overload for existing startup calls. Always use the DB role.
