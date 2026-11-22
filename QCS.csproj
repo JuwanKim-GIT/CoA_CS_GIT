@@ -31,11 +31,11 @@
 
 	<ItemGroup>
 	  <None Remove="Analysis\FieldRules.json" />
-	  <None Remove="CoA_xltm\New_CoA_Form_Eng.xltm" />
-	  <None Remove="CoA_xltm\New_CoA_Form_Jpn-old.xltm" />
-	  <None Remove="CoA_xltm\New_CoA_Form_Jpn.xltm" />
-	  <None Remove="CoA_xltm\New_CoA_Form_Kor.xltm" />
-	  <None Remove="CoA_xltm\New_CoA_form_Rus.xltm" />
+	  <None Remove="QCS_xltm\New_CoA_Form_Eng.xltm" />
+	  <None Remove="QCS_xltm\New_CoA_Form_Jpn-old.xltm" />
+	  <None Remove="QCS_xltm\New_CoA_Form_Jpn.xltm" />
+	  <None Remove="QCS_xltm\New_CoA_Form_Kor.xltm" />
+	  <None Remove="QCS_xltm\New_CoA_form_Rus.xltm" />
 	  <None Remove="QCS_MSDS_7개테이블_추가.sql" />
 	  <None Remove="Resources\Icons\msds_revision.png" />
 	  <None Remove="Resources\Icons\user_code.png" />
@@ -58,27 +58,27 @@
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 	  </Content>
-	  <Content Include="CoA_xltm\New_CoA_Form_Eng.xltm">
+	  <Content Include="QCS_xltm\New_CoA_Form_Eng.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 	  </Content>
-	  <Content Include="CoA_xltm\New_CoA_Form_Jpn-old.xltm">
+	  <Content Include="QCS_xltm\New_CoA_Form_Jpn-old.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 	  </Content>
-	  <Content Include="CoA_xltm\New_CoA_Form_Jpn.xltm">
+	  <Content Include="QCS_xltm\New_CoA_Form_Jpn.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 	  </Content>
-	  <Content Include="CoA_xltm\New_CoA_Form_Kor.xltm">
+	  <Content Include="QCS_xltm\New_CoA_Form_Kor.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 	  </Content>
-	  <Content Include="CoA_xltm\New_CoA_form_Rus.xltm">
+	  <Content Include="QCS_xltm\New_CoA_form_Rus.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
@@ -140,11 +140,19 @@
 	  </Resource>
 	</ItemGroup>
 
-	<!-- Copy RM/FG Excel templates beside the executable on build/publish. -->
+	<!-- Copy RM/FG Excel templates as external publish content. -->
 	<ItemGroup>
-	  <None Update="QCS_xltm\*.xltm">
+	  <None Remove="QCS_xltm\원료 유해위험물질목록.xltm" />
+	  <None Remove="QCS_xltm\제품 유해위험물질목록.xltm" />
+	  <Content Include="QCS_xltm\원료 유해위험물질목록.xltm">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </None>
+	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+	  </Content>
+	  <Content Include="QCS_xltm\제품 유해위험물질목록.xltm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+	  </Content>
 	</ItemGroup>
 </Project>

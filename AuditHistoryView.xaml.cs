@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -245,7 +245,11 @@ namespace QCS
         private static string TemplatePath(string materialType)
         {
             string name = materialType == "RM" ? "원료 유해위험물질목록.xltm" : "제품 유해위험물질목록.xltm";
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "QCS_xltm", name);
+            string exePath = Process.GetCurrentProcess().MainModule?.FileName
+                ?? throw new InvalidOperationException("QCS 실행 파일 경로를 확인할 수 없습니다.");
+            string exeDirectory = Path.GetDirectoryName(exePath)
+                ?? throw new InvalidOperationException("QCS 실행 폴더를 확인할 수 없습니다.");
+            string path = Path.Combine(exeDirectory, "QCS_xltm", name);
             if (!File.Exists(path)) throw new FileNotFoundException("Excel 템플릿이 실행 폴더의 QCS_xltm에 없습니다.", path);
             return path;
         }
