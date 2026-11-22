@@ -5,6 +5,8 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Data.Sqlite;
+using Menu = System.Windows.Controls.Menu;
+using MenuItem = System.Windows.Controls.MenuItem;
 using MessageBox = System.Windows.MessageBox;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -22,7 +24,7 @@ namespace QCS
             public string AdminOnly { get; set; } = "N";
             public string ProgramType { get; set; } = "MENU";
             public string AdminOnlyText => string.Equals(AdminOnly, "Y", StringComparison.OrdinalIgnoreCase) ? "Y" : "N";
-            public string DisplayPath => ProgramType == "SUB" ? "서브 프로그램  >  " + MenuName : Category + "  >  " + MenuName;
+            public string DisplayPath => ProgramType == "SUB" ? "    ↳ " + MenuName : Category + "  >  " + MenuName;
         }
         private sealed class UserRow
         {
@@ -32,19 +34,6 @@ namespace QCS
             public string LevelText => Level == 9 ? "IT 관리자" : Level == 8 ? "시스템관리자" : Level == 1 ? "일반사용자" : "비활성";
             public string Display => Id + "  (" + Name + ")";
         }
-
-        private static readonly Dictionary<string, string> Files = new(StringComparer.Ordinal)
-        {
-            ["CoA 발행"] = "CoARegistryView.xaml.cs", ["CoA 조회"] = "MainWindow.xaml.cs#Menu_CoaInq_Click",
-            ["아이템 목록 관리"] = "ItemListView.xaml.cs", ["Test Result 목록 관리"] = "TestResultListView.xaml.cs",
-            ["MSDS 등록"] = "MsdsRegistrationView.xaml.cs", ["MSDS 조회/관리"] = "MsdsManagementView.xaml.cs",
-            ["MSDS 대장출력"] = "MsdsInventoryExportView.xaml.cs", ["대장 개정관리"] = "AuditHistoryView.xaml.cs",
-            ["참조자료 관리"] = "ReferenceDataView.xaml.cs", ["공통코드 관리"] = "CodeListView.xaml.cs", ["업무코드 관리"] = "UserCodeListView.xaml.cs",
-            ["사용자 관리"] = "UserManagementView.xaml.cs", ["프로그램 접근 권한 관리"] = "AccessPermissionView.xaml.cs",
-            ["Admin 관리"] = "AdminManagementView.xaml.cs", ["DB 스키마 조회"] = "DatabaseSchemaView.xaml.cs",
-            ["Data Import"] = "MainWindow.xaml.cs#MenuDataImport_Click", ["Data Export"] = "MainWindow.xaml.cs#MenuDataExport_Click",
-            ["사용자 전환"] = "UserSwitchView.xaml.cs"
-        };
 
         private readonly ObservableCollection<ProgramRow> _programs = new();
         private readonly ObservableCollection<UserRow> _allowed = new();
@@ -122,8 +111,10 @@ namespace QCS
                 {
                     string name = child.Header?.ToString() ?? "";
                     if (string.IsNullOrWhiteSpace(name)) continue;
-                    string file = child.Tag as string ?? (Files.TryGetValue(name, out var known) ? known : name + ".cs");
+                    if (child.Tag is not string file || string.IsNullOrWhiteSpace(file)) continue;
                     result.Add(new ProgramRow { Category = category, MenuName = name, FileName = file, Description = category + " > " + name, ProgramType = "MENU" });
+                    foreach (var sub in QcsAuthorizationService.SubPrograms.Where(x => x.ParentId == file))
+                        result.Add(new ProgramRow { Category = category, MenuName = sub.Name, FileName = sub.Id, Description = category + " > " + name + " > " + sub.Name, ProgramType = "SUB" });
                 }
             }
             return result;
@@ -155,11 +146,14 @@ namespace QCS
                 {
                     using var cmd = conn.CreateCommand(); cmd.Transaction = transaction;
                     cmd.CommandText = @"INSERT INTO zx_code_mstr (zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
-SELECT 'QCS_APPLICATIONS',$file,$menu,$desc,'','N','MENU' WHERE NOT EXISTS
+SELECT 'QCS_APPLICATIONS',$file,$menu,$desc,'','N',$type WHERE NOT EXISTS
 (SELECT 1 FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$file)";
                     cmd.Parameters.AddWithValue("$file", item.FileName);
                     cmd.Parameters.AddWithValue("$menu", item.MenuName);
                     cmd.Parameters.AddWithValue("$desc", item.Description);
+                    cmd.Parameters.AddWithValue("$type", item.ProgramType);
+                    cmd.ExecuteNonQuery();
+                    cmd.CommandText = @"UPDATE zx_code_mstr SET zx_code_desc1=$menu,zx_code_desc2=$desc,zx_code_char2=$type WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$file AND (COALESCE(zx_code_desc1,'')<>$menu OR COALESCE(zx_code_desc2,'')<>$desc OR COALESCE(zx_code_char2,'')<>$type)";
                     cmd.ExecuteNonQuery();
                 }
                 transaction.Commit();
@@ -167,7 +161,7 @@ SELECT 'QCS_APPLICATIONS',$file,$menu,$desc,'','N','MENU' WHERE NOT EXISTS
             }
 
             using var load = conn.CreateCommand();
-            load.CommandText = "SELECT zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2 FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS' ORDER BY CASE WHEN COALESCE(zx_code_char2,'MENU')='SUB' THEN 1 ELSE 0 END,zx_code_desc2,zx_code_desc1";
+            load.CommandText = "SELECT zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2 FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS'";
             using var reader = load.ExecuteReader();
             var saved = new Dictionary<string, (string menu, string desc, string permission, string adminOnly, string type)>(StringComparer.OrdinalIgnoreCase);
             while (reader.Read())
@@ -178,31 +172,14 @@ SELECT 'QCS_APPLICATIONS',$file,$menu,$desc,'','N','MENU' WHERE NOT EXISTS
 
             _loading = true;
             _programs.Clear();
-            var menuLookup = discovered.ToDictionary(x => x.FileName, StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in saved)
+            foreach (var found in discovered)
             {
-                var row = pair.Value;
-                if (menuLookup.TryGetValue(pair.Key, out var found))
+                if (saved.TryGetValue(found.FileName, out var row))
                 {
                     found.Permission = row.permission;
-                    found.Description = string.IsNullOrWhiteSpace(row.desc) ? found.Description : row.desc;
                     found.AdminOnly = string.IsNullOrWhiteSpace(row.adminOnly) ? "N" : row.adminOnly;
-                    found.ProgramType = string.IsNullOrWhiteSpace(row.type) ? "MENU" : row.type;
-                    _programs.Add(found);
                 }
-                else
-                {
-                    _programs.Add(new ProgramRow
-                    {
-                        Category = row.type.Equals("SUB", StringComparison.OrdinalIgnoreCase) ? "서브 프로그램" : "등록 프로그램",
-                        MenuName = row.menu,
-                        FileName = pair.Key,
-                        Description = row.desc,
-                        Permission = row.permission,
-                        AdminOnly = string.IsNullOrWhiteSpace(row.adminOnly) ? "N" : row.adminOnly,
-                        ProgramType = string.IsNullOrWhiteSpace(row.type) ? "MENU" : row.type
-                    });
-                }
+                _programs.Add(found);
             }
             _loading = false;
             CountText.Text = $"프로그램: {_programs.Count}건";

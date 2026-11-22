@@ -130,13 +130,15 @@ public partial class MsdsLearningManagementView : UserControl
         if(ItemsControl.ContainerFromElement(Results,d) is DataGridRow) OpenDiagnostic();
     }
     private void CasesClick(object sender,RoutedEventArgs e)=>OpenDiagnostic();
+    private bool DiagnosticAllowed() => Allowed() && QcsAuthorizationService.CanAccessProgram(Owner?.GetCurrentUser(), QcsAuthorizationService.LearningDiagnosticProgramId);
     private void OpenDiagnostic()
     {
-        if(!Allowed() || Results.SelectedItem is not Learning x) return;
-        if(_diagnostic==null) { _diagnostic=new MsdsLearningDiagnosticWindow(Allowed,Open,_codeTips); _diagnostic.Closed+=(_,_)=>_diagnostic=null; _diagnostic.Show(); }
+        if(!DiagnosticAllowed()) { Status("AI 학습 진단: 접근 제한"); return; }
+        if(Results.SelectedItem is not Learning x) return;
+        if(_diagnostic==null) { _diagnostic=new MsdsLearningDiagnosticWindow(DiagnosticAllowed,Open,_codeTips); _diagnostic.Closed+=(_,_)=>_diagnostic=null; _diagnostic.Show(); }
         UpdateDiagnostic(x); if(_diagnostic.WindowState==WindowState.Minimized) _diagnostic.WindowState=WindowState.Normal; _diagnostic.Activate();
     }
-    private void UpdateDiagnostic(Learning? x) { if(_diagnostic==null) return; if(!Allowed()) { CloseDiagnostic(); return; } _diagnostic.SetLearning(x); }
+    private void UpdateDiagnostic(Learning? x) { if(_diagnostic==null) return; if(!DiagnosticAllowed()) { CloseDiagnostic(); return; } _diagnostic.SetLearning(x); }
     private void RowChanged(object sender,SelectionChangedEventArgs e)=>UpdateSelection();
     private void UpdateSelection() { if(Activate==null || Results==null) return; var x=Results.SelectedItem as Learning; Activate.IsEnabled=x!=null&&(x.State=="INACTIVE"||x.State=="PENDING"); Deactivate.IsEnabled=x!=null&&(x.State=="APPROVED"||x.State=="PENDING"); Original.IsEnabled=x!=null; Cases.IsEnabled=x!=null; if(!_busy && _diagnostic!=null) UpdateDiagnostic(x); }
     private void QueryClick(object sender,RoutedEventArgs e)=>SubmitSearch();

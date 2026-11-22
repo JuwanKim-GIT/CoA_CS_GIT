@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='UTF-8'?>
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" x:Class="QCS.MsdsRegistrationView" Background="#F0F4F9" FontFamily="Malgun Gothic" FontSize="12">
 
     <UserControl.Resources>
@@ -35,6 +35,19 @@
             <Setter Property="Padding" Value="6,1"/>
             <Setter Property="BorderBrush" Value="#CED8E5"/>
             <Setter Property="Background" Value="#F9FBFE"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 기본정보 탭: 한 줄부터 최대 다섯 줄까지 내용에 맞춰 자동 높이 조절 -->
+        <Style x:Key="AutoHeightMsdsField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Height" Value="Auto"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="MinLines" Value="1"/>
+            <Setter Property="MaxLines" Value="5"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
@@ -194,11 +207,11 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Height="30" Padding="4,2" VerticalAlignment="Center" Content="▣  파일 추가" Style="{StaticResource PrimaryButton}" Click="AddFiles_Click"/>
+                        <Button Grid.Column="0" Height="30" MinWidth="0" Margin="0,0,8,0" Padding="2,2" VerticalAlignment="Center" Width="Auto" HorizontalAlignment="Stretch" FontSize="12" Content="▣  파일 추가" Style="{StaticResource PrimaryButton}" Click="AddFiles_Click"/>
 
-                        <Button Grid.Column="1" Height="30" Padding="4,2" VerticalAlignment="Center" Content="▱  폴더 추가" Click="AddFolder_Click"/>
+                        <Button Grid.Column="1" Height="30" MinWidth="0" Margin="0,0,8,0" Padding="2,2" VerticalAlignment="Center" Width="Auto" HorizontalAlignment="Stretch" FontSize="12" Content="▱  폴더 추가" Click="AddFolder_Click"/>
 
-                        <Button Grid.Column="2" Height="30" Padding="4,2" VerticalAlignment="Center" Content="✕  선택 삭제" Click="RemoveSelected_Click" Margin="0"/>
+                        <Button Grid.Column="2" Height="30" MinWidth="0" Margin="0" Padding="2,2" VerticalAlignment="Center" Width="Auto" HorizontalAlignment="Stretch" FontSize="12" Content="×  선택 삭제" Click="RemoveSelected_Click"/>
                     </Grid>
 
                     <Grid Grid.Row="3">
@@ -207,7 +220,7 @@
                         <TextBox x:Name="FileSearchBox" Grid.Column="1" Margin="6,0,0,3" Padding="5,1" ToolTip="파일명 일부 입력 후 Enter: 다음 일치 파일 검색 (순환)" KeyDown="FileSearchBox_KeyDown"/>
                     </Grid>
 
-                    <DataGrid x:Name="FilesGrid" Grid.Row="4" SelectionMode="Single" IsReadOnly="True" SelectionChanged="FilesGrid_SelectionChanged" Margin="0,2,0,5">
+                    <DataGrid x:Name="FilesGrid" Grid.Row="4" SelectionMode="Extended" IsReadOnly="True" SelectionChanged="FilesGrid_SelectionChanged" Margin="0,2,0,5">
                         <DataGrid.Resources>
                             <!-- 선택된 행은 포커스를 잃어도 동일한 대비를 유지한다. -->
                             <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#0879D0"/>
@@ -237,9 +250,8 @@
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="No." Binding="{Binding Index}" Width="38"/>
-                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="파일명" Binding="{Binding FileName}" Width="*"/>
+                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="Graco Code" Binding="{Binding GracoCode}" Width="*"/>
                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="구분" Binding="{Binding RegistrationKind}" Width="58"/>
-                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="크기" Binding="{Binding FileSize}" Width="63"/>
                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="상태" Binding="{Binding Status}" Width="105"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -348,48 +360,48 @@
 
                         <!-- BASIC INFORMATION: common two-column order with management screen -->
                         <TabItem Header="기본 정보"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="8"><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="① MSDS 식별 및 개정정보" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="Graco Code" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="GracoCodeBox" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
+<TextBox x:Name="GracoCodeBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
 <TextBlock Grid.Row="0" Grid.Column="2" Text="구분" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="MaterialTypeDisplay" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
+<TextBox x:Name="MaterialTypeDisplay" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
 <TextBlock Grid.Row="1" Grid.Column="0" Text="개정일" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="RevisionDateBox" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="RevisionDateBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="2" Text="개정번호" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="RevisionNumberBox" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="RevisionNumberBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="2" Grid.Column="0" Text="파일명" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="FileNameBox" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
+<TextBox x:Name="FileNameBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" IsReadOnly="True"/>
 </Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="② 제품 및 공급업체 정보" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="원료(제품)명" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="ProductNameBox" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="ProductNameBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="0" Grid.Column="2" Text="공급업체명" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="SupplierNameBox" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="SupplierNameBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="0" Text="공급업체 전화" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="PhoneBox" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="PhoneBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="2" Text="공급업체 주소" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="AddressBox" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="AddressBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="2" Grid.Column="0" Text="노동부 제출번호" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="MoelSubmissionBox" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
-</Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="③ 유해·위험성 정보" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="유해·위험 문구" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="HazardCodesBox" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
-<TextBlock Grid.Row="0" Grid.Column="2" Text="부식성 유무" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="CorrosivityBox" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="MoelSubmissionBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+</Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="③ 유해·위험성 정보" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="유해·위험 문구" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
+<TextBox x:Name="HazardCodesBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+<TextBlock Grid.Row="0" Grid.Column="2" Text="피부 부식성/자극성" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
+<TextBox x:Name="CorrosivityBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="0" Text="개인보호구" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="PersonalProtectionBox" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
-</Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="④ 물리·화학적 특성" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="폭발하한계 (LEL)" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="LelBox" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="PersonalProtectionBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+<TextBlock Grid.Row="2" Grid.Column="0" Text="반응성" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
+<TextBox x:Name="ReactivityBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/></Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="④ 물리·화학적 특성" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border><Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Grid.Row="0" Grid.Column="0" Text="폭발하한계 (LEL)" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
+<TextBox x:Name="LelBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="0" Grid.Column="2" Text="폭발상한계 (UEL)" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="UelBox" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="UelBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="0" Text="인화점" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="FlashPointBox" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="FlashPointBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="1" Grid.Column="2" Text="자연발화점" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="AutoIgnitionBox" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="AutoIgnitionBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="2" Grid.Column="0" Text="증기압" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="VaporPressureBox" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
+<TextBox x:Name="VaporPressureBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="2" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 <TextBlock Grid.Row="2" Grid.Column="2" Text="UN 번호" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/>
-<TextBox x:Name="UnNumberBox" Grid.Row="2" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged"/>
-</Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="10"><StackPanel><TextBlock Text="기타 관리정보" FontWeight="SemiBold" Foreground="#1E3A5F" Margin="0,0,0,6"/><DockPanel Margin="0,3"><TextBlock Text="반응성" VerticalAlignment="Center" Margin="3,4" FontSize="12" Width="130" DockPanel.Dock="Left"/>
-<TextBox Margin="2,3" MinHeight="24" IsReadOnly="True"/>
-</DockPanel><DockPanel Margin="0,3"><TextBlock Text="독성치" VerticalAlignment="Center" Margin="3,4" FontSize="12" Width="130" DockPanel.Dock="Left"/>
-<TextBox Margin="2,3" MinHeight="24" IsReadOnly="True"/>
-</DockPanel></StackPanel></Border></StackPanel></ScrollViewer></TabItem>
+<TextBox x:Name="UnNumberBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="2" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+<TextBlock Grid.Row="3" Grid.Column="0" Text="분자식" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/><TextBox x:Name="MolecularFormulaBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="3" Grid.Column="1" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/><TextBlock Grid.Row="3" Grid.Column="2" Text="물리적 상태" VerticalAlignment="Center" Margin="4,4,8,4" FontSize="12"/><TextBox x:Name="PhysicalStateBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="3" Grid.Column="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/></Grid></StackPanel></Border><Border Background="White" BorderBrush="#D7E1ED" BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="0,0,0,9"><StackPanel><Border Background="#E2EAF5" Padding="12,8" Margin="0,0,0,6"><TextBlock Text="⑤ 독성 및 취급 정보" Foreground="#1E3A5F" FontWeight="SemiBold" FontSize="13"/></Border>
+<Grid Margin="10,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<TextBlock Grid.Row="0" Grid.Column="0" Text="위험물 분류" Margin="4,4,8,4"/><TextBox x:Name="HazardousGoodsBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+<TextBlock Grid.Row="1" Grid.Column="0" Text="독성치" Margin="4,4,8,4"/><TextBox x:Name="ToxicityBox" Style="{StaticResource AutoHeightMsdsField}" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="4,4,8,4" MinHeight="24" TextChanged="EditableField_TextChanged" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/></Grid></StackPanel></Border></StackPanel></ScrollViewer></TabItem>
                         <!-- 구성성분: 기존 편집 그리드 및 이벤트 연결 유지 -->
                         <TabItem Header="구성성분">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -411,8 +423,9 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <DataGrid x:Name="IngredientsGrid" Height="260" RowHeight="27" ColumnHeaderHeight="38" IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False" SelectionChanged="IngredientsGrid_SelectionChanged">
+                                    <DataGrid x:Name="IngredientsGrid" Height="260" RowHeight="NaN" MinRowHeight="27" FrozenColumnCount="3" ColumnHeaderHeight="38" IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False" SelectionChanged="IngredientsGrid_SelectionChanged">
                                         <DataGrid.Resources>
+                                            <Style x:Key="MsdsWrappedCell" TargetType="TextBlock" BasedOn="{StaticResource QcsGridText}"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/></Style>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0879D0"/>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
                                         </DataGrid.Resources>
@@ -424,9 +437,12 @@
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Minimum}" Header="최소(%)" IsReadOnly="True" Width="75"/>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Maximum}" Header="최대(%)" IsReadOnly="True" Width="75"/>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Calculated}" Header="산출값(%)" IsReadOnly="True" Width="85"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="분자식" Width="85"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="TWA" Width="85"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Header="STEL" Width="85"/>
+                                            
+                                            <DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding Twa}" Header="TWA" Width="120"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding Stel}" Header="STEL" Width="120"/>
+<DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding OralLd50}" Header="경구 LD50" Width="180"/>
+<DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding DermalLd50}" Header="경피 LD50" Width="180"/>
+<DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding InhalationLc50}" Header="흡입 LC50" Width="180"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
 
@@ -524,9 +540,10 @@
 
                 <TextBlock Text="현재 PDF 검토 결과를 저장하면 확인완료로 표시됩니다." Foreground="#788AA2" FontSize="11"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ExportAnalysisButton" Content="분석결과 출력" Width="130" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="ExportAnalysis_Click" Margin="0,0,8,0"/>
                     <Button x:Name="AiCorrectionButton" Content="AI 교정" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="AiCorrection_Click" Margin="0,0,8,0"/>
                     <Button x:Name="SaveCurrentButton" Content="저장" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="SaveCurrent_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="DbSaveButton" IsEnabled="False" Content="DB 저장" Width="145" Click="DbSave_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="DbSaveButton" IsEnabled="False" Content="선택 DB 저장" Width="145" Click="DbSave_Click" Margin="0,0,8,0"/>
                     <Button x:Name="BottomClearButton" Content="✕  목록 초기화" Click="Clear_Click" Margin="0"/>
                 </StackPanel>
             </Grid>

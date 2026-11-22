@@ -19,6 +19,12 @@ namespace QCS
             public string Name { get; set; } = "";
             public string CasNumber { get; set; } = "";
             public string ConcentrationRaw { get; set; } = "";
+            public string Twa { get; set; } = "";
+            public string Stel { get; set; } = "";
+            public string OralLd50 { get; set; } = "";
+            public string DermalLd50 { get; set; } = "";
+            public string InhalationLc50 { get; set; } = "";
+
         }
         internal sealed class Document
         {
@@ -39,18 +45,35 @@ namespace QCS
         private static object DbValue(string? value) => string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
         private static string Value(Document d, string key) => d.Values.TryGetValue(key, out var value) ? value : "";
         private static object Number(double? n) => n.HasValue ? n.Value : DBNull.Value;
+        internal static string GracoCode(string path)
+        {
+            var name = Path.GetFileNameWithoutExtension(path).Trim();
+            return name.Substring(0, Math.Min(6, name.Length));
+        }
         internal static (double?, double?, double?) Amounts(string raw)
         {
-            // Only unambiguous numerical expressions are converted; preserve raw string regardless.
-            var text = (raw ?? "").Trim();
-            var match = Regex.Match(text, @"^\s*(\d+(?:[.,]\d+)?)\s*(?:[-~–]\s*(\d+(?:[.,]\d+)?))?\s*%?\s*$");
-            if (!match.Success) return (null, null, null);
-            if (!double.TryParse(match.Groups[1].Value.Replace(',', '.'), NumberStyles.Float,
-                CultureInfo.InvariantCulture, out var a)) return (null, null, null);
-            if (!match.Groups[2].Success) return (a, a, a);
-            if (!double.TryParse(match.Groups[2].Value.Replace(',', '.'), NumberStyles.Float,
-                CultureInfo.InvariantCulture, out var b) || a > b) return (null, null, null);
-            return (a, b, (a + b) / 2);
+            var text = (raw ?? "").Trim().Normalize(System.Text.NormalizationForm.FormKC)
+                .Replace("≥", ">=").Replace("≤", "<=").Replace("－", "-")
+                .Replace("〜", "~").Replace("～", "~").Replace("–", "-").Replace("—", "-");
+            static double? Parse(string value) =>
+                double.TryParse(value.Replace(',', '.'), NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out var n) && n >= 0 && n <= 100 ? n : null;
+            const string n = @"(\d+(?:[.,]\d+)?)";
+            var range = Regex.Match(text,
+                @"^\s*(?:>=|>)?\s*" + n + @"\s*(?:-|~|to)\s*(?:<=|<)?\s*" + n + @"\s*%?\s*$",
+                RegexOptions.IgnoreCase);
+            if (range.Success)
+            {
+                var a=Parse(range.Groups[1].Value); var b=Parse(range.Groups[2].Value);
+                return a.HasValue && b.HasValue && a <= b ? (a,b,(a.Value+b.Value)/2) : (null,null,null);
+            }
+            var upper=Regex.Match(text,@"^\s*(?:<=|<)\s*"+n+@"\s*%?\s*$");
+            if (upper.Success) return (null,Parse(upper.Groups[1].Value),null);
+            var lower=Regex.Match(text,@"^\s*(?:>=|>)\s*"+n+@"\s*%?\s*$");
+            if (lower.Success) return (Parse(lower.Groups[1].Value),null,null);
+            var exact=Regex.Match(text,@"^\s*"+n+@"\s*%?\s*$");
+            if (exact.Success) { var v=Parse(exact.Groups[1].Value); return (v,v,v); }
+            return (null,null,null);
         }
         // Migration is additive; existing MSDS records and their relationships remain unchanged.
         private static void EnsureRegistrationColumns(SqliteConnection db)
@@ -199,7 +222,7 @@ namespace QCS
                 }
                 if (doc.MaterialType != "RM" && doc.MaterialType != "FG")
                     throw new InvalidOperationException("원료/제품 구분이 지정되지 않았습니다.");
-                string gracoCode = Path.GetFileNameWithoutExtension(doc.FilePath).Trim();
+                string gracoCode = GracoCode(doc.FilePath);
                 if (string.IsNullOrWhiteSpace(gracoCode)) throw new InvalidOperationException("Graco Code를 확인할 수 없습니다.");
                 EnsureRegistrationColumns(db);
                 // The pending inventory revision must be configured before MSDS registration.
@@ -281,6 +304,7 @@ namespace QCS
                         ["msds_revision_no"] = DbValue(Value(doc,"RevisionNumberBox")),
                         ["msds_h_codes"] = DbValue(Value(doc,"HazardCodesBox")),
                         ["msds_corrosive_flag"] = DbValue(Value(doc,"CorrosivityBox")),
+                        ["msds_toxicity"] = DbValue(Value(doc,"ToxicityBox")),
                         ["msds_ppe"] = DbValue(Value(doc,"PersonalProtectionBox")),
                         ["msds_lel"] = DbValue(Value(doc,"LelBox")),
                         ["msds_uel"] = DbValue(Value(doc,"UelBox")),
@@ -288,6 +312,10 @@ namespace QCS
                         ["msds_autoignition_temp"] = DbValue(Value(doc,"AutoIgnitionBox")),
                         ["msds_vapor_pressure"] = DbValue(Value(doc,"VaporPressureBox")),
                         ["msds_un_number"] = DbValue(Value(doc,"UnNumberBox")),
+                        ["msds_molecular_formula"] = DbValue(Value(doc,"MolecularFormulaBox")),
+                        ["msds_physical_state"] = DbValue(Value(doc,"PhysicalStateBox")),
+                        ["msds_hazardous_goods_class"] = DbValue(Value(doc,"HazardousGoodsBox")),
+                        ["msds_reactivity"] = DbValue(Value(doc,"ReactivityBox")),
                         ["msds_registered_at"] = now, ["msds_updated_at"] = now,
                         ["msds_is_deleted"] = 0
                     };
@@ -305,8 +333,8 @@ namespace QCS
                         child.CommandText = @"INSERT INTO msds_comp_dtl
                             (msds_comp_parent_msds_id,msds_comp_name,msds_comp_cas_no,
                              msds_comp_content_raw,msds_comp_content_min,msds_comp_content_max,
-                             msds_comp_content_calculated,msds_comp_sort_order)
-                            VALUES ($id,$name,$cas,$raw,$min,$max,$calc,$ord)";
+                             msds_comp_content_calculated,msds_comp_sort_order,msds_comp_twa,msds_comp_stel,msds_comp_oral_ld50,msds_comp_dermal_ld50,msds_comp_inhalation_lc50)
+                            VALUES ($id,$name,$cas,$raw,$min,$max,$calc,$ord,$twa,$stel,$oral_ld50,$dermal_ld50,$inhalation_lc50)";
                         child.Parameters.AddWithValue("$id", parentId);
                         child.Parameters.AddWithValue("$name", DbValue(ingredient.Name));
                         child.Parameters.AddWithValue("$cas", DbValue(ingredient.CasNumber));
@@ -315,6 +343,11 @@ namespace QCS
                         child.Parameters.AddWithValue("$max", Number(max));
                         child.Parameters.AddWithValue("$calc", Number(calculated));
                         child.Parameters.AddWithValue("$ord", ingredient.SortOrder);
+                        child.Parameters.AddWithValue("$twa", DbValue(ingredient.Twa));
+                        child.Parameters.AddWithValue("$stel", DbValue(ingredient.Stel));
+                        child.Parameters.AddWithValue("$oral_ld50", DbValue(ingredient.OralLd50));
+                        child.Parameters.AddWithValue("$dermal_ld50", DbValue(ingredient.DermalLd50));
+                        child.Parameters.AddWithValue("$inhalation_lc50", DbValue(ingredient.InhalationLc50));
                         child.ExecuteNonQuery();
                         child.CommandText = "SELECT last_insert_rowid()";
                         var childId = Convert.ToInt64(child.ExecuteScalar());
@@ -327,6 +360,11 @@ namespace QCS
                             ["msds_comp_content_min"] = Number(min),
                             ["msds_comp_content_max"] = Number(max),
                             ["msds_comp_content_calculated"] = Number(calculated),
+                            ["msds_comp_twa"] = DbValue(ingredient.Twa),
+                            ["msds_comp_stel"] = DbValue(ingredient.Stel),
+                            ["msds_comp_oral_ld50"] = DbValue(ingredient.OralLd50),
+                            ["msds_comp_dermal_ld50"] = DbValue(ingredient.DermalLd50),
+                            ["msds_comp_inhalation_lc50"] = DbValue(ingredient.InhalationLc50),
                             ["msds_comp_sort_order"] = ingredient.SortOrder
                         };
                         AddChanges(changes, "msds_comp_dtl", childId, componentFields);

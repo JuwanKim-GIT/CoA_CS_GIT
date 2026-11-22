@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../Analysis/AiCorrectionDecisionEngine.cs" Link="Analysis/AiCorrectionDecisionEngine.cs" />
+    <Compile Include="../../Analysis/AiCorrectionEngineChecks.cs" Link="Analysis/AiCorrectionEngineChecks.cs" />
+    <Compile Include="../../Analysis/AiCorrectionPersistenceContract.cs" Link="Analysis/AiCorrectionPersistenceContract.cs" />
+    <Compile Include="../../Analysis/AiCorrectionComparison.cs" Link="Analysis/AiCorrectionComparison.cs" />
+  </ItemGroup>
+</Project>

@@ -10,13 +10,13 @@ namespace QCS
     {
         private static readonly Dictionary<string,string> Keys = new()
         {
-            ["ProductNameBox"]="msds_product_name", ["SupplierNameBox"]="msds_supplier_name",
+            ["MoelSubmissionBox"]="msds_moel_submission_no", ["ProductNameBox"]="msds_product_name", ["SupplierNameBox"]="msds_supplier_name",
             ["RevisionDateBox"]="msds_revision_date", ["RevisionNumberBox"]="msds_revision_number",
             ["PhoneBox"]="msds_supplier_phone", ["AddressBox"]="msds_supplier_address",
             ["UnNumberBox"]="msds_un_number", ["HazardCodesBox"]="msds_hazard_codes",
             ["AutoIgnitionBox"]="msds_autoignition", ["VaporPressureBox"]="msds_vapor_pressure",
             ["LelBox"]="msds_lel", ["UelBox"]="msds_uel", ["FlashPointBox"]="msds_flash_point",
-            ["CorrosivityBox"]="msds_corrosive_flag", ["PersonalProtectionBox"]="msds_ppe"
+            ["CorrosivityBox"]="msds_corrosive_flag", ["ToxicityBox"]="msds_toxicity", ["PersonalProtectionBox"]="msds_ppe", ["MolecularFormulaBox"]="msds_molecular_formula", ["PhysicalStateBox"]="msds_physical_state", ["HazardousGoodsBox"]="msds_hazardous_goods_class", ["ReactivityBox"]="msds_reactivity"
         };
         internal static List<MsdsLearningEntry> Apply(string path, MsdsAnalysisResult result)
         {
@@ -35,9 +35,25 @@ namespace QCS
             using(var r=cmd.ExecuteReader()) while(r.Read())
             {
                 var key=r.GetString(0);
-                if(!seen.Add(key) || !Keys.TryGetValue(key,out var fieldKey) || r.IsDBNull(4) || r.GetString(4)!="APPROVED" || r.IsDBNull(1) || r.IsDBNull(2) || r.IsDBNull(3)) continue;
+                if(!seen.Add(key) || r.IsDBNull(4) || r.GetString(4)!="APPROVED" || r.IsDBNull(1) || r.IsDBNull(2) || r.IsDBNull(3)) continue;
                 var value=r.GetString(1); var source=r.GetString(2); var page=r.GetInt32(3);
                 if(string.IsNullOrWhiteSpace(source) || page<=0) continue;
+                if (MsdsIngredientLearningKey.Parse(key,out var cas,out var property))
+                {
+                    var matches=result.Ingredients.Where(x=>x.CasNumber?.Trim()==cas).ToList();
+                    if(matches.Count!=1) continue;
+                    var before=MsdsIngredientLearningKey.Get(matches[0],property);
+                    // 학습값이 원래 노출시간 숫자를 누락한 경우 적용하지 않는다.
+                    if ((property == "Twa" || property == "Stel") &&
+                        !MsdsSimilarDocumentLearning.ExposureEquivalent(before ?? "", value)) continue;
+                    MsdsIngredientLearningKey.Set(matches[0],property,value);
+                    applied.Add(new MsdsLearningEntry { Id=r.GetString(5), Key=key, Before=before, After=value, Hash=hash, Text=source, Page=page, Label=r.IsDBNull(6)?null:r.GetString(6), Context=r.IsDBNull(7)?null:r.GetString(7), At=DateTimeOffset.Now.ToString("O") });
+                    continue;
+                }
+                if (!Keys.TryGetValue(key,out var fieldKey)) continue;
+                if (key == "CorrosivityBox" &&
+                    (!MsdsSimilarDocumentLearning.IsSkinClassification(value) ||
+                     !MsdsSimilarDocumentLearning.ContainsSkinClassification(source + "\n" + (r.IsDBNull(7) ? "" : r.GetString(7)), value))) continue;
                 if((key=="UelBox" || key=="LelBox") && !System.Text.RegularExpressions.Regex.IsMatch(value, @"^\s*(?:자료\s*없음|해당\s*없음|N/?A|[<>≤≥~\-\d.,%\s]+(?:vol\.?\s*%|ppm)?)\s*$",System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
                 applied.Add(new MsdsLearningEntry { Id=r.GetString(5), Key=key, Before=result.Fields.FirstOrDefault(f=>f.FieldKey==fieldKey)?.Value, After=value, Hash=hash, Text=source, Page=page, Label=r.IsDBNull(6)?null:r.GetString(6), Context=r.IsDBNull(7)?null:r.GetString(7), At=DateTimeOffset.Now.ToString("O") });
                 updates.Add(new MsdsExtractedField {FieldKey=fieldKey, Value=value, SourceText=source, SourcePage=page, Status=MsdsFieldStatus.ManuallyEntered});

@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 namespace QCS
 {
@@ -35,7 +36,12 @@ namespace QCS
         internal static void Save(SqliteConnection db, SqliteTransaction tx, MsdsDbRegistration.Document doc, long msdsId, string path, string hash)
         {
             string? Value(string key)=>doc.Values.TryGetValue(key,out var v)?v:null;
-            string? Final(string key)=>Value(key)?.Trim();
+            string? Final(string key)
+            {
+                if (!MsdsIngredientLearningKey.Parse(key,out var cas,out var field)) return Value(key)?.Trim();
+                var matches=doc.Ingredients.Where(x=>x.CasNumber.Trim()==cas).ToList();
+                return matches.Count==1 ? MsdsIngredientLearningKey.Get(matches[0],field)?.Trim() : null;
+            }
             var now=DateTimeOffset.Now; string at=now.ToString("O");
             var created=new Dictionary<string,string>();
             foreach(var e in doc.Learning)
@@ -43,6 +49,7 @@ namespace QCS
                 if(e.Hash!=hash) throw new InvalidOperationException("교정학습 PDF가 분석 당시와 다릅니다.");
                 // Do not learn a value that was subsequently edited without approval.
                 if(!string.Equals(Final(e.Key),e.After?.Trim(),StringComparison.Ordinal)) continue;
+                if (string.Equals(e.Before ?? "", e.After ?? "", StringComparison.Ordinal)) continue;
                 var id=Next(db,tx,"ai_correctionh_hist","ai_correctionh_id","AC",now);
                 Insert(db,tx,"ai_correctionh_hist","ai_correctionh_",new() {
                     ["id"]=id,["msds_id"]=msdsId,["document_type"]=doc.MaterialType,["pdf_path"]=path,["pdf_hash"]=hash,
@@ -54,6 +61,7 @@ namespace QCS
             }
             foreach(var e in doc.Applied)
             {
+                if (string.Equals(e.Before ?? "", e.After ?? "", StringComparison.Ordinal)) continue;
                 if(e.Hash!=hash) throw new InvalidOperationException("학습 적용 PDF가 분석 당시와 다릅니다.");
                 bool changed=!string.Equals(Final(e.Key),e.After?.Trim(),StringComparison.Ordinal);
                 Insert(db,tx,"ai_applyh_hist","ai_applyh_",new() {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +24,12 @@ namespace QCS.Analysis
         public string? Name { get; set; }
         public string? CasNumber { get; set; }
         public string? ConcentrationRaw { get; set; }
+            public string? Twa { get; set; }
+            public string? Stel { get; set; }
+            public string? OralLd50 { get; set; }
+            public string? DermalLd50 { get; set; }
+            public string? InhalationLc50 { get; set; }
+
         public int? SourcePage { get; set; }
         public string? SourceText { get; set; }
     }

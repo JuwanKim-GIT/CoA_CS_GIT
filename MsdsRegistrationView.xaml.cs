@@ -29,6 +29,7 @@ namespace QCS
         {
             public int Index { get; set; }
             public string FileName { get; set; } = "";
+            public string GracoCode => MsdsDbRegistration.GracoCode(FileName);
             public string FileSize
             {
                 get
@@ -43,6 +44,10 @@ namespace QCS
             public string RegistrationKind { get; set; } = "확인중";
             public string Status { get; set; } = "대기";
             public MsdsAnalysisResult? Parsed { get; set; }
+            public Dictionary<string,string> OriginalAiValues { get; set; } = new(StringComparer.Ordinal);
+            public DateTime? AnalysisStarted { get; set; }
+            public DateTime? AnalysisFinished { get; set; }
+            public string AnalysisModel { get; set; } = "";
             public string AnalysisStatus { get; set; } = "대기";
             public string AnalysisDisplay { get; set; } = "대기";
             public bool Confirmed { get; set; }
@@ -60,6 +65,12 @@ namespace QCS
             public string Name { get; set; } = "";
             public string CasNumber { get; set; } = "";
             public string ConcentrationRaw { get; set; } = "";
+            public string Twa { get; set; } = "";
+            public string Stel { get; set; } = "";
+            public string OralLd50 { get; set; } = "";
+            public string DermalLd50 { get; set; } = "";
+            public string InhalationLc50 { get; set; } = "";
+
             public string Minimum => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item1);
             public string Maximum => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item2);
             public string Calculated => FormatAmount(MsdsDbRegistration.Amounts(ConcentrationRaw).Item3);
@@ -74,7 +85,7 @@ namespace QCS
             "ProductNameBox", "SupplierNameBox", "GracoCodeBox", "RevisionDateBox",
             "RevisionNumberBox", "PhoneBox", "AddressBox", "UnNumberBox", "HazardCodesBox",
             "AutoIgnitionBox", "VaporPressureBox", "LelBox", "UelBox", "FlashPointBox",
-            "CorrosivityBox", "PersonalProtectionBox", "MoelSubmissionBox"
+            "CorrosivityBox", "PersonalProtectionBox", "MoelSubmissionBox", "MolecularFormulaBox", "PhysicalStateBox", "HazardousGoodsBox", "ToxicityBox", "ReactivityBox"
         };
         private System.Collections.Generic.Dictionary<string, string> CaptureFields()
         {
@@ -86,7 +97,7 @@ namespace QCS
         private System.Collections.Generic.List<IngredientEdit> CaptureIngredients() =>
             IngredientsGrid.Items.OfType<IngredientEdit>().Select(v => new IngredientEdit
             { Index = v.Index, Name = v.Name, CasNumber = v.CasNumber,
-              ConcentrationRaw = v.ConcentrationRaw }).ToList();
+              ConcentrationRaw = v.ConcentrationRaw, Twa = v.Twa, Stel = v.Stel, OralLd50 = v.OralLd50, DermalLd50 = v.DermalLd50, InhalationLc50 = v.InhalationLc50 }).ToList();
         private void PublishStatus(string message)
         {
             if (System.Windows.Window.GetWindow(this) is MainWindow main)
@@ -102,7 +113,8 @@ namespace QCS
         private void UpdateActionButtons()
         {
             if (DbSaveButton == null || AddIngredientButton == null || RemoveIngredientButton == null) return;
-            DbSaveButton.IsEnabled = !_isAnalyzing && _files.Any(v => v.Confirmed && v.SavedValues != null && v.SavedIngredients != null);
+            if (ExportAnalysisButton != null) ExportAnalysisButton.IsEnabled = !_isAnalyzing && _files.Any(v => v.Parsed != null);
+            DbSaveButton.IsEnabled = !_isAnalyzing && FilesGrid != null && FilesGrid.SelectedItems.Cast<PdfItem>().Any(v => v.Confirmed && v.SavedValues != null && v.SavedIngredients != null);
             bool canEditIngredients = !_isAnalyzing && _displayedItem?.Parsed != null;
             AddIngredientButton.IsEnabled = canEditIngredients;
             RemoveIngredientButton.IsEnabled = canEditIngredients && IngredientsGrid?.SelectedItem != null;
@@ -125,6 +137,20 @@ namespace QCS
                 string.IsNullOrWhiteSpace(ingredient.CasNumber)) return;
             try
             {
+                var found = ReadCasReferences(ingredient.CasNumber);
+                for (int i = 0; i < CasReferenceTypes.Length; i++)
+                    if (found.TryGetValue(CasReferenceTypes[i], out var entries))
+                        ReferenceBoxes[i].Text = string.Join(Environment.NewLine, entries);
+            }
+            catch (Exception ex)
+            {
+                PublishStatus("CAS 참조정보 조회 실패: " + ex.Message);
+            }
+        }
+
+        private static Dictionary<string, List<string>> ReadCasReferences(string casNumber)
+        {
+            if (string.IsNullOrWhiteSpace(casNumber)) return new Dictionary<string, List<string>>(StringComparer.Ordinal);
                 var path = DatabaseManager.GetDbPath("reference");
                 var builder = new SqliteConnectionStringBuilder
                 {
@@ -137,7 +163,7 @@ namespace QCS
                     WHERE REPLACE(TRIM(casref_cas_no), ' ', '') = $cas
                     AND casref_type IN ('인체','사고','제한','중점','잔류','배출량')
                     ORDER BY casref_id";
-                cmd.Parameters.AddWithValue("$cas", ingredient.CasNumber.Trim().Replace(" ", ""));
+                cmd.Parameters.AddWithValue("$cas", casNumber.Trim().Replace(" ", ""));
                 var found = new Dictionary<string, List<string>>(StringComparer.Ordinal);
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
@@ -148,14 +174,7 @@ namespace QCS
                     if (!found.TryGetValue(type, out var entries)) found[type] = entries = new List<string>();
                     if (!entries.Contains(value)) entries.Add(value);
                 }
-                for (int i = 0; i < CasReferenceTypes.Length; i++)
-                    if (found.TryGetValue(CasReferenceTypes[i], out var entries))
-                        ReferenceBoxes[i].Text = string.Join(Environment.NewLine, entries);
-            }
-            catch (Exception ex)
-            {
-                PublishStatus("CAS 참조정보 조회 실패: " + ex.Message);
-            }
+            return found;
         }
 
         private void IngredientsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -172,7 +191,7 @@ namespace QCS
             try
             {
                 _displayedItem.RegistrationKind = MsdsDbRegistration.GetRegistrationStatus(
-                    _displayedItem.MaterialType, Path.GetFileNameWithoutExtension(_displayedItem.FileName),
+                    _displayedItem.MaterialType, MsdsDbRegistration.GracoCode(_displayedItem.FileName),
                     RevisionNumberBox.Text, RevisionDateBox.Text);
                 FilesGrid.Items.Refresh();
             }
@@ -203,10 +222,10 @@ namespace QCS
                 System.Windows.MessageBox.Show("현재 PDF의 수정사항을 먼저 [저장]해 주세요.", "DB 저장", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            var targets = _files.Where(v => v.Confirmed && v.SavedValues != null && v.SavedIngredients != null).ToList();
+            var targets = FilesGrid.SelectedItems.Cast<PdfItem>().Where(v => v.Confirmed && v.SavedValues != null && v.SavedIngredients != null).ToList();
             if (targets.Count == 0)
             {
-                System.Windows.MessageBox.Show("DB에 저장할 확인완료 항목이 없습니다.", "DB 저장");
+                System.Windows.MessageBox.Show("선택한 PDF 중 DB에 저장할 확인완료 항목이 없습니다.", "DB 저장");
                 return;
             }
             if (System.Windows.MessageBox.Show($"확인완료 {targets.Count}건을 DB에 저장하시겠습니까?", "DB 저장 확인",
@@ -224,7 +243,7 @@ namespace QCS
                     var values = new Dictionary<string, string>(item.SavedValues!);
                     var ingredients = item.SavedIngredients!.Select(v => new MsdsDbRegistration.Ingredient
                     {
-                        Name = v.Name, CasNumber = v.CasNumber, ConcentrationRaw = v.ConcentrationRaw,
+                        Name = v.Name, CasNumber = v.CasNumber, ConcentrationRaw = v.ConcentrationRaw, Twa = v.Twa, Stel = v.Stel, OralLd50 = v.OralLd50, DermalLd50 = v.DermalLd50, InhalationLc50 = v.InhalationLc50,
                         SortOrder = v.Index
                     }).ToList();
                     var snapshot = new MsdsDbRegistration.Document
@@ -295,7 +314,7 @@ namespace QCS
 
         private void EditableField_TextChanged(object sender, TextChangedEventArgs e) => MarkDirty();
         private void IngredientsGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e) =>
-            Dispatcher.BeginInvoke(new Action(() => { IngredientsGrid.Items.Refresh(); MarkDirty(); }), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(new Action(MarkDirty), System.Windows.Threading.DispatcherPriority.Background);
         private void MarkDirty()
         {
             if (_loadingFields || _isAnalyzing || _displayedItem?.Parsed == null) return;
@@ -333,7 +352,8 @@ namespace QCS
         private void ClearWork(PdfItem item)
         {
             item.Applied.Clear(); item.Pending.Clear(); item.SavedLearning.Clear();
-            item.Parsed = null;
+            item.Parsed = null; item.OriginalAiValues.Clear();
+            item.AnalysisStarted = null; item.AnalysisFinished = null; item.AnalysisModel = "";
             item.SavedValues = null;
             item.SavedIngredients = null;
             item.Dirty = false;
@@ -341,6 +361,21 @@ namespace QCS
             item.AnalysisStatus = "대기";
             item.AnalysisDisplay = "대기";
             item.Status = "대기";
+        }
+        // AI 최초 추출값은 학습 결과와 분리해 PDF 항목별로 보존한다.
+        private static void CaptureOriginalAiValues(PdfItem item, MsdsAnalysisResult result)
+        {
+            var snapshot = new Dictionary<string,string>(StringComparer.Ordinal);
+            foreach (var field in result.Fields)
+                snapshot[field.FieldKey] = field.Value ?? "";
+            foreach (var ingredient in result.Ingredients)
+            {
+                var cas = ingredient.CasNumber?.Trim();
+                if (string.IsNullOrWhiteSpace(cas) || result.Ingredients.Count(i => i.CasNumber?.Trim() == cas) != 1) continue;
+                foreach (var property in MsdsIngredientLearningKey.Fields)
+                    snapshot[MsdsIngredientLearningKey.Key(cas, property)] = MsdsIngredientLearningKey.Get(ingredient, property) ?? "";
+            }
+            item.OriginalAiValues = snapshot;
         }
         private void ApplySameDocumentLearning(PdfItem item, MsdsAnalysisResult result)
         {
@@ -353,7 +388,11 @@ namespace QCS
             {
                 var entries = await MsdsSimilarDocumentLearning.ApplyAsync(item.FullPath, item.MaterialType, result, item.Applied, ct, message => LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 {message}"));
                 item.Applied.AddRange(entries);
-                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 유사 PDF 학습 {entries.Count}필드 반영 (검증 필요)");
+                var ingredientEntries = await MsdsSimilarDocumentLearning.ApplyIngredientAsync(item.FullPath,
+                    item.MaterialType, result, item.Applied, ct, message => LogList.Items.Insert(0,
+                    $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {message}"));
+                item.Applied.AddRange(ingredientEntries);
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S01~S06 유사 PDF 학습 {entries.Count + ingredientEntries.Count}필드 반영 (검증 필요)");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) { LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 학습 실패 (기존 분석 유지) - {ex.Message}"); }
@@ -361,6 +400,7 @@ namespace QCS
         private void SetAnalysisResult(PdfItem item, MsdsAnalysisResult result)
         {
             item.Parsed = result;
+            item.AnalysisFinished = DateTime.Now;
             item.AnalysisStatus = "분석완료";
             // 신뢰도 산식은 추후 검증: 현재는 실제 계산하지 않은 수치를 표시하지 않는다.
             item.AnalysisDisplay = "분석완료";
@@ -534,12 +574,14 @@ namespace QCS
             if (LogList.Items.Count == 0) { PublishStatus("열 수 있는 분석 로그가 없습니다."); return; }
             try
             {
-                var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "QCS_Log_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Guid.NewGuid().ToString("N") + ".txt");
+                var folder = System.IO.Path.Combine(AppContext.BaseDirectory, "Output");
+                Directory.CreateDirectory(folder);
+                var path = System.IO.Path.Combine(folder, "QCS_MSDS_Log_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fffffff") + ".txt");
                 var text = string.Join(Environment.NewLine, LogList.Items.Cast<object>().Select(x=>x?.ToString() ?? ""));
                 try { var secret = GetAiSetting("MSDS_API_KEY"); if (!string.IsNullOrEmpty(secret)) text = text.Replace(secret, "[REDACTED]", StringComparison.Ordinal); } catch { /* No configured key available. */ }
                 System.IO.File.WriteAllText(path, text, new System.Text.UTF8Encoding(true));
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", "\"" + path + "\"") { UseShellExecute = true });
-                PublishStatus("분석 로그 열기 완료");
+                PublishStatus("분석 로그 저장 및 열기 완료: " + System.IO.Path.GetFileName(path));
             }
             catch (Exception ex) { PublishStatus("분석 로그 열기 실패: " + ex.Message); }
         }
@@ -565,7 +607,7 @@ namespace QCS
         {
             if (FilesGrid == null || FirstFileButton == null) return;
             int i = FilesGrid.SelectedItem is PdfItem item ? _files.IndexOf(item) : -1;
-            CurrentFileText.Text = i < 0 ? "-----" : Path.GetFileNameWithoutExtension(_files[i].FileName)[..Math.Min(5, Path.GetFileNameWithoutExtension(_files[i].FileName).Length)];
+            CurrentFileText.Text = i < 0 ? "-----" : MsdsDbRegistration.GracoCode(_files[i].FileName);
             CurrentFileText.ToolTip = i < 0 ? "선택 파일 없음" : _files[i].FileName;
             FirstFileButton.IsEnabled = PreviousFileButton.IsEnabled = i > 0;
             NextFileButton.IsEnabled = LastFileButton.IsEnabled = i >= 0 && i < _files.Count - 1;
@@ -595,10 +637,18 @@ namespace QCS
                 { SelectFile(index); FileSearchBox.Dispatcher.BeginInvoke(new Action(() => FileSearchBox.Focus()), System.Windows.Threading.DispatcherPriority.Input); return; }
             }
         }
+        private bool CanApplyAiLearning()
+        {
+            var user = (Window.GetWindow(this) as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
+            return user?.UserLevel == QcsAuthorizationService.LevelAdmin;
+        }
+
         private bool CanUseAiCorrection()
         {
             var user = (Window.GetWindow(this) as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
-            return QcsAuthorizationService.CanAccessProgram(user, QcsAuthorizationService.AiCorrectionProgramId);
+            return user?.UserLevel == QcsAuthorizationService.LevelAdmin
+                && QcsAuthorizationService.CanAccessProgram(user, "MsdsRegistrationView.xaml.cs")
+                && QcsAuthorizationService.CanAccessProgram(user, QcsAuthorizationService.AiCorrectionProgramId);
         }
 
         private void SetAnalysisUi(bool analyzing)
@@ -736,7 +786,7 @@ namespace QCS
                     continue;
                 }
                 string name = Path.GetFileName(path);
-                string gracoCode = Path.GetFileNameWithoutExtension(path);
+                string gracoCode = MsdsDbRegistration.GracoCode(path);
                 string kind;
                 try { kind = MsdsDbRegistration.GetRegistrationStatus(materialType, gracoCode); }
                 catch (Exception ex)
@@ -769,6 +819,7 @@ namespace QCS
                 return;
             }
             UpdateNavigation();
+            UpdateActionButtons();
             if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); return; }
             _displayedItem = item;
             _restoringMaterialType = true;
@@ -798,20 +849,20 @@ namespace QCS
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            if (FilesGrid.SelectedItem is PdfItem item)
-            {
-                if (item.Status != "대기" && System.Windows.MessageBox.Show(
-                    "선택한 PDF의 작업 내용을 삭제하시겠습니까?", "파일 제거 확인",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-                _displayedItem = null;
-                _files.Remove(item);
-                PublishStatus($"PDF 파일 목록에서 제거: {item.FileName}");
-            }
+            if (_isAnalyzing) { PublishStatus("분석 중에는 파일을 제거할 수 없습니다."); return; }
+            var selected = FilesGrid.SelectedItems.Cast<PdfItem>().ToList();
+            if (selected.Count == 0) { PublishStatus("제거할 PDF를 선택해 주세요."); return; }
+            if (selected.Any(item => item.Status != "대기") && System.Windows.MessageBox.Show(
+                $"선택한 {selected.Count}건의 PDF와 작업 내용을 목록에서 제거하시겠습니까?", "파일 제거 확인",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            _displayedItem = null;
+            foreach (var item in selected) _files.Remove(item);
             for (int i = 0; i < _files.Count; i++) _files[i].Index = i + 1;
             FilesGrid.Items.Refresh();
             UpdateCount();
             if (_files.Count == 0) ResetPreview();
-            else if (FilesGrid.SelectedItem is PdfItem selected) ShowExtractedFields(selected);
+            else FilesGrid.SelectedIndex = Math.Min(selected[0].Index - 1, _files.Count - 1);
+            PublishStatus($"PDF {selected.Count}건을 목록에서 제거했습니다.");
         }
 
         private void Clear_Click(object sender, RoutedEventArgs e)
@@ -958,12 +1009,17 @@ namespace QCS
                     {
                         if (_analysisCts!.IsCancellationRequested) break;
                         item.Status = "분석 중";
+                        item.AnalysisStarted = DateTime.Now; item.AnalysisModel = model;
                         FilesGrid.Items.Refresh();
                         try
                         {
                             var aiResult = await analyzer.AnalyzeAsync(item.FullPath, _analysisCts!.Token);
-                            ApplySameDocumentLearning(item, aiResult);
-                            await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
+                            CaptureOriginalAiValues(item, aiResult);
+                            if (CanApplyAiLearning())
+                            {
+                                ApplySameDocumentLearning(item, aiResult);
+                                await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
+                            }
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1029,6 +1085,7 @@ namespace QCS
                     {
                         if (_analysisCts!.IsCancellationRequested) break;
                         item.Status = "분석 중";
+                        item.AnalysisStarted = DateTime.Now; item.AnalysisModel = model;
                         FilesGrid.Items.Refresh();
                         try
                         {
@@ -1037,8 +1094,12 @@ namespace QCS
                                 throw new InvalidOperationException("PDF에 추출 가능한 텍스트가 없습니다. (OCR 미지원)");
                             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {extracted.PageCount}페이지, 텍스트 {extracted.FullText.Length:N0}자 → AI 전달");
                             var aiResult = await analyzer.AnalyzeTextAsync(item.FullPath, extracted.FullText, _analysisCts.Token);
-                            ApplySameDocumentLearning(item, aiResult);
-                            await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
+                            CaptureOriginalAiValues(item, aiResult);
+                            if (CanApplyAiLearning())
+                            {
+                                ApplySameDocumentLearning(item, aiResult);
+                                await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
+                            }
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1097,6 +1158,7 @@ namespace QCS
                 {
                     if (_analysisCts!.IsCancellationRequested) break;
                     item.Status = "분석 중";
+                        item.AnalysisStarted = DateTime.Now; item.AnalysisModel = "C# Local";
                     FilesGrid.Items.Refresh();
                     try
                     {
@@ -1147,24 +1209,12 @@ namespace QCS
             foreach (var box in new[] { GracoCodeBox, RevisionDateBox, RevisionNumberBox,
                 PhoneBox, AddressBox, UnNumberBox, HazardCodesBox, AutoIgnitionBox,
                 VaporPressureBox, LelBox, UelBox, FlashPointBox,
-                CorrosivityBox, PersonalProtectionBox }) box.Clear();
+                CorrosivityBox, PersonalProtectionBox, MolecularFormulaBox, PhysicalStateBox, HazardousGoodsBox, ReactivityBox }) box.Clear();
         }
 
         private static string ExtractMoelNumber(PdfItem item)
         {
-            try
-            {
-                using var pdf = UglyToad.PdfPig.PdfDocument.Open(item.FullPath);
-                foreach (var page in pdf.GetPages())
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(page.Text,
-                        @"AA\s*\d{5}\s*-\s*\d{10}", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    if (match.Success)
-                        return System.Text.RegularExpressions.Regex.Replace(match.Value, @"\s+", "").ToUpperInvariant();
-                }
-            }
-            catch { /* Image-only PDFs require the existing AI extraction path. */ }
-            return "";
+            return item.Parsed?.Fields.FirstOrDefault(f => f.FieldKey == "msds_moel_submission_no")?.Value ?? "";
         }
 
         private async void AiCorrection_Click(object sender, RoutedEventArgs e)
@@ -1182,8 +1232,15 @@ namespace QCS
                 var pdfText = await _textExtractor.ExtractAsync(item.FullPath);
                 if (!ReferenceEquals(_displayedItem, item)) return;
                 var values = CaptureFields();
+                var rows = CaptureIngredients();
+                foreach (var row in rows.Where(r => rows.Count(x => x.CasNumber.Trim() == r.CasNumber.Trim()) == 1))
+                    foreach (var field in MsdsIngredientLearningKey.Fields)
+                    {
+                        var key = MsdsIngredientLearningKey.Key(row.CasNumber, field);
+                        if (MsdsIngredientLearningKey.Parse(key, out _, out _)) values[key] = MsdsIngredientLearningKey.Get(row, field) ?? "";
+                    }
                 var window = new MsdsAiCorrectionWindow(item.FileName, item.FullPath,
-                    pdfText, item.Parsed, values, _editableFieldNames);
+                    pdfText, item.Parsed, values, values.Keys, item.OriginalAiValues);
                 window.Owner = System.Windows.Window.GetWindow(this);
                 if (window.ShowDialog() != true) return;
                 _loadingFields = true;
@@ -1192,6 +1249,12 @@ namespace QCS
                     foreach (var entry in window.CorrectedValues)
                         if (FindName(entry.Key) is System.Windows.Controls.TextBox box)
                             box.Text = entry.Value;
+                        else if (MsdsIngredientLearningKey.Parse(entry.Key, out var cas, out var field))
+                        {
+                            var matches = rows.Where(r => r.CasNumber.Trim() == cas).ToList();
+                            if (matches.Count == 1) MsdsIngredientLearningKey.Set(matches[0], field, entry.Value);
+                        }
+                    IngredientsGrid.ItemsSource = rows;
                 }
                 finally { _loadingFields = false; }
                 foreach (var key in window.CorrectedValues.Keys) item.Pending.Remove(key);
@@ -1213,7 +1276,7 @@ namespace QCS
             string Get(string key) => item.Parsed?.Fields.FirstOrDefault(f => f.FieldKey == key)?.Value ?? "";
             ProductNameBox.Text = Get("msds_product_name");
             SupplierNameBox.Text = Get("msds_supplier_name");
-            GracoCodeBox.Text = Path.GetFileNameWithoutExtension(item.FileName);
+            GracoCodeBox.Text = MsdsDbRegistration.GracoCode(item.FileName);
             RevisionDateBox.Text = Get("msds_revision_date");
             RevisionNumberBox.Text = Get("msds_revision_number");
             MoelSubmissionBox.Text = ExtractMoelNumber(item);
@@ -1228,6 +1291,12 @@ namespace QCS
             FlashPointBox.Text = Get("msds_flash_point");
             CorrosivityBox.Text = Get("msds_corrosive_flag");
             PersonalProtectionBox.Text = Get("msds_ppe");
+            MolecularFormulaBox.Text = Get("msds_molecular_formula");
+            PhysicalStateBox.Text = Get("msds_physical_state");
+            HazardousGoodsBox.Text = Get("msds_hazardous_goods_class");
+            ToxicityBox.Text = Get("msds_toxicity");
+            ReactivityBox.Text = Get("msds_reactivity");
+
             if (item.SavedValues != null)
                 foreach (var entry in item.SavedValues)
                     if (FindName(entry.Key) is System.Windows.Controls.TextBox box) box.Text = entry.Value;
@@ -1236,7 +1305,7 @@ namespace QCS
                 try
                 {
                     item.RegistrationKind = MsdsDbRegistration.GetRegistrationStatus(item.MaterialType,
-                        Path.GetFileNameWithoutExtension(item.FileName), RevisionNumberBox.Text, RevisionDateBox.Text);
+                        MsdsDbRegistration.GracoCode(item.FileName), RevisionNumberBox.Text, RevisionDateBox.Text);
                     FilesGrid.Items.Refresh();
                 }
                 catch (Exception ex)
@@ -1247,15 +1316,199 @@ namespace QCS
             }
             IngredientsGrid.ItemsSource = item.SavedIngredients != null
                 ? item.SavedIngredients.Select(v => new IngredientEdit
-                  { Index = v.Index, Name = v.Name, CasNumber = v.CasNumber, ConcentrationRaw = v.ConcentrationRaw }).ToList()
+                  { Index = v.Index, Name = v.Name, CasNumber = v.CasNumber, ConcentrationRaw = v.ConcentrationRaw, Twa = v.Twa, Stel = v.Stel, OralLd50 = v.OralLd50, DermalLd50 = v.DermalLd50, InhalationLc50 = v.InhalationLc50 }).ToList()
                 : item.Parsed?.Ingredients.Select((v, i) => new IngredientEdit
                   { Index = i + 1, Name = v.Name ?? "", CasNumber = v.CasNumber ?? "",
-                    ConcentrationRaw = v.ConcentrationRaw ?? "" }).ToList();
+                    ConcentrationRaw = v.ConcentrationRaw ?? "", Twa = v.Twa ?? "", Stel = v.Stel ?? "", OralLd50 = v.OralLd50 ?? "", DermalLd50 = v.DermalLd50 ?? "", InhalationLc50 = v.InhalationLc50 ?? "" }).ToList();
             _loadingFields = false;
             LoadCasReferences();
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
             AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null && CanUseAiCorrection();
             UpdateActionButtons();
+        }
+
+        private static string FriendlyFieldName(string key) => key switch
+        {
+            "ProductNameBox" or "msds_product_name" => "제품명",
+            "SupplierNameBox" or "msds_supplier_name" => "공급업체",
+            "GracoCodeBox" => "Graco Code(검토값)",
+            "RevisionDateBox" or "msds_revision_date" => "개정일",
+            "RevisionNumberBox" or "msds_revision_number" => "개정번호",
+            "PhoneBox" or "msds_supplier_phone" => "공급업체 전화번호",
+            "AddressBox" or "msds_supplier_address" => "공급업체 주소",
+            "UnNumberBox" or "msds_un_number" => "UN 번호",
+            "HazardCodesBox" or "msds_hazard_codes" => "유해·위험 문구",
+            "AutoIgnitionBox" or "msds_autoignition" => "자연발화온도",
+            "VaporPressureBox" or "msds_vapor_pressure" => "증기압",
+            "LelBox" or "msds_lel" => "폭발하한(LEL)",
+            "UelBox" or "msds_uel" => "폭발상한(UEL)",
+            "FlashPointBox" or "msds_flash_point" => "인화점",
+            "CorrosivityBox" or "msds_corrosive_flag" => "부식성·자극성",
+            "PersonalProtectionBox" or "msds_ppe" => "개인보호구",
+            "MoelSubmissionBox" or "msds_moel_submission_no" => "노동부 제출번호",
+            "MolecularFormulaBox" or "msds_molecular_formula" => "분자식",
+            "PhysicalStateBox" or "msds_physical_state" => "물리적 상태",
+            "HazardousGoodsBox" or "msds_hazardous_goods_class" => "위험물 분류",
+            "ToxicityBox" or "msds_toxicity" => "독성치",
+            "ReactivityBox" or "msds_reactivity" => "반응성",
+            _ => key
+        };
+
+        private static string[] ParseFriendlyLog(string raw)
+        {
+            var time = "";
+            var message = raw.Trim();
+            if (message.Length >= 8 && TimeSpan.TryParse(message.Substring(0, 8), out _))
+            { time = message.Substring(0, 8); message = message.Substring(8).Trim(); }
+            var file = "전체 작업";
+            var separator = message.IndexOf(": ", StringComparison.Ordinal);
+            if (separator > 0 && message.Substring(0, separator).Contains(".pdf", StringComparison.OrdinalIgnoreCase))
+            { file = message.Substring(0, separator); message = message.Substring(separator + 2).Trim(); }
+            string stage = "작업 기록", result = "안내";
+            if (message.Contains("학습", StringComparison.OrdinalIgnoreCase)) stage = "교정학습";
+            else if (message.Contains("AI", StringComparison.OrdinalIgnoreCase) || message.Contains("하이브리드")) stage = "AI 분석";
+            else if (message.Contains("텍스트") || message.Contains("페이지")) stage = "PDF 읽기";
+            else if (message.Contains("성분") || message.Contains("CAS")) stage = "구성성분 분석";
+            else if (message.Contains("PDF") || message.Contains("목록")) stage = "파일 관리";
+            if (message.Contains("실패") || message.Contains("오류")) result = "실패";
+            else if (message.Contains("중지") || message.Contains("취소")) result = "중지/취소";
+            else if (message.Contains("반영") || message.Contains("적용")) result = "적용";
+            else if (message.Contains("종료") || message.Contains("완료") || message.Contains("추출") || message.Contains("전달")) result = "성공";
+            else if (message.Contains("시작")) result = "시작";
+            else if (message.Contains("제외") || message.Contains("건너")) result = "건너뜀";
+            message = message.Replace("(검증 필요)", "(원문 확인 필요)").Replace("S03 학습", "유사 문서(S03) 교정학습")
+                .Replace("S01~S06 유사 PDF 학습", "유사 문서 교정학습").Replace("AI 추출", "AI 분석으로 추출한 항목")
+                .Replace("하이브리드 추출", "PDF 텍스트 및 AI 분석으로 추출한 항목");
+            return new[] { time, file, stage, result, message };
+        }
+
+        private void ExportAnalysis_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isAnalyzing || !_files.Any(v => v.Parsed != null)) return;
+            if (!IngredientsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true) ||
+                !IngredientsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true))
+            { PublishStatus("편집 중인 성분값을 확인해 주세요."); return; }
+            try
+            {
+                var outputFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Output");
+                Directory.CreateDirectory(outputFolder);
+                var xlsxPath = System.IO.Path.Combine(outputFolder,
+                    $"QCS_MSDS_Analysis_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.xlsx");
+                // 분석결과는 Excel 한 파일로만 출력한다.
+                var analyzed = _files.Where(v => v.Parsed != null).ToList();
+                // 동일한 업무 항목은 UI 검토값을 기준으로 단일 컬럼에 출력한다.
+                // 분석 엔진의 msds_* 필드와 UI *Box 필드를 중복 생성하지 않는다.
+                var basicKeys = new List<string>(_editableFieldNames.Where(k => k != "GracoCodeBox"));
+                var parsedAliases = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ProductNameBox"] = "msds_product_name",
+                    ["SupplierNameBox"] = "msds_supplier_name",
+                    ["RevisionDateBox"] = "msds_revision_date",
+                    ["RevisionNumberBox"] = "msds_revision_number",
+                    ["PhoneBox"] = "msds_supplier_phone",
+                    ["AddressBox"] = "msds_supplier_address",
+                    ["UnNumberBox"] = "msds_un_number",
+                    ["HazardCodesBox"] = "msds_hazard_codes",
+                    ["AutoIgnitionBox"] = "msds_autoignition",
+                    ["VaporPressureBox"] = "msds_vapor_pressure",
+                    ["LelBox"] = "msds_lel",
+                    ["UelBox"] = "msds_uel",
+                    ["FlashPointBox"] = "msds_flash_point",
+                    ["CorrosivityBox"] = "msds_corrosive_flag",
+                    ["PersonalProtectionBox"] = "msds_ppe",
+                    ["MoelSubmissionBox"] = "msds_moel_submission_no",
+                    ["MolecularFormulaBox"] = "msds_molecular_formula",
+                    ["PhysicalStateBox"] = "msds_physical_state",
+                    ["HazardousGoodsBox"] = "msds_hazardous_goods_class",
+                    ["ToxicityBox"] = "msds_toxicity",
+                    ["ReactivityBox"] = "msds_reactivity"
+                };
+                var represented = new HashSet<string>(basicKeys, StringComparer.Ordinal);
+                foreach (var alias in parsedAliases.Values) represented.Add(alias);
+                represented.Add("msds_sds_code"); // 파일명에서 추출한 Graco Code와 중복
+                foreach (var item in analyzed)
+                {
+                    var values = ReferenceEquals(item, _displayedItem) ? CaptureFields() : item.SavedValues;
+                    if (values != null)
+                        foreach (var key in values.Keys)
+                            if (represented.Add(key)) basicKeys.Add(key);
+                    foreach (var field in item.Parsed!.Fields)
+                        if (represented.Add(field.FieldKey)) basicKeys.Add(field.FieldKey);
+                }
+                var ingredientHeaders = new[] { "성분명", "CAS No.", "함량(원문)", "최소(%)", "최대(%)", "산출값(%)", "TWA", "STEL", "경구 LD50", "경피 LD50", "흡입 LC50" };
+                // 기본정보와 첫 번째 성분은 같은 행, 나머지 성분은 아래 행에 출력한다.
+                // 분석 상태/시간/모델 등 실행 정보는 두 번째 시트에서만 관리한다.
+                var headers = new List<string> { "MSDS 파일명", "Graco Code", "원료/제품" };
+                headers.AddRange(basicKeys.Select(FriendlyFieldName));
+                headers.AddRange(ingredientHeaders);
+                var excelRows = new List<string[]> { headers.ToArray() };
+                foreach (var item in analyzed)
+                {
+                    var values = ReferenceEquals(item, _displayedItem) ? CaptureFields() : item.SavedValues;
+                    var fieldMap = item.Parsed!.Fields.GroupBy(v => v.FieldKey)
+                        .ToDictionary(g => g.Key, g => g.First().Value ?? "", StringComparer.Ordinal);
+                    var ingredients = ReferenceEquals(item, _displayedItem) ? CaptureIngredients() : item.SavedIngredients
+                        ?? item.Parsed.Ingredients.Select((v, i) => new IngredientEdit {
+                            Index = i + 1, Name = v.Name ?? "", CasNumber = v.CasNumber ?? "",
+                            ConcentrationRaw = v.ConcentrationRaw ?? "", Twa = v.Twa ?? "", Stel = v.Stel ?? "",
+                            OralLd50 = v.OralLd50 ?? "", DermalLd50 = v.DermalLd50 ?? "", InhalationLc50 = v.InhalationLc50 ?? ""
+                        }).ToList();
+                    var basics = new List<string> { item.FileName, item.GracoCode, item.MaterialType };
+                    foreach (var key in basicKeys)
+                    {
+                        if (values != null && values.TryGetValue(key, out var value)) basics.Add(value ?? "");
+                        else
+                        {
+                            var sourceKey = parsedAliases.TryGetValue(key, out var alias) ? alias : key;
+                            basics.Add(fieldMap.TryGetValue(sourceKey, out var parsedValue) ? parsedValue : "");
+                        }
+                    }
+                    // 구성성분이 없는 MSDS도 기본정보 한 행은 출력한다.
+                    int count = Math.Max(1, ingredients.Count);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var row = i == 0 ? new List<string>(basics)
+                            : new List<string>(Enumerable.Repeat("", basics.Count));
+                        if (i < ingredients.Count)
+                        {
+                            var v = ingredients[i];
+                            row.AddRange(new[] { v.Name, v.CasNumber, v.ConcentrationRaw, v.Minimum,
+                                v.Maximum, v.Calculated, v.Twa, v.Stel, v.OralLd50, v.DermalLd50, v.InhalationLc50 });
+                        }
+                        else row.AddRange(Enumerable.Repeat("", ingredientHeaders.Length));
+                        excelRows.Add(row.ToArray());
+                    }
+                }
+                var logRows = new List<string[]> { new[] { "기록시간", "MSDS 파일명", "처리 단계", "처리 결과", "상세 내용" } };
+                foreach (var item in analyzed)
+                {
+                    var duration = item.AnalysisStarted.HasValue && item.AnalysisFinished.HasValue
+                        ? (item.AnalysisFinished.Value - item.AnalysisStarted.Value).TotalSeconds.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                        : "";
+                    logRows.Add(new[] { item.AnalysisFinished?.ToString("yyyy-MM-dd HH:mm:ss") ?? "",
+                        item.FileName, "AI 분석 요약", item.AnalysisStatus,
+                        $"모델: {item.AnalysisModel}; 시작: {item.AnalysisStarted:yyyy-MM-dd HH:mm:ss}; 종료: {item.AnalysisFinished:yyyy-MM-dd HH:mm:ss}; 소요시간: {duration}초; 구성성분: {item.Parsed?.Ingredients.Count ?? 0}건; 교정학습 적용: {item.Applied.Count}건" });
+                }
+                foreach (var entry in LogList.Items.Cast<object>().Reverse())
+                    logRows.Add(ParseFriendlyLog(entry?.ToString() ?? ""));
+
+                // 원문 로그/필드에 API 키가 섞인 경우 Excel에도 기록하지 않는다.
+                string secretKey = "";
+                try { secretKey = GetAiSetting("MSDS_API_KEY") ?? ""; } catch { }
+                if (!string.IsNullOrEmpty(secretKey))
+                {
+                    foreach (var row in excelRows.Concat(logRows))
+                        for (int i = 0; i < row.Length; i++) row[i] = row[i].Replace(secretKey, "[REDACTED]", StringComparison.Ordinal);
+                }
+                MsdsAnalysisExcelWriter.Save(xlsxPath, excelRows, logRows);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(xlsxPath) { UseShellExecute = true });
+                PublishStatus("분석결과 Excel(2개 시트) 저장 완료: " + System.IO.Path.GetFileName(xlsxPath));
+            }
+            catch (Exception ex)
+            {
+                PublishStatus("분석결과 출력 실패: " + ex.Message);
+                System.Windows.MessageBox.Show(ex.Message, "분석결과 출력", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void UpdateCount()

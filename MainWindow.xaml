@@ -40,33 +40,33 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="White" Padding="5,2,5,2">
             <MenuItem Header="CoA">
-                <MenuItem Header="CoA 발행" Click="Menu_CoaReg_Click"/>
-                <MenuItem Header="CoA 조회" Click="Menu_CoaInq_Click"/>
+                <MenuItem Header="CoA 발행" Tag="CoARegistryView.xaml.cs" Click="Menu_CoaReg_Click"/>
+                <MenuItem Header="CoA 조회" Tag="MainWindow.xaml.cs#Menu_CoaInq_Click" Click="Menu_CoaInq_Click"/>
                 <Separator/>
-                <MenuItem Header="아이템 목록 관리" Click="Menu_Item_Click"/>
-                <MenuItem Header="Test Result 목록 관리" Click="Menu_Test_Click"/>
+                <MenuItem Header="아이템 목록 관리" Tag="ItemListView.xaml.cs" Click="Menu_Item_Click"/>
+                <MenuItem Header="Test Result 목록 관리" Tag="TestResultListView.xaml.cs" Click="Menu_Test_Click"/>
             </MenuItem>
             <MenuItem Header="MSDS">
-                <MenuItem Header="MSDS 등록" Click="Menu_MsdsReg_Click"/>
-                <MenuItem Header="MSDS 조회/관리" Click="Menu_MsdsManage_Click"/>
+                <MenuItem Header="MSDS 등록" Tag="MsdsRegistrationView.xaml.cs" Click="Menu_MsdsReg_Click"/>
+                <MenuItem Header="MSDS 조회/관리" Tag="MsdsManagementView.xaml.cs" Click="Menu_MsdsManage_Click"/>
                 <Separator/>
-                <MenuItem Header="참조자료 관리" Click="Menu_MsdsReference_Click"/>
-                <MenuItem Header="대장 개정관리" Click="Menu_AuditHistory_Click"/>
+                <MenuItem Header="참조자료 관리" Tag="ReferenceDataView.xaml.cs" Click="Menu_MsdsReference_Click"/>
+                <MenuItem Header="대장 개정관리" Tag="AuditHistoryView.xaml.cs" Click="Menu_AuditHistory_Click"/>
                 <MenuItem Header="AI 교정학습 관리" Tag="MsdsLearningManagementView.xaml.cs" Click="Menu_MsdsLearning_Click"/>
             </MenuItem>
             <MenuItem Header="시스템">
-                <MenuItem Header="공통코드 관리" Click="Menu_Code_Click"/>
+                <MenuItem Header="공통코드 관리" Tag="CodeListView.xaml.cs" Click="Menu_Code_Click"/>
                 <MenuItem Header="업무코드 관리" Tag="UserCodeListView.xaml.cs" Click="Menu_UserCode_Click"/>
-                <MenuItem Header="Data Import" Click="MenuDataImport_Click"/>
-                <MenuItem Header="Data Export" Click="MenuDataExport_Click"/>
+                <MenuItem Header="Data Import" Tag="MainWindow.xaml.cs#MenuDataImport_Click" Click="MenuDataImport_Click"/>
+                <MenuItem Header="Data Export" Tag="MainWindow.xaml.cs#MenuDataExport_Click" Click="MenuDataExport_Click"/>
                 <Separator/>
-                <MenuItem Header="사용자 관리" Click="Menu_UserManage_Click"/>
-                <MenuItem Header="프로그램 접근 권한 관리" Click="Menu_AccessManage_Click"/>
+                <MenuItem Header="사용자 관리" Tag="UserManagementView.xaml.cs" Click="Menu_UserManage_Click"/>
+                <MenuItem Header="프로그램 접근 권한 관리" Tag="AccessPermissionView.xaml.cs" Click="Menu_AccessManage_Click"/>
                 <Separator/>
-                <MenuItem Header="Admin 관리" Click="Menu_AdminManage_Click"/>
-                <MenuItem Header="DB 스키마 조회" Click="Menu_DatabaseSchema_Click"/>
+                <MenuItem Header="Admin 관리" Tag="AdminManagementView.xaml.cs" Click="Menu_AdminManage_Click"/>
+                <MenuItem Header="DB 스키마 조회" Tag="DatabaseSchemaView.xaml.cs" Click="Menu_DatabaseSchema_Click"/>
                 <Separator/>
-                <MenuItem Header="사용자 전환" Click="Menu_SwitchUser_Click"/>
+                <MenuItem Header="사용자 전환" Tag="UserSwitchView.xaml.cs" Click="Menu_SwitchUser_Click"/>
             </MenuItem>
         </Menu>
         <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E4E6EF"

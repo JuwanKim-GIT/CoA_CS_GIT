@@ -13,6 +13,13 @@ namespace QCS
         internal const int LevelInactive = 0;
         internal const string AiCorrectionProgramId = "MsdsAiCorrectionWindow.cs";
 
+        internal const string LearningDiagnosticProgramId = "MsdsLearningDiagnosticWindow.xaml.cs";
+        internal static readonly (string ParentId, string Id, string Name)[] SubPrograms =
+        {
+            ("MsdsRegistrationView.xaml.cs", AiCorrectionProgramId, "MSDS AI 교정"),
+            ("MsdsLearningManagementView.xaml.cs", LearningDiagnosticProgramId, "AI 학습 진단")
+        };
+
         internal static bool IsAdmin(int level) => level == LevelAdmin;
         internal static bool IsSystemOperator(int level) => level == LevelSystemOperator;
         internal static bool IsActive(int level) => level == LevelAdmin || level == LevelSystemOperator || level == LevelUser;
@@ -107,6 +114,15 @@ WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$id";
 (zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
 VALUES ('QCS_APPLICATIONS','MsdsLearningManagementView.xaml.cs','AI 교정학습 관리','MSDS > AI 교정학습 관리','','N','MENU')";
                 learning.ExecuteNonQuery();
+            }
+            using (var diagnostic = conn.CreateCommand())
+            {
+                diagnostic.Transaction = tx;
+                diagnostic.CommandText = @"INSERT OR IGNORE INTO zx_code_mstr
+(zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
+VALUES ('QCS_APPLICATIONS',$id,'AI 학습 진단','MSDS > AI 교정학습 관리 > AI 학습 진단','*','N','SUB')";
+                diagnostic.Parameters.AddWithValue("$id", LearningDiagnosticProgramId);
+                diagnostic.ExecuteNonQuery();
             }
             tx.Commit();
         }

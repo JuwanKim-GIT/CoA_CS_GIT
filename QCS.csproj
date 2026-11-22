@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
@@ -13,6 +13,13 @@
 		<SelfContained>false</SelfContained>
 		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
 	</PropertyGroup>
+
+	<!-- Keep standalone test projects out of the WPF application compilation. -->
+	<ItemGroup>
+	  <Compile Remove="Tests\**\*.cs" />
+	  <EmbeddedResource Remove="Tests\**\*" />
+	  <None Remove="Tests\**\*" />
+	</ItemGroup>
 
 	<ItemGroup>
 	  <None Update="Database.json">

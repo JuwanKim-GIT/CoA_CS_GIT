@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -603,7 +603,11 @@ namespace QCS
        using var tx=conn.BeginTransaction();
        var beforeMaster=ReadAuditMaster(conn,tx,id);
        var beforeComponents=ReadAuditComponents(conn,tx,id);
-       var fields=BasicTextBoxes().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && key!="msds_material_type" && masterColumns.Contains(key)).ToList();
+       // Never silently discard an editable value because a DB column is absent.
+       var editableBoxes=BasicTextBoxes().Where(b=>b.Tag is string key && key!="msds_msds_id" && key!="msds_file_name" && key!="msds_material_type").ToList();
+       var missingColumns=editableBoxes.Where(b=>b.Tag is string key && !masterColumns.Contains(key)).Select(b=>(string)b.Tag).Distinct().ToArray();
+       if(missingColumns.Length>0) throw new InvalidOperationException("MSDS 기본정보 DB 필드 누락: "+string.Join(", ",missingColumns));
+       var fields=editableBoxes;
        using (var cmd=conn.CreateCommand())
        {
          cmd.Transaction=tx;
