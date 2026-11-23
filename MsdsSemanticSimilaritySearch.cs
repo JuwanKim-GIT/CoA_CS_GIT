@@ -99,6 +99,36 @@ namespace QCS
                 .ThenBy(m => m.CorrectionId, StringComparer.Ordinal).Take(topK).ToArray();
         }
 
+        // Cross-CAS retrieval is restricted to approved TWA/STEL expression examples.
+        // Chemical measurement corrections must continue through the CAS-specific search.
+        internal static async Task<IReadOnlyList<Match>> SearchExpressionExamplesAsync(
+            string property, CancellationToken cancellationToken)
+        {
+            if (property != "Twa" && property != "Stel") return Array.Empty<Match>();
+            var matches = new List<Match>();
+            using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
+            await db.OpenAsync(cancellationToken);
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = @"SELECT ai_correctionh_id, ai_correctionh_field_key,
+                ai_correctionh_ingredient_cas_no, ai_correctionh_original_value,
+                ai_correctionh_corrected_value
+                FROM ai_correctionh_hist
+                WHERE ai_correctionh_learning_status = 'APPROVED'
+                  AND ai_correctionh_field_key LIKE $suffix
+                ORDER BY ai_correctionh_id DESC LIMIT 100";
+            cmd.Parameters.AddWithValue("$suffix", "%:" + property);
+            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                matches.Add(new Match {
+                    CorrectionId = reader.GetString(0), FieldKey = reader.GetString(1),
+                    CasNumber = reader.IsDBNull(2) ? null : reader.GetString(2),
+                    OriginalValue = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    CorrectedValue = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                    TextType = "EXPRESSION_PATTERN"
+                });
+            return matches;
+        }
+
         internal static string CanonicalText(string fieldKey, string? cas, string value)
         {
             // Ignore optional field labels and trailing sentence punctuation, not measurements.

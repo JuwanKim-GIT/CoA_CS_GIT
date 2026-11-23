@@ -51,6 +51,31 @@ namespace QCS
                     }
                     diagnostic?.Invoke($"검색 결과 CAS={cas} 항목={property}: {matches.Count}건" +
                         (matches.Count > 0 ? $", 최고 유사도={matches.Max(m => m.Similarity):F3}" : ""));
+                    // A different CAS may share an expression-only correction pattern.
+                    // Never transfer concentrations, exposure limits, or other measurements.
+                    if (matches.Count == 0 && (property == "Twa" || property == "Stel"))
+                    {
+                        try
+                        {
+                            var examples = await MsdsSemanticSimilaritySearch.SearchExpressionExamplesAsync(property, ct);
+                            var applicable = examples.Select(m => (Example: m, After: ApplyExpressionPattern(before, m.OriginalValue, m.CorrectedValue)))
+                                .Where(x => x.After != null && x.After != before).ToArray();
+                            var variants = applicable.Select(x => x.After!).Distinct(StringComparer.Ordinal).ToArray();
+                            if (variants.Length == 1)
+                            {
+                                var chosen = applicable[0];
+                                proposals.Add(new Proposal { Order = pair.index + 1, Cas = cas, Property = property,
+                                    Before = before, After = variants[0], CorrectionId = chosen.Example.CorrectionId, Similarity = 1.0 });
+                                matched++; verified++;
+                                diagnostic?.Invoke($"범용 표현 교정 CAS={cas} 항목={property}: 학습번호={chosen.Example.CorrectionId} | 이전값={before} | 교정값={variants[0]} | 숫자 유지");
+                                continue;
+                            }
+                            if (variants.Length > 1)
+                                diagnostic?.Invoke($"범용 표현 교정 제외 CAS={cas} 항목={property}: 학습 패턴 충돌 {variants.Length}종");
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        { diagnostic?.Invoke($"범용 표현 검색 실패 CAS={cas} 항목={property}: {ex.GetType().Name}: {ex.Message}"); }
+                    }
                     // One correction pipeline: exact confirmed examples are a special case of retrieval.
                     var exact = matches.Where(m =>
                         string.Equals(MsdsSemanticSimilaritySearch.CanonicalText(key, cas, m.OriginalValue),
@@ -100,6 +125,26 @@ namespace QCS
             diagnostic?.Invoke($"교정 진단 종료: 검색 {searched}건, 후보 {matched}건, AI 제안 {verified}건, 적용 가능 {proposals.Count}건");
             return proposals;
         }
+        // Learn only a verified Korean-to-English time-expression change.
+        // This is deliberately narrow: no generalization of chemical facts or units.
+        private static string? ApplyExpressionPattern(string current, string learnedBefore, string learnedAfter)
+        {
+            static string Clean(string value) => Regex.Replace(value.Trim(), @"^(?:TWA|STEL)\s*:\s*", "", RegexOptions.IgnoreCase).TrimEnd('.', ' ');
+            string original = Clean(learnedBefore), corrected = Clean(learnedAfter);
+            string? sourceToken = null, targetToken = null;
+            foreach (var pair in new[] { ("시간", "Hr"), ("분", "Min") })
+            {
+                var transformed = Regex.Replace(original, @"(?<=\d)\s*" + pair.Item1 + @"(?=\s|\.|$)", " " + pair.Item2);
+                if (!string.Equals(transformed, original, StringComparison.Ordinal) &&
+                    string.Equals(transformed, corrected, StringComparison.OrdinalIgnoreCase))
+                { sourceToken = pair.Item1; targetToken = pair.Item2; break; }
+            }
+            if (sourceToken == null) return null;
+            string result = Regex.Replace(current, @"(?<=\d)\s*" + sourceToken + @"(?=\s|\.|$)", " " + targetToken);
+            if (result == current || !SameNumbers(current, result)) return null;
+            return result;
+        }
+
         private static bool SameNumbers(string a, string b)
         {
             static string[] Numbers(string text) => Regex.Matches(text, @"(?<![\w])\d+(?:[.,]\d+)?")

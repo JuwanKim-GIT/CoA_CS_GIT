@@ -74,6 +74,16 @@ namespace QCS.Analysis
             if (string.IsNullOrWhiteSpace(fullText))
                 throw new InvalidOperationException("PDF에서 추출된 텍스트가 없습니다.");
 
+            // PdfPig can return incorrect character mappings for embedded Korean fonts.
+            // When the extracted Korean is visibly corrupted, use the original PDF
+            // through the existing direct-PDF analysis path instead of feeding bad text to AI.
+            if (LooksLikeBrokenKorean(fullText))
+            {
+                var direct = await AnalyzeAsync(pdfPath, ct);
+                direct.Warnings.Add("로컬 PDF 텍스트 문자 매핑 이상 감지: PDF 원본 직접 분석으로 전환");
+                return direct;
+            }
+
             string prompt = "You are an MSDS/SDS extraction assistant. Analyze the FULL PDF text provided below, not an attached PDF. " +
                 "Page markers [PAGE N] indicate source pages. Text may have imperfect table layout. " +
                 "Return ONLY a JSON object with keys 'fields' (object), 'ingredients' (array), and 'warnings' (array of strings). " +
@@ -122,16 +132,65 @@ namespace QCS.Analysis
                 }
             }
             else result.Warnings.Add("3항 범위 자동 식별 실패: 구성성분 누락 여부 수동 확인 필요");
-            var number = Regex.Matches(fullText, @"(?:제품\s*등록\s*번호|(?:MSDS|물질안전보건자료)\s*(?:제출|등록)\s*번호|노동부\s*제출\s*번호)\s*[:：]?\s*([A-Z]{2}\d{5}-\d{10})(?![0-9])", RegexOptions.IgnoreCase).Cast<Match>().ToArray();
-            if (number.Select(m => m.Groups[1].Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+            // Prefer a uniquely identified submission number, accepting arbitrary internal hyphens.
+            var number = Regex.Matches(fullText,
+                @"(?:제품\s*등록\s*번호|(?:MSDS|물질안전보건자료)\s*(?:제출|등록)\s*번호|노동부\s*제출\s*번호)\s*[:：]?\s*((?:[A-Z]-?){2}(?:\d-?){15})(?![A-Za-z0-9-])",
+                RegexOptions.IgnoreCase).Cast<Match>().ToArray();
+            var uniqueNumbers = number.Select(m => m.Groups[1].Value.Replace("-", "").ToUpperInvariant())
+                .Distinct(StringComparer.Ordinal).ToArray();
+            if (uniqueNumbers.Length == 1)
             {
                 var m = number[0];
                 var page = Regex.Matches(fullText.Substring(0, m.Index), @"\[PAGE (\d+)\]").Cast<Match>().LastOrDefault();
                 result.Fields.RemoveAll(f => f.FieldKey == "msds_moel_submission_no");
-                result.Fields.Add(new MsdsExtractedField { FieldKey = "msds_moel_submission_no", Value = m.Groups[1].Value, SourceText = m.Value, SourcePage = page == null ? (int?)null : int.Parse(page.Groups[1].Value), Status = MsdsFieldStatus.NeedsReview });
+                result.Fields.Add(new MsdsExtractedField { FieldKey = "msds_moel_submission_no", Value = uniqueNumbers[0], SourceText = m.Value,
+                    SourcePage = page == null ? (int?)null : int.Parse(page.Groups[1].Value), Status = MsdsFieldStatus.NeedsReview });
             }
-            else if (number.Length > 0) result.Warnings.Add("MSDS 제출번호 후보 복수: 원문 확인 필요");
+            else if (uniqueNumbers.Length > 1) result.Warnings.Add("MSDS 제출번호 후보 복수: 원문 확인 필요");
+            // Normalize unambiguous revision dates only; preserve the source evidence.
+            foreach (var field in result.Fields.Where(f => f.FieldKey == "msds_revision_date" && !string.IsNullOrWhiteSpace(f.Value)))
+            {
+                if (TryNormalizeRevisionDate(field.Value!, out string normalized)) field.Value = normalized;
+                else result.Warnings.Add("개정일자 형식 확인 필요: " + field.Value);
+            }
             return result;
+        }
+
+        private static bool LooksLikeBrokenKorean(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            // The pattern in SR1037 consists of dense mixed Hangul, CJK ideographs,
+            // and symbols within what should be ordinary Korean prose.
+            int hangul = 0, cjk = 0, replacement = 0;
+            foreach (char ch in text)
+            {
+                if (ch >= '\uAC00' && ch <= '\uD7A3') hangul++;
+                else if (ch >= '\u4E00' && ch <= '\u9FFF') cjk++;
+                else if (ch == '\uFFFD') replacement++;
+            }
+            return replacement >= 5 ||
+                (hangul >= 30 && cjk >= 30 && cjk > hangul / 3);
+        }
+
+        private static bool TryNormalizeRevisionDate(string value, out string normalized)
+        {
+            normalized = "";
+            var m = Regex.Match(value.Trim(), @"^(\d{4})\s*(?:[./-]|년)\s*(\d{1,2})\s*(?:[./-]|월)\s*(\d{1,2})\s*일?\.?$");
+            int y, mo, d;
+            if (m.Success) { y = int.Parse(m.Groups[1].Value); mo = int.Parse(m.Groups[2].Value); d = int.Parse(m.Groups[3].Value); }
+            else
+            {
+                m = Regex.Match(value.Trim(), @"^(\d{1,2})[./-](\d{1,2})[./-](\d{4})\.?$");
+                if (!m.Success) return false;
+                int first = int.Parse(m.Groups[1].Value), second = int.Parse(m.Groups[2].Value);
+                y = int.Parse(m.Groups[3].Value);
+                if (first > 12 && second <= 12) { d = first; mo = second; }
+                else if (second > 12 && first <= 12) { mo = first; d = second; }
+                else return false; // ambiguous day/month: leave unchanged
+            }
+            if (y < 1900 || y > 2100) return false;
+            try { normalized = new DateTime(y, mo, d).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture); return true; }
+            catch (ArgumentOutOfRangeException) { return false; }
         }
 
         private async Task<MsdsAnalysisResult> SendAndParseAsync(object payload, string pdfPath, MsdsEngineMode engine, CancellationToken ct)

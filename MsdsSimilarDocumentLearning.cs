@@ -287,9 +287,18 @@ namespace QCS
 
         private static bool EquivalentExposure(string before, string after)
         {
-            if (!Regex.IsMatch(before, @"\d") || !Regex.IsMatch(after, @"\d")) return false;
-            if (!Regex.IsMatch(before, @"\b(?:PPM|MG/M[³3])\b", RegexOptions.IgnoreCase)) return false;
-            return ExposureKey(before) == ExposureKey(after);
+            // Compare the actual concentration and exposure duration, not the
+            // optional TWA/STEL label or Korean/English time-unit spelling.
+            if (!TryExposureParts(before, out var beforeNum, out var beforeUnit, out var beforeTime, out var beforeTimeUnit) ||
+                !TryExposureParts(after, out var afterNum, out var afterUnit, out var afterTime, out var afterTimeUnit))
+                return false;
+            if (beforeNum != afterNum || beforeUnit != afterUnit ||
+                beforeTime != afterTime || beforeTimeUnit != afterTimeUnit)
+                return false;
+            // Reject edits that add or remove any other numeric information.
+            var beforeNumbers = Regex.Matches(before, @"\d+(?:[.,]\d+)?").Select(m => m.Value.Replace(',', '.'));
+            var afterNumbers = Regex.Matches(after, @"\d+(?:[.,]\d+)?").Select(m => m.Value.Replace(',', '.'));
+            return beforeNumbers.SequenceEqual(afterNumbers);
         }
         private static bool ContainsExposureEvidence(string fullText, string value)
         {
