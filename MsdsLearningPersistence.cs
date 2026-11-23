@@ -51,14 +51,34 @@ namespace QCS
                 if(!string.Equals(Final(e.Key),e.After?.Trim(),StringComparison.Ordinal)) continue;
                 if (string.Equals(e.Before ?? "", e.After ?? "", StringComparison.Ordinal)) continue;
                 var id=Next(db,tx,"ai_correctionh_hist","ai_correctionh_id","AC",now);
+                bool ingredientField=MsdsIngredientLearningKey.Parse(e.Key,out var ingredientCas,out var ingredientItem);
                 Insert(db,tx,"ai_correctionh_hist","ai_correctionh_",new() {
                     ["id"]=id,["msds_id"]=msdsId,["document_type"]=doc.MaterialType,["pdf_path"]=path,["pdf_hash"]=hash,
                     ["field_key"]=e.Key,["original_value"]=e.Before,["corrected_value"]=Final(e.Key),["corrected_at"]=at,
                     ["source"]="USER_CONFIRMED",["source_label"]=e.Label,["source_text"]=e.Text,["source_context"]=e.Context,
                     ["source_page"]=e.Page,["candidate_value"]=e.Candidate,["correction_method"]=e.Method,["corrected_by"]=e.User,
-                    ["learning_status"]="APPROVED",["supplier_name"]=Value("SupplierNameBox"),["product_name"]=Value("ProductNameBox") });
+                    ["learning_status"]="APPROVED",["ingredient_cas_no"]=ingredientField?ingredientCas:null,
+                    ["ingredient_item_key"]=ingredientField?e.Key:null,["supplier_name"]=Value("SupplierNameBox"),["product_name"]=Value("ProductNameBox") });
+                // One pending rule per confirmed correction. Approval is a separate step;
+                // an unreviewed rule must never be used as an approved learning rule.
+                string learningId=Next(db,tx,"ai_learning_mstr","ai_learning_id","AL",now);
+                string? supplier=Value("SupplierNameBox")?.Trim();
+                string? product=Value("ProductNameBox")?.Trim();
+                string scope=!string.IsNullOrWhiteSpace(supplier) && !string.IsNullOrWhiteSpace(product)
+                    ? "PRODUCT" : !string.IsNullOrWhiteSpace(supplier) ? "SUPPLIER" : "GLOBAL";
+                Insert(db,tx,"ai_learning_mstr","ai_learning_",new() {
+                    ["id"]=learningId,["field_code"]=e.Key,["rule_type"]="NORMALIZATION",
+                    ["description"]="사용자 확정 교정 사례 기반 학습 후보",
+                    ["scope"]=scope,["supplier_name"]=scope=="GLOBAL"?null:supplier,
+                    ["product_name"]=scope=="PRODUCT"?product:null,
+                    ["status"]="PENDING",["version"]=1,["created_at"]=at });
+                Insert(db,tx,"ai_learningd_det","ai_learningd_",new() {
+                    ["learning_id"]=learningId,["correction_id"]=id,
+                    ["relation_type"]="POSITIVE",["created_at"]=at });
                 created[e.Key]=id;
             }
+            // Index approved corrections in the same transaction; backfill earlier approved rows.
+            MsdsEmbeddingPersistence.Sync(db, tx);
             foreach(var e in doc.Applied)
             {
                 if (string.Equals(e.Before ?? "", e.After ?? "", StringComparison.Ordinal)) continue;

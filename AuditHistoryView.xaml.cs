@@ -196,15 +196,80 @@ namespace QCS
             return Convert.ToString(reader.GetValue(index), CultureInfo.InvariantCulture) ?? "";
         }
 
+        // Keep the ledger's CAS reference values consistent with MSDS 조회/관리:
+        // first casref_id for each CAS/type, using casref_value.
+        private static Dictionary<string, string[]> ReadInventoryCasReferences()
+        {
+            var values = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            var types = new[] { "인체", "사고", "제한", "중점", "잔류", "배출량" };
+            var builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = DatabaseManager.GetDbPath("reference"),
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false
+            };
+            using var db = new SqliteConnection(builder.ToString());
+            db.Open();
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = @"SELECT casref_cas_no, casref_type, casref_value FROM casref_mstr
+                WHERE casref_type IN ('인체','사고','제한','중점','잔류','배출량')
+                ORDER BY casref_id";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                string cas = reader.IsDBNull(0) ? "" : (reader.GetString(0) ?? "").Trim().Replace(" ", "");
+                string type = reader.IsDBNull(1) ? "" : (reader.GetString(1) ?? "").Trim();
+                if (cas.Length == 0) continue;
+                int index = Array.IndexOf(types, type);
+                if (index < 0) continue;
+                if (!values.TryGetValue(cas, out var entries))
+                {
+                    entries = new string[6];
+                    values.Add(cas, entries);
+                }
+                // Match the management view's first-row selection, even if its value is blank.
+                if (entries[index] == null)
+                    entries[index] = reader.IsDBNull(2) ? "" : reader.GetString(2);
+            }
+            return values;
+        }
+
         private static List<InventoryLine> ReadInventory(string materialType, bool latestOnly)
         {
             var result = new List<InventoryLine>();
+            var casReferences = ReadInventoryCasReferences();
             using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
             db.Open();
             using var cmd = db.CreateCommand();
-            cmd.CommandText = @"SELECT m.*, c.msds_comp_name, c.msds_comp_cas_no,
-                    c.msds_comp_content_raw, c.msds_comp_content_max,
-                    c.msds_comp_molecular_formula, c.msds_comp_twa, c.msds_comp_stel
+            cmd.CommandText = @"SELECT m.*,
+                    COALESCE(m.msds_product_name_mod, m.msds_product_name_ai) AS msds_product_name,
+                    COALESCE(m.msds_supplier_name_mod, m.msds_supplier_name_ai) AS msds_supplier_name,
+                    COALESCE(m.msds_supplier_phone_mod, m.msds_supplier_phone_ai) AS msds_supplier_phone,
+                    COALESCE(m.msds_supplier_address_mod, m.msds_supplier_address_ai) AS msds_supplier_address,
+                    COALESCE(m.msds_revision_date_mod, m.msds_revision_date_ai) AS msds_revision_date,
+                    COALESCE(m.msds_revision_no_mod, m.msds_revision_no_ai) AS msds_revision_no,
+                    COALESCE(m.msds_h_codes_mod, m.msds_h_codes_ai) AS msds_h_codes,
+                    COALESCE(m.msds_corrosive_flag_mod, m.msds_corrosive_flag_ai) AS msds_corrosive_flag,
+                    COALESCE(m.msds_lel_mod, m.msds_lel_ai) AS msds_lel,
+                    COALESCE(m.msds_uel_mod, m.msds_uel_ai) AS msds_uel,
+                    COALESCE(m.msds_flash_point_mod, m.msds_flash_point_ai) AS msds_flash_point,
+                    COALESCE(m.msds_autoignition_temp_mod, m.msds_autoignition_temp_ai) AS msds_autoignition_temp,
+                    COALESCE(m.msds_vapor_pressure_mod, m.msds_vapor_pressure_ai) AS msds_vapor_pressure,
+                    COALESCE(m.msds_reactivity_mod, m.msds_reactivity_ai) AS msds_reactivity,
+                    COALESCE(m.msds_un_number_mod, m.msds_un_number_ai) AS msds_un_number,
+                    COALESCE(m.msds_moel_submission_no_mod, m.msds_moel_submission_no_ai) AS msds_moel_submission_no,
+                    COALESCE(m.msds_physical_state_mod, m.msds_physical_state_ai) AS msds_physical_state,
+                    COALESCE(m.msds_hazardous_goods_class_mod, m.msds_hazardous_goods_class_ai) AS msds_hazardous_goods_class,
+                    c.msds_comp_name,
+                    c.msds_comp_cas_no,
+                    COALESCE(c.msds_comp_content_raw_mod, c.msds_comp_content_raw_ai) AS msds_comp_content_raw,
+                    COALESCE(c.msds_comp_content_max_mod, c.msds_comp_content_max_ai) AS msds_comp_content_max,
+                    COALESCE(c.msds_comp_twa_mod, c.msds_comp_twa_ai) AS msds_comp_twa,
+                    COALESCE(c.msds_comp_stel_mod, c.msds_comp_stel_ai) AS msds_comp_stel,
+                    COALESCE(c.msds_comp_oral_ld50_mod, c.msds_comp_oral_ld50_ai) AS msds_comp_oral_ld50,
+                    COALESCE(c.msds_comp_dermal_ld50_mod, c.msds_comp_dermal_ld50_ai) AS msds_comp_dermal_ld50,
+                    COALESCE(c.msds_comp_inhalation_lc50_mod, c.msds_comp_inhalation_lc50_ai) AS msds_comp_inhalation_lc50,
+                    COALESCE(m.msds_molecular_formula_mod, m.msds_molecular_formula_ai) AS msds_comp_molecular_formula
                 FROM msds_mstr m LEFT JOIN msds_comp_dtl c ON c.msds_comp_parent_msds_id=m.msds_msds_id
                 WHERE m.msds_material_type=$type AND COALESCE(m.msds_is_deleted,0)=0
                 AND ($latest=0 OR UPPER(TRIM(CAST(m.msds_is_latest AS TEXT))) IN ('1','Y','YES'))
@@ -232,11 +297,19 @@ namespace QCS
                     cells[18] = V("msds_flash_point"); cells[19] = V("msds_autoignition_temp");
                     cells[20] = V("msds_vapor_pressure"); cells[21] = V("msds_reactivity");
                     cells[25] = V("msds_un_number"); cells[38] = V("msds_moel_submission_no");
+                    cells[28] = V("msds_physical_state"); // AC
+                    cells[29] = V("msds_hazardous_goods_class"); // AD
                 }
                 cells[9] = V("msds_comp_name"); cells[10] = V("msds_comp_cas_no");
                 cells[11] = V("msds_comp_content_raw"); cells[12] = V("msds_comp_content_max");
                 cells[13] = V("msds_comp_molecular_formula");
                 cells[14] = V("msds_comp_twa"); cells[15] = V("msds_comp_stel");
+                cells[22] = V("msds_comp_oral_ld50"); // W: 경구 LD50
+                cells[23] = V("msds_comp_dermal_ld50"); // X: 경피 LD50
+                cells[24] = V("msds_comp_inhalation_lc50"); // Y: 흡입 LC50
+                string cas = V("msds_comp_cas_no").Trim().Replace(" ", "");
+                if (casReferences.TryGetValue(cas, out var referenceValues))
+                    for (int i = 0; i < 6; i++) cells[30 + i] = referenceValues[i] ?? ""; // AE:AJ
                 result.Add(new InventoryLine(cells));
             }
             return result;
@@ -254,9 +327,9 @@ namespace QCS
             return path;
         }
 
-        private static void OpenInventoryWorkbooks(List<InventoryLine> rm, List<InventoryLine> fg, long revision)
+        private static void OpenInventoryWorkbooks(List<InventoryLine>? rm, List<InventoryLine>? fg, long revision)
         {
-            string rmPath = TemplatePath("RM"), fgPath = TemplatePath("FG");
+            if (rm == null && fg == null) return;
             var excelType = Type.GetTypeFromProgID("Excel.Application")
                 ?? throw new InvalidOperationException("Microsoft Excel이 설치되어 있지 않습니다.");
             dynamic excel = Activator.CreateInstance(excelType)
@@ -266,15 +339,21 @@ namespace QCS
             {
                 excel.Visible = false;
                 excel.DisplayAlerts = false;
-                // Disable macro execution while instantiating workbook templates.
                 excel.AutomationSecurity = 3;
-                rmBook = excel.Workbooks.Add(rmPath);
-                fgBook = excel.Workbooks.Add(fgPath);
-                FillInventorySheet(rmBook, rm, revision);
-                FillInventorySheet(fgBook, fg, revision);
+                if (rm != null)
+                {
+                    rmBook = excel.Workbooks.Add(TemplatePath("RM"));
+                    FillInventorySheet(rmBook, rm, revision);
+                }
+                if (fg != null)
+                {
+                    fgBook = excel.Workbooks.Add(TemplatePath("FG"));
+                    FillInventorySheet(fgBook, fg, revision);
+                }
                 excel.DisplayAlerts = true;
                 excel.Visible = true;
-                rmBook.Worksheets[1].Activate();
+                if (rmBook != null) rmBook.Worksheets[1].Activate();
+                else if (fgBook != null) fgBook.Worksheets[1].Activate();
             }
             catch
             {
@@ -302,35 +381,148 @@ namespace QCS
             dynamic range = sheet.Range["A9", "AM" + (8 + count)];
             range.NumberFormat = "@";
             range.Value2 = values;
+            // Excel constants: xlLeft = -4131, xlTop = -4160.
+            // Apply to data rows only; preserve template header alignment.
+            range.HorizontalAlignment = -4131;
+            range.VerticalAlignment = -4160;
         }
 
-        private static string? AskExportMode(Window? owner)
+        private sealed record ExportChoice(string Material, string Mode);
+
+        private ExportChoice? AskExportMode(Window? owner, long revision)
         {
             var dialog = new Window
             {
-                Title = "대장 출력 확인", Width = 470, Height = 205, ResizeMode = ResizeMode.NoResize,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                ShowInTaskbar = false, Background = System.Windows.Media.Brushes.White
+                Title = "대장 출력",
+                Width = 520, Height = 350,
+                MinWidth = 520, MinHeight = 350,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = owner == null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
+                ShowInTaskbar = false,
+                Background = System.Windows.Media.Brushes.White,
+                FontFamily = new System.Windows.Media.FontFamily("Malgun Gothic"),
+                FontSize = 13
             };
             if (owner != null) dialog.Owner = owner;
-            var panel = new StackPanel { Margin = new Thickness(22) };
-            panel.Children.Add(new TextBlock
+
+            var root = new Grid();
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var header = new Border
             {
-                Text = "현재 진행중인 대장 REV입니다. 출력 방법을 선택해 주세요.",
-                FontSize = 13, Margin = new Thickness(0, 4, 0, 22), TextWrapping = TextWrapping.Wrap
+                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#214B7E")!,
+                Padding = new System.Windows.Thickness(20, 15, 20, 15)
+            };
+            header.Child = new TextBlock
+            {
+                Text = $"대장 출력  ·  REV {revision:D4} (진행중)",
+                Foreground = System.Windows.Media.Brushes.White,
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold
+            };
+            root.Children.Add(header);
+
+            var body = new StackPanel { Margin = new Thickness(24, 20, 24, 12) };
+            Grid.SetRow(body, 1);
+            body.Children.Add(new TextBlock
+            {
+                Text = "출력할 대장을 선택해 주세요.",
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1E3A5F")!,
+                Margin = new Thickness(0, 0, 0, 13)
             });
-            var buttons = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right };
-            string? selected = null;
-            foreach (var label in new[] { "개정", "단순출력", "취소" })
+            var choices = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            System.Windows.Controls.RadioButton CreateChoice(string label, string tag, bool selected)
             {
-                var button = new System.Windows.Controls.Button { Content = label, Width = 104, Height = 36, Margin = new Thickness(5, 0, 0, 0) };
-                button.Click += (_, _) => { selected = label; dialog.DialogResult = true; };
-                buttons.Children.Add(button);
+                var option = new System.Windows.Controls.RadioButton
+                {
+                    Content = label, Tag = tag, GroupName = "LedgerExportMaterial",
+                    IsChecked = selected, Margin = new Thickness(0, 0, 22, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                choices.Children.Add(option);
+                return option;
             }
-            panel.Children.Add(buttons);
-            dialog.Content = panel;
-            dialog.ShowDialog();
-            return selected;
+            var both = CreateChoice("원료 + 제품", "BOTH", true);
+            var rmOnly = CreateChoice("원료(RM)", "RM", false);
+            var fgOnly = CreateChoice("제품(FG)", "FG", false);
+            body.Children.Add(choices);
+            var hint = new Border
+            {
+                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#F0F4F9")!,
+                CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(12), Margin = new Thickness(0, 22, 0, 0)
+            };
+            hint.Child = new TextBlock
+            {
+                Text = "단순출력은 선택한 대장만 Excel에서 엽니다.\n개정 확정은 원료와 제품을 함께 출력할 때만 가능합니다.",
+                Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#52677F")!,
+                TextWrapping = TextWrapping.Wrap,
+                LineHeight = 21
+            };
+            body.Children.Add(hint);
+            root.Children.Add(body);
+
+            var footer = new Border
+            {
+                BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#DCE4EF")!,
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Padding = new System.Windows.Thickness(20, 13, 20, 13)
+            };
+            Grid.SetRow(footer, 2);
+            var buttons = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+            };
+            ExportChoice? selectedChoice = null;
+            string SelectedMaterial() => rmOnly.IsChecked == true ? "RM" : fgOnly.IsChecked == true ? "FG" : "BOTH";
+            System.Windows.Controls.Button CreateButton(string label, bool primary, Action action)
+            {
+                var button = new System.Windows.Controls.Button
+                {
+                    Content = label, Width = 112, Height = 36,
+                    Margin = new Thickness(6, 0, 0, 0),
+                    Cursor = System.Windows.Input.Cursors.Hand
+                };
+                if (primary)
+                {
+                    // Use the same explicit QCS primary button style as the main screen.
+                    if (TryFindResource("QcsPrimaryButton") is Style style) button.Style = style;
+                }
+                else
+                {
+                    button.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#F1F5F9")!;
+                    button.Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1E3A5F")!;
+                    button.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#CBD5E1")!;
+                }
+                button.Click += (_, _) => action();
+                buttons.Children.Add(button);
+                return button;
+            }
+            var revise = CreateButton("개정", true, () =>
+            {
+                if (SelectedMaterial() != "BOTH") return;
+                selectedChoice = new ExportChoice("BOTH", "개정");
+                dialog.DialogResult = true;
+            });
+            CreateButton("단순출력", true, () =>
+            {
+                selectedChoice = new ExportChoice(SelectedMaterial(), "단순출력");
+                dialog.DialogResult = true;
+            });
+            CreateButton("취소", false, () => dialog.DialogResult = false);
+            void UpdateRevisionAvailability() => revise.IsEnabled = both.IsChecked == true;
+            both.Checked += (_, _) => UpdateRevisionAvailability();
+            rmOnly.Checked += (_, _) => UpdateRevisionAvailability();
+            fgOnly.Checked += (_, _) => UpdateRevisionAvailability();
+            UpdateRevisionAvailability();
+            footer.Child = buttons;
+            root.Children.Add(footer);
+            dialog.Content = root;
+            return dialog.ShowDialog() == true ? selectedChoice : null;
         }
 
         private void LedgerExportClick(object sender, RoutedEventArgs e)
@@ -339,32 +531,33 @@ namespace QCS
             try
             {
                 long pending = ReadPendingRevision();
-                bool isPending = selected.Number == pending;
-                if (!isPending)
+                if (selected.Number != pending)
                 {
                     SetStatus("과거 REV의 확정 당시 대장 데이터는 별도 보관본이 필요합니다. 현재 DB로 과거 대장을 재생성하지 않습니다.");
                     return;
                 }
-                string? mode = isPending ? AskExportMode(Window.GetWindow(this)) : "단순출력";
-                if (mode == null || mode == "취소") { SetStatus("대장 출력을 취소했습니다."); return; }
-                if (mode == "개정")
+                var choice = AskExportMode(Window.GetWindow(this), selected.Number);
+                if (choice == null) { SetStatus("대장 출력을 취소했습니다."); return; }
+                if (choice.Mode == "개정")
                 {
-                    // Revision is not changed during the initial simple-print validation.
-                    // The user must explicitly choose '개정' in a separate test session.
                     if (MessageBox.Show("RM/FG 대장을 연 후 현재 REV를 확정하고 다음 REV로 변경합니다. 계속하시겠습니까?",
                         "개정 확정 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     { SetStatus("개정 작업을 취소했습니다."); return; }
                 }
-                var rm = ReadInventory("RM", LatestOnlyCheck.IsChecked == true);
-                var fg = ReadInventory("FG", LatestOnlyCheck.IsChecked == true);
+                var rm = choice.Material != "FG" ? ReadInventory("RM", LatestOnlyCheck.IsChecked == true) : null;
+                var fg = choice.Material != "RM" ? ReadInventory("FG", LatestOnlyCheck.IsChecked == true) : null;
                 OpenInventoryWorkbooks(rm, fg, selected.Number);
-                if (mode == "개정")
+                if (choice.Mode == "개정")
                 {
                     ConfirmRevision(selected.Number);
                     LoadRevisions();
-                    SetStatus($"REV {selected.Number:D4} 개정 확정 완료. RM {rm.Count}행, FG {fg.Count}행 Excel 표시.");
+                    SetStatus($"REV {selected.Number:D4} 개정 확정 완료. RM {rm?.Count ?? 0}행, FG {fg?.Count ?? 0}행 Excel 표시.");
                 }
-                else SetStatus($"단순출력 완료: RM {rm.Count}행, FG {fg.Count}행. 저장은 Excel에서 직접 선택하세요.");
+                else
+                {
+                    var targets = choice.Material == "BOTH" ? "RM/FG" : choice.Material;
+                    SetStatus($"단순출력 완료: {targets} (RM {rm?.Count ?? 0}행, FG {fg?.Count ?? 0}행). 저장은 Excel에서 직접 선택하세요.");
+                }
             }
             catch (Exception ex) { ShowError("대장 출력 실패", ex); }
         }

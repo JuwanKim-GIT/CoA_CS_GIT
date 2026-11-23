@@ -234,7 +234,7 @@ namespace QCS
                 return;
             }
             DbSaveButton.IsEnabled = false;
-            int success = 0, failed = 0;
+            int success = 0, failed = 0, embeddingFailed = 0;
             try
             {
                 foreach (var item in targets)
@@ -263,6 +263,18 @@ namespace QCS
                     }
                     else if (result.Success)
                     {
+                        // Semantic vectors are generated after the MSDS transaction commits.
+                        // An API failure must never roll back an already saved MSDS.
+                        try
+                        {
+                            string embeddingKey = GetAiSetting("MSDS_API_KEY");
+                            await MsdsOpenAiEmbeddingPersistence.SyncAsync(embeddingKey);
+                        }
+                        catch (Exception embeddingError)
+                        {
+                            embeddingFailed++;
+                            PublishStatus("MSDS 저장 완료 / AI 의미 임베딩 미완료: " + embeddingError.Message);
+                        }
                         if (ReferenceEquals(_displayedItem, item)) _displayedItem = null;
                         _files.Remove(item);
                         success++;
@@ -282,7 +294,8 @@ namespace QCS
                 UpdateCount();
                 UpdateActionButtons();
             }
-            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건");
+            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건" +
+                (embeddingFailed > 0 ? $" / AI 의미 임베딩 실패 {embeddingFailed}건 (다음 저장 시 재시도)" : ""));
             System.Windows.MessageBox.Show($"DB 저장 완료: 성공 {success}건 / 실패 {failed}건", "DB 저장 결과");
         }
 
@@ -523,6 +536,81 @@ namespace QCS
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) { LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 학습 실패 (기존 분석 유지) - {ex.Message}"); }
         }
+        private async Task ApplySemanticCorrectionsAsync(PdfItem item, MsdsAnalysisResult result, string apiKey, CancellationToken ct)
+        {
+            var diagnostics = new List<string>();
+            void Trace(string message)
+            {
+                var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {message}";
+                diagnostics.Add(line);
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {message}");
+            }
+            Trace($"AI 교정 진단 시작 | 파일={item.FileName} | 성분={result.Ingredients.Count}건");
+            if (!CanApplyAiLearning())
+            {
+                Trace("교정 단계 건너뜀 | 사유=현재 사용자에게 Admin 권한 없음");
+                SaveAiCorrectionDiagnostic(item, diagnostics);
+                return;
+            }
+            try
+            {
+                var proposals = await MsdsSemanticCorrectionApplication.ProposeAsync(apiKey, result, ct,
+                    message => Trace(message));
+                foreach (var proposal in proposals)
+                {
+                    var row = item.Unified.IngredientField(proposal.Order, proposal.Property switch
+                    {
+                        "Twa" => "twa", "Stel" => "stel", "OralLd50" => "oral_ld50",
+                        "DermalLd50" => "dermal_ld50", "InhalationLc50" => "inhalation_lc50", _ => ""
+                    });
+                    if (row == null || row.CasNumber != proposal.Cas || row.ValueAi.Trim() != proposal.Before)
+                    {
+                        Trace($"교정 반영 제외 CAS={proposal.Cas} 항목={proposal.Property}: 결과 행 매핑 불일치");
+                        continue;
+                    }
+                    Trace($"교정 반영 성공 CAS={proposal.Cas} 항목={proposal.Property} | 학습번호={proposal.CorrectionId} | 유사도={proposal.Similarity:F3} | 이전값={proposal.Before} | 교정값={proposal.After}");
+                    row.ValueCorrection = proposal.After;
+                    row.AiApplied = true;
+                    row.LearningNo = proposal.CorrectionId;
+                    item.Applied.Add(new MsdsLearningEntry
+                    {
+                        Id = proposal.CorrectionId, Key = MsdsIngredientLearningKey.Key(proposal.Cas, proposal.Property),
+                        Before = proposal.Before, After = proposal.After,
+                        Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(item.FullPath))),
+                        At = DateTimeOffset.Now.ToString("O"), Type = "SIMILAR", Subtype = "SEMANTIC"
+                    });
+                }
+                Trace($"OpenAI 의미 검색 교정 {item.Applied.Count(x => x.Subtype == "SEMANTIC")}건 (저장 전 검증 필요)");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                Trace($"의미 검색 교정 미적용 | {ex.GetType().Name}: {ex.Message}");
+            }
+            finally
+            {
+                Trace("AI 교정 진단 종료");
+                SaveAiCorrectionDiagnostic(item, diagnostics);
+            }
+        }
+
+        private void SaveAiCorrectionDiagnostic(PdfItem item, List<string> diagnostics)
+        {
+            try
+            {
+                var outputFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Output");
+                Directory.CreateDirectory(outputFolder);
+                var path = System.IO.Path.Combine(outputFolder,
+                    $"QCS_AI_Correction_Diagnostic_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.txt");
+                File.WriteAllLines(path, diagnostics, new System.Text.UTF8Encoding(false));
+                PublishStatus("AI 교정 진단 로그 저장: " + System.IO.Path.GetFileName(path));
+            }
+            catch (Exception ex)
+            {
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: AI 교정 진단 로그 저장 실패 - {ex.Message}");
+            }
+        }
+
         private void SetAnalysisResult(PdfItem item, MsdsAnalysisResult result)
         {
             item.Parsed = result;
@@ -1146,6 +1234,7 @@ namespace QCS
                                 ApplySameDocumentLearning(item, aiResult);
                                 await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             }
+                            await ApplySemanticCorrectionsAsync(item, aiResult, apiKey, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1226,6 +1315,7 @@ namespace QCS
                                 ApplySameDocumentLearning(item, aiResult);
                                 await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             }
+                            await ApplySemanticCorrectionsAsync(item, aiResult, apiKey, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1572,9 +1662,34 @@ namespace QCS
                     foreach (var row in excelRows.Concat(logRows))
                         for (int i = 0; i < row.Length; i++) row[i] = row[i].Replace(secretKey, "[REDACTED]", StringComparison.Ordinal);
                 }
+                // Export exactly the same sanitized rows to JSON, preserving column order and blank values.
+                // Excel output remains unchanged; JSON is an additional companion file.
                 MsdsAnalysisExcelWriter.Save(xlsxPath, excelRows, logRows);
+                var jsonPath = System.IO.Path.ChangeExtension(xlsxPath, ".json");
+                string? jsonWarning = null;
+                try
+                {
+                    var payload = new
+                    {
+                        formatVersion = 1,
+                        exportedAt = DateTimeOffset.Now.ToString("O"),
+                        analysisColumns = excelRows[0],
+                        analysisRows = excelRows.Skip(1).ToArray(),
+                        logColumns = logRows[0],
+                        logRows = logRows.Skip(1).ToArray()
+                    };
+                    var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                    System.IO.File.WriteAllText(jsonPath, json, new System.Text.UTF8Encoding(false));
+                }
+                catch (Exception jsonEx)
+                {
+                    jsonWarning = jsonEx.Message;
+                }
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(xlsxPath) { UseShellExecute = true });
-                PublishStatus("분석결과 Excel(2개 시트) 저장 완료: " + System.IO.Path.GetFileName(xlsxPath));
+                if (jsonWarning == null)
+                    PublishStatus("분석결과 Excel + JSON 저장 완료: " + System.IO.Path.GetFileName(xlsxPath));
+                else
+                    PublishStatus("Excel 저장 완료, JSON 저장 실패: " + jsonWarning);
             }
             catch (Exception ex)
             {
