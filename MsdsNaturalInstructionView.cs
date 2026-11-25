@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,9 +43,37 @@ public sealed class MsdsNaturalInstructionView : UserControl
     private readonly ComboBox _material = new() { ItemsSource = new[] { "RM", "FG" }, Height = 32, SelectedIndex = 0 };
     private readonly ComboBox _condition = new() { ItemsSource = new[] { "ALWAYS", "EMPTY", "NOT_EMPTY" }, Height = 32, SelectedIndex = 0 };
     private List<Instruction> _rows = new();
-    private readonly TextBox _field = new() { Height = 32 };
+    private sealed record FieldOption(string Code, string Name) { public string Display => $"{Code}({Name})"; }
+    private readonly ComboBox _field = new() { Height = 32, DisplayMemberPath = "Display", SelectedValuePath = "Code", IsEditable = false };
+    private readonly List<FieldOption> _fieldOptions = new() {
+        new("RevisionDateBox","개정일"),
+        new("RevisionNumberBox","개정번호"),
+        new("ProductNameBox","원료(제품)명"),
+        new("SupplierNameBox","공급업체명"),
+        new("PhoneBox","공급업체 전화"),
+        new("AddressBox","공급업체 주소"),
+        new("MoelSubmissionBox","노동부 제출번호"),
+        new("HazardCodesBox","유해·위험 문구"),
+        new("CorrosivityBox","피부 부식성/자극성"),
+        new("PersonalProtectionBox","개인보호구"),
+        new("ReactivityBox","반응성"),
+        new("LelBox","폭발하한계 (LEL)"),
+        new("UelBox","폭발상한계 (UEL)"),
+        new("FlashPointBox","인화점"),
+        new("AutoIgnitionBox","자연발화점"),
+        new("VaporPressureBox","증기압"),
+        new("UnNumberBox","UN 번호"),
+        new("MolecularFormulaBox","분자식"),
+        new("PhysicalStateBox","물리적 상태"),
+        new("HazardousGoodsBox","위험물 분류"),
+        new("ToxicityBox","독성치") };
+    private void SelectField(string code)
+    {
+        if (!string.IsNullOrEmpty(code) && !_fieldOptions.Any(x=>x.Code==code)) { _fieldOptions.Add(new FieldOption(code,"기존 필드")); _field.Items.Refresh(); }
+        _field.SelectedValue=code;
+    }
     private readonly TextBox _instruction = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 140, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-    private readonly TextBox _sequence = new() { Text = "100", Height = 32 };
+    private readonly TextBox _sequence = new() { Text = "1", Height = 32 };
     private readonly TextBox _supplier = new() { Height = 32 };
     private readonly TextBox _product = new() { Height = 32 };
     private readonly ComboBox _kind = new() { Height = 32, ItemsSource = new[] { "EXTRACTION", "FORMAT", "NORMALIZATION" }, SelectedIndex = 0 };
@@ -57,6 +85,7 @@ public sealed class MsdsNaturalInstructionView : UserControl
     private readonly List<Button> _viewButtons = new();
     private readonly List<Button> _editButtons = new();
     private Button? _embedButton;
+    private Button? _toggleStateButton;
     private bool _loading;
     private MainWindow? Owner => Window.GetWindow(this) as MainWindow;
     private bool Allowed() => Owner?.GetCurrentUser()?.UserLevel == QcsAuthorizationService.LevelAdmin;
@@ -70,6 +99,8 @@ public sealed class MsdsNaturalInstructionView : UserControl
     }
     public MsdsNaturalInstructionView()
     {
+        _fieldOptions.AddRange(MsdsUnifiedMemory.IngredientCodes.Zip(MsdsUnifiedMemory.IngredientNames,(code,name)=>new FieldOption(code,name)));
+        _field.ItemsSource=_fieldOptions;
         var layout = new DockPanel { Margin = new Thickness(16) };
         var filters = new WrapPanel { Margin = new Thickness(0,0,0,12) };
         void FilterBox(string label, System.Windows.Controls.Control control) {
@@ -99,9 +130,9 @@ public sealed class MsdsNaturalInstructionView : UserControl
         AddEditButton(buttons,"저장",(_,_)=>Save());
         AddEditButton(buttons,"취소",(_,_)=>CancelEdit());
         AddViewButton(buttons,"승인",(_,_)=>SetState("APPROVED"));
-        AddViewButton(buttons,"비활성화",(_,_)=>SetState("DISABLED"));
+        _toggleStateButton=AddViewButton(buttons,"비활성화",(_,_)=> { if (_items.SelectedItem is Instruction x) SetState(x.Status == "DISABLED" ? "APPROVED" : "DISABLED"); });
         _embedButton=AddViewButton(buttons,"임베딩 생성",async (_,_)=>await EmbedAsync());
-        DockPanel.SetDock(buttons,Dock.Top); layout.Children.Add(buttons);
+        
         DockPanel.SetDock(_status,Dock.Bottom); layout.Children.Add(_status);
         var body = new Grid();
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3,GridUnitType.Star), MinHeight=130 });
@@ -132,6 +163,12 @@ public sealed class MsdsNaturalInstructionView : UserControl
             ("자연어 지침","Description",300),("적용 범위","Scope",85),("적용 PDF","PdfCount",80),("교정 건수","AppliedCount",80),("실패 건수","FailedCount",80),
             ("상태","Status",95),("최종 적용일시","LastApplied",155),("실행 조건","Condition",95),("품목군","Material",70),("GracoCode","Graco",100),("버전","Version",60),("임베딩","Embedding",90),("ID","Id",250) })
             _items.Columns.Add(new DataGridTextColumn { Header=headerText, Binding=new Binding(path), Width=new DataGridLength(width), ElementStyle=System.Windows.Application.Current.TryFindResource("QcsGridText") as Style });
+        var descriptionStyle = new Style(typeof(TextBlock), System.Windows.Application.Current.TryFindResource("QcsGridText") as Style);
+        descriptionStyle.Setters.Add(new System.Windows.Setter(System.Windows.FrameworkElement.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Top));
+        descriptionStyle.Setters.Add(new System.Windows.Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
+        descriptionStyle.Setters.Add(new System.Windows.Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+        descriptionStyle.Setters.Add(new System.Windows.Setter(System.Windows.FrameworkElement.ToolTipProperty, new Binding("Description")));
+        ((DataGridTextColumn)_items.Columns[4]).ElementStyle=descriptionStyle;
         _items.MouseDoubleClick += (_,e) => {
             if (!Allowed() || _mode != EditMode.View || _items.SelectedItem is not Instruction rule) return;
             if (System.Windows.Controls.ItemsControl.ContainerFromElement(_items, e.OriginalSource as DependencyObject) is not System.Windows.Controls.DataGridRow) return;
@@ -145,6 +182,7 @@ public sealed class MsdsNaturalInstructionView : UserControl
         var scroll = new ScrollViewer { VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
         Grid.SetRow(scroll,2); body.Children.Add(scroll);
         var editor = new StackPanel { Margin=new Thickness(0,8,0,4) }; scroll.Content=editor;
+        editor.Children.Add(buttons);
         editor.Children.Add(new TextBlock { Text="지침 상세 정보", FontSize=15, FontWeight=FontWeights.SemiBold });
         var fields = new System.Windows.Controls.Primitives.UniformGrid { Columns=4 };
         void FieldBox(string label, UIElement control) { var panel=new StackPanel { Margin=new Thickness(0,0,12,0) }; Add(panel,label,control); fields.Children.Add(panel); }
@@ -172,20 +210,21 @@ public sealed class MsdsNaturalInstructionView : UserControl
     {
         _mode = mode;
         bool editing = mode != EditMode.View;
-        foreach (var control in new TextBox[] { _field, _instruction, _sequence, _supplier, _product, _name, _graco })
+        foreach (var control in new TextBox[] { _instruction, _sequence, _supplier, _product, _name, _graco })
         {
             control.IsReadOnly = !editing;
             control.Background = editing ? System.Windows.Media.Brushes.White :
                 new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 234, 245));
         }
         _kind.IsEnabled = _scope.IsEnabled = editing;
-        _condition.IsEnabled = editing;
+        _condition.IsEnabled = editing; _field.IsEnabled=editing;
         ScopeControls();
         _items.IsEnabled = !editing;
         _search.IsEnabled = !editing;
         foreach(var f in new[]{_fieldFilter,_kindFilter,_stateFilter,_scopeFilter}) f.IsEnabled=!editing;
         foreach (var button in _viewButtons) button.IsEnabled = !editing;
         foreach (var button in _editButtons) button.IsEnabled = editing;
+        UpdateStateButton();
     }
     private void BeginNew() { if (!Allowed()) return; Clear(); SetMode(EditMode.New); Notify("신규 지침 입력 중"); }
     private void BeginEdit()
@@ -250,14 +289,23 @@ public sealed class MsdsNaturalInstructionView : UserControl
     }
     private void Clear()
     {
-        _items.SelectedItem = null; _selectedId = null; _field.Clear(); _instruction.Clear();
+        _items.SelectedItem = null; _selectedId = null; _field.SelectedIndex=-1; _instruction.Clear();
         _name.Clear(); _graco.Clear(); _condition.SelectedIndex = _material.SelectedIndex = 0;
-        _sequence.Text = "100"; _supplier.Clear(); _product.Clear(); _kind.SelectedIndex = _scope.SelectedIndex = 0;
+        _sequence.Text = "1"; _supplier.Clear(); _product.Clear(); _kind.SelectedIndex = _scope.SelectedIndex = 0;
+    }
+    private void UpdateStateButton()
+    {
+        if (_toggleStateButton == null) return;
+        var row = _items.SelectedItem as Instruction;
+        _toggleStateButton.Content = row?.Status == "DISABLED" ? "활성화" : "비활성화";
+        _toggleStateButton.IsEnabled = _mode == EditMode.View && row != null;
     }
     private void Select()
     {
-        if (_loading || _mode != EditMode.View || _items.SelectedItem is not Instruction x) return;
-        _selectedId = x.Id; _field.Text = x.Field; _instruction.Text = x.Description;
+        if (_loading) return;
+        UpdateStateButton();
+        if (_mode != EditMode.View || _items.SelectedItem is not Instruction x) return;
+        _selectedId = x.Id; SelectField(x.Field); _instruction.Text = x.Description;
         _sequence.Text = x.Sequence.ToString(); _supplier.Text = x.Supplier; _product.Text = x.Product;
         _name.Text=x.Name; _graco.Text=x.Graco; _material.SelectedItem=x.Material; if (_material.SelectedIndex < 0) _material.SelectedIndex=0; _condition.SelectedItem=x.Condition;
         _kind.SelectedItem = x.Kind; _scope.SelectedItem = x.Scope;
@@ -332,6 +380,7 @@ ORDER BY ai_learning_sequence,ai_learning_created_at DESC";
         var rows = _rows.Where(x => { string text=string.Join(" ",x.Id,x.Name,x.Field,x.Kind,x.Scope,x.Material,x.Graco,x.Supplier,x.Product,x.Condition,x.Status,x.Description,x.Embedding,x.Version,x.Sequence,x.PdfCount,x.AppliedCount,x.FailedCount,x.LastApplied); return Match(_fieldFilter,x.Field) && Match(_kindFilter,x.Kind) && Match(_stateFilter,x.Status) && Match(_scopeFilter,x.Scope) && words.All(w=>text.Contains(w,StringComparison.OrdinalIgnoreCase)); }).ToList();
         _loading=true; _items.ItemsSource=rows; _items.SelectedItem=rows.FirstOrDefault(x=>x.Id==_selectedId); _loading=false;
         if (_items.SelectedItem is Instruction) Select(); else Clear();
+        UpdateStateButton();
         _count.Text=$"총 {rows.Count}건 / 전체 {_rows.Count}건";
         Notify($"자연어 지침 {rows.Count} / {_rows.Count}건 조회 완료");
     }
@@ -343,8 +392,8 @@ ORDER BY ai_learning_sequence,ai_learning_created_at DESC";
     private void Save()
     {
         if (!Allowed() || _mode == EditMode.View) { SaveNotice("신규 또는 수정 상태에서 저장하세요."); return; }
-        if (string.IsNullOrWhiteSpace(_field.Text) || string.IsNullOrWhiteSpace(_instruction.Text) ||
-            !int.TryParse(_sequence.Text, out int sequence) || sequence < 0) { SaveNotice("필드, 지침, 실행 순서를 확인하세요."); return; }
+        if (_field.SelectedValue is not string || string.IsNullOrWhiteSpace(_instruction.Text) ||
+            !int.TryParse(_sequence.Text, out int sequence) || sequence < 1 && !(_mode == EditMode.Edit && sequence == 0 && _rows.Any(x=>x.Id==_selectedId && x.Sequence==0))) { SaveNotice("필드, 지침, 실행 순서를 확인하세요."); return; }
         string scope = _scope.SelectedItem?.ToString() ?? "";
         if (scope != "GLOBAL" && scope != "GROUP" && scope != "PRODUCT") { SaveNotice("적용 범위를 선택하세요."); return; }
         if (scope == "GROUP" && _material.SelectedItem == null || scope == "PRODUCT" && _graco.Text.Trim().Length != 6) { SaveNotice("품목군 또는 6자리 GracoCode를 확인하세요."); return; }
@@ -365,7 +414,7 @@ ai_learning_product_name=excluded.ai_learning_product_name,ai_learning_sequence=
 ai_learning_name=excluded.ai_learning_name,ai_learning_condition=excluded.ai_learning_condition,ai_learning_material_type=excluded.ai_learning_material_type,ai_learning_graco_code=excluded.ai_learning_graco_code,
 ai_learning_status='PENDING',ai_learning_version=ai_learning_mstr.ai_learning_version+1,
 ai_learning_embedding_id=NULL,ai_learning_text_hash=NULL,ai_learning_updated_at=excluded.ai_learning_updated_at";
-            q.Parameters.AddWithValue("$id", id); q.Parameters.AddWithValue("$field", _field.Text.Trim());
+            q.Parameters.AddWithValue("$id", id); q.Parameters.AddWithValue("$field", (string)_field.SelectedValue);
             q.Parameters.AddWithValue("$kind", _kind.SelectedItem?.ToString() ?? "EXTRACTION");
             q.Parameters.AddWithValue("$description", _instruction.Text.Trim()); q.Parameters.AddWithValue("$scope", scope);
             q.Parameters.AddWithValue("$supplier", DBNull.Value);
@@ -376,12 +425,13 @@ ai_learning_embedding_id=NULL,ai_learning_text_hash=NULL,ai_learning_updated_at=
             q.Parameters.AddWithValue("$graco", scope == "PRODUCT" ? (object)_graco.Text.Trim().ToUpperInvariant() : DBNull.Value);
             q.Parameters.AddWithValue("$seq", sequence); q.Parameters.AddWithValue("$now", DateTimeOffset.Now.ToString("O"));
             q.ExecuteNonQuery();
+            MsdsNaturalInstructionEmbedding.Reconnect(db, tx, id, _instruction.Text.Trim());
             // Old vectors remain for rollback, but pending instructions are never executed.
             tx.Commit(); _selectedId = id; SetMode(EditMode.View); Load(); Notify("지침 저장 완료 (승인 대기)");
         }
         catch (Exception ex) { SaveNotice("저장 실패: " + ex.Message); }
     }
-    private void SetState(string state)
+    private async void SetState(string state)
     {
         if (!Allowed() || _mode != EditMode.View || _selectedId == null) { Notify("Admin 권한 및 대상 선택이 필요합니다."); return; }
         if (MessageBox.Show($"선택한 지침을 {state} 상태로 변경하시겠습니까?", "지침 상태 변경", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
@@ -395,7 +445,11 @@ ai_learning_approved_at=CASE WHEN $state='APPROVED' THEN $now ELSE NULL END,
 ai_learning_updated_at=$now WHERE ai_learning_id=$id";
             q.Parameters.AddWithValue("$state", state); q.Parameters.AddWithValue("$by", Owner?.GetCurrentUser()?.WindowsId ?? "");
             q.Parameters.AddWithValue("$now", DateTimeOffset.Now.ToString("O")); q.Parameters.AddWithValue("$id", _selectedId);
-            int count = q.ExecuteNonQuery(); Load(); Notify(count == 1 ? "상태 변경 완료" : "대상을 찾지 못했습니다.");
+            int count = q.ExecuteNonQuery();
+            string id = _selectedId;
+            db.Close();
+            Load(); Notify(count == 1 ? "상태 변경 완료" : "대상을 찾지 못했습니다.");
+            if (count == 1 && state == "APPROVED") { try { Notify(await MsdsNaturalInstructionEmbedding.GenerateAsync(id)); } catch (Exception ex) { Notify("승인 완료 / 임베딩 실패: " + ex.Message); } finally { Load(); } }
         }
         catch (Exception ex) { Notify("상태 변경 실패: " + ex.Message); }
     }

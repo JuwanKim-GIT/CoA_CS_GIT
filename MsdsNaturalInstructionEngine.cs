@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -41,11 +41,11 @@ internal static class MsdsNaturalInstructionEngine
     internal static async Task<int> ApplyAsync(MsdsUnifiedMemory memory, string pdfPath, string type, string key, string model, string actor,
         IReadOnlyDictionary<string,string> aliases, Func<bool> authorized, Action<string> log, CancellationToken ct)
     {
-        if (!authorized()) { log("자연어 교정 미적용: Admin 권한 없음"); return 0; }
+        if (!authorized()) { log("자연어 교정 미적용: MSDS 등록 권한 없음"); return 0; }
         bool enabled = Enabled(type);
         log($"AI 교정 적용 설정: {type} / {(enabled ? "YES" : "NO 또는 미등록")}");
         if (!enabled) return 0;
-        log("자연어 교정 시작 (Admin)");
+        log("자연어 교정 시작");
         var supplier = memory.Basic("SupplierNameBox")?.ValueAi ?? "";
         var product = memory.Basic("ProductNameBox")?.ValueAi ?? "";
         var graco = MsdsDbRegistration.GracoCode(pdfPath);
@@ -121,9 +121,9 @@ internal static class MsdsNaturalInstructionEngine
                 {
                     if(!p.TryGetProperty("evidence",out var e) || e.ValueKind!=JsonValueKind.String || string.IsNullOrWhiteSpace(e.GetString()) ||
                        !p.TryGetProperty("page",out var page) || page.ValueKind!=JsonValueKind.Number || !page.TryGetInt32(out int n) || n<1) continue;
-                    row.ValueCorrection=value; row.ValueMod=null; row.AiApplied=true; row.SourcePage=n; row.SourceEvidence=e.GetString()!;
+                    row.ValueCorrection=value; row.AiApplied=true; row.SourcePage=n; row.SourceEvidence=e.GetString()!;
                 }
-                else { row.ValueMod=value; row.AiApplied=true; }
+                else { row.ValueCorrection=value; row.AiApplied=true; }
                 outcomes[index]="APPLIED"; errors[index]=null;
                 row.LearningNo=rule.Id; row.Verification="미검증"; changed++;
             }

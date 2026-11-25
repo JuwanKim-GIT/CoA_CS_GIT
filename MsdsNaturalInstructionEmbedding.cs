@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -34,6 +34,19 @@ internal static class MsdsNaturalInstructionEmbedding
         return value;
     }
 
+    internal static bool Reconnect(SqliteConnection db, SqliteTransaction tx, string id, string description)
+    {
+        string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(description.Trim())));
+        using var cmd = db.CreateCommand(); cmd.Transaction = tx;
+        cmd.CommandText = @"INSERT OR IGNORE INTO ai_instruction_vectord_det
+(ai_instruction_vector_learning_id,ai_instruction_vector_embedding_id,ai_instruction_vector_text_hash,ai_instruction_vector_vector,ai_instruction_vector_created_at)
+SELECT $id,ai_instruction_vector_embedding_id,ai_instruction_vector_text_hash,ai_instruction_vector_vector,ai_instruction_vector_created_at FROM ai_instruction_vectord_det
+WHERE ai_instruction_vector_embedding_id=$model AND ai_instruction_vector_text_hash=$hash AND length(ai_instruction_vector_vector)=12288 LIMIT 1";
+        cmd.Parameters.AddWithValue("$id",id); cmd.Parameters.AddWithValue("$model",ModelId); cmd.Parameters.AddWithValue("$hash",hash); cmd.ExecuteNonQuery();
+        cmd.CommandText = @"UPDATE ai_learning_mstr SET ai_learning_embedding_id=$model,ai_learning_text_hash=$hash WHERE ai_learning_id=$id AND EXISTS (SELECT 1 FROM ai_instruction_vectord_det WHERE ai_instruction_vector_learning_id=$id AND ai_instruction_vector_embedding_id=$model AND ai_instruction_vector_text_hash=$hash AND length(ai_instruction_vector_vector)=12288)";
+        return cmd.ExecuteNonQuery() == 1;
+    }
+
     internal static async Task<string> GenerateAsync(string instructionId, CancellationToken ct = default)
     {
         // Read and close the DB before contacting the embedding service.
@@ -54,13 +67,13 @@ internal static class MsdsNaturalInstructionEmbedding
         using (var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds")))
         {
             await db.OpenAsync(ct);
-            using var cmd = db.CreateCommand();
-            cmd.CommandText = @"SELECT COUNT(*) FROM ai_instruction_vectord_det
-WHERE ai_instruction_vector_learning_id=$id AND ai_instruction_vector_embedding_id=$model AND ai_instruction_vector_text_hash=$hash";
-            cmd.Parameters.AddWithValue("$id", instructionId);
-            cmd.Parameters.AddWithValue("$model", ModelId);
-            cmd.Parameters.AddWithValue("$hash", hash);
-            if (Convert.ToInt64(await cmd.ExecuteScalarAsync(ct)) > 0) return "현재 지침의 임베딩 벡터가 이미 존재합니다.";
+            using var tx = db.BeginTransaction();
+            using var verify = db.CreateCommand(); verify.Transaction = tx;
+            verify.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id AND ai_learning_status='APPROVED'";
+            verify.Parameters.AddWithValue("$id",instructionId);
+            if ((Convert.ToString(verify.ExecuteScalar()) ?? "").Trim() != description) throw new InvalidOperationException("지침이 변경되었습니다.");
+            bool reused = Reconnect(db,tx,instructionId,description); tx.Commit();
+            if (reused) return "기존 임베딩 연결 완료";
         }
         string key = ReadSetting("MSDS_API_KEY");
         string payload = JsonSerializer.Serialize(new { model, input = description, encoding_format = "float" });

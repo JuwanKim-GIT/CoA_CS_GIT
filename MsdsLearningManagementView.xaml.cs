@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -130,7 +130,7 @@ public partial class MsdsLearningManagementView : UserControl
         if(ItemsControl.ContainerFromElement(Results,d) is DataGridRow) OpenDiagnostic();
     }
     private void CasesClick(object sender,RoutedEventArgs e)=>OpenDiagnostic();
-    private bool DiagnosticAllowed() => Allowed() && QcsAuthorizationService.CanAccessProgram(Owner?.GetCurrentUser(), QcsAuthorizationService.LearningDiagnosticProgramId);
+    private bool DiagnosticAllowed() => Allowed();
     private void OpenDiagnostic()
     {
         if(!DiagnosticAllowed()) { Status("AI 학습 진단: 접근 제한"); return; }

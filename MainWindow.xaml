@@ -47,7 +47,8 @@
                 <MenuItem Header="Test Result 목록 관리" Tag="TestResultListView.xaml.cs" Click="Menu_Test_Click"/>
             </MenuItem>
             <MenuItem Header="MSDS">
-                <MenuItem Header="MSDS 등록" Tag="MsdsRegistrationView.xaml.cs" Click="Menu_MsdsReg_Click"/>
+                <MenuItem Header="제품 MSDS 등록" Tag="MsdsRegistrationView.xaml.cs#FG" Click="Menu_MsdsReg_Click"/>
+                <MenuItem Header="원료 MSDS 등록" Tag="MsdsRegistrationView.xaml.cs#RM" Click="Menu_MsdsRawReg_Click"/>
                 <MenuItem Header="MSDS 조회/관리" Tag="MsdsManagementView.xaml.cs" Click="Menu_MsdsManage_Click"/>
                 <Separator/>
                 <MenuItem Header="참조자료 관리" Tag="ReferenceDataView.xaml.cs" Click="Menu_MsdsReference_Click"/>
@@ -102,11 +103,17 @@
                     </StackPanel>
                 </Button>
                 <Border Width="1" Height="62" Background="#D7DBE5" Margin="12,5"/>
-                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="MSDS 등록" Click="Menu_MsdsReg_Click">
+                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="제품 MSDS 등록" Click="Menu_MsdsReg_Click">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                         <Image Source="/Resources/Icons/msds_register.png" Width="36" Height="36" Stretch="Uniform"/>
-                        <TextBlock Text="MSDS 등록" FontSize="10" Foreground="#334155"
+                        <TextBlock Text="제품 MSDS 등록" FontSize="10" Foreground="#334155"
                                    TextAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource QcsToolbarButton}" ToolTip="원료 MSDS 등록" Click="Menu_MsdsRawReg_Click">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                        <Image Source="/Resources/Icons/msds_register.png" Width="36" Height="36" Stretch="Uniform"/>
+                        <TextBlock Text="원료 MSDS 등록" FontSize="10" Foreground="#334155" TextAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource QcsToolbarButton}" ToolTip="MSDS 조회/관리" Click="Menu_MsdsManage_Click">

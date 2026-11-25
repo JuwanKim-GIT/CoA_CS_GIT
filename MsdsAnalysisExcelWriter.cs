@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -13,12 +13,16 @@ namespace QCS
     {
         internal static void Save(string path, IReadOnlyList<string[]> results, IReadOnlyList<string[]> logs)
         {
+            SaveSheets(path, new[] { ("MSDS 분석결과", results), ("분석 로그", logs) });
+        }
+        internal static void SaveSheets(string path, IReadOnlyList<(string Name, IReadOnlyList<string[]> Rows)> sheets)
+        {
             using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
             Write(archive, "[Content_Types].xml", x => {
                 x.WriteStartElement("Types", "http://schemas.openxmlformats.org/package/2006/content-types");
                 x.WriteStartElement("Default"); x.WriteAttributeString("Extension", "rels"); x.WriteAttributeString("ContentType", "application/vnd.openxmlformats-package.relationships+xml"); x.WriteEndElement();
                 x.WriteStartElement("Default"); x.WriteAttributeString("Extension", "xml"); x.WriteAttributeString("ContentType", "application/xml"); x.WriteEndElement();
-                foreach (var n in new[] { 1, 2 }) { x.WriteStartElement("Override"); x.WriteAttributeString("PartName", $"/xl/worksheets/sheet{n}.xml"); x.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"); x.WriteEndElement(); }
+                foreach (var n in Enumerable.Range(1, sheets.Count)) { x.WriteStartElement("Override"); x.WriteAttributeString("PartName", $"/xl/worksheets/sheet{n}.xml"); x.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"); x.WriteEndElement(); }
                 x.WriteStartElement("Override"); x.WriteAttributeString("PartName", "/xl/workbook.xml"); x.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"); x.WriteEndElement();
                 x.WriteStartElement("Override"); x.WriteAttributeString("PartName", "/xl/styles.xml"); x.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"); x.WriteEndElement();
                 x.WriteEndElement();
@@ -31,13 +35,13 @@ namespace QCS
                 x.WriteStartElement("workbook", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
                 x.WriteAttributeString("xmlns", "r", null, "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
                 x.WriteStartElement("sheets");
-                for (int i = 1; i <= 2; i++) { x.WriteStartElement("sheet"); x.WriteAttributeString("name", i == 1 ? "MSDS 분석결과" : "분석 로그"); x.WriteAttributeString("sheetId", i.ToString()); x.WriteAttributeString("r", "id", "http://schemas.openxmlformats.org/officeDocument/2006/relationships", $"rId{i}"); x.WriteEndElement(); }
+                for (int i = 1; i <= sheets.Count; i++) { x.WriteStartElement("sheet"); x.WriteAttributeString("name", sheets[i-1].Name); x.WriteAttributeString("sheetId", i.ToString()); x.WriteAttributeString("r", "id", "http://schemas.openxmlformats.org/officeDocument/2006/relationships", $"rId{i}"); x.WriteEndElement(); }
                 x.WriteEndElement(); x.WriteEndElement();
             });
             Write(archive, "xl/_rels/workbook.xml.rels", x => {
                 x.WriteStartElement("Relationships", "http://schemas.openxmlformats.org/package/2006/relationships");
-                for (int i = 1; i <= 2; i++) { x.WriteStartElement("Relationship"); x.WriteAttributeString("Id", $"rId{i}"); x.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"); x.WriteAttributeString("Target", $"worksheets/sheet{i}.xml"); x.WriteEndElement(); }
-                x.WriteStartElement("Relationship"); x.WriteAttributeString("Id", "rId3"); x.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"); x.WriteAttributeString("Target", "styles.xml"); x.WriteEndElement(); x.WriteEndElement();
+                for (int i = 1; i <= sheets.Count; i++) { x.WriteStartElement("Relationship"); x.WriteAttributeString("Id", $"rId{i}"); x.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"); x.WriteAttributeString("Target", $"worksheets/sheet{i}.xml"); x.WriteEndElement(); }
+                x.WriteStartElement("Relationship"); x.WriteAttributeString("Id", $"rId{sheets.Count+1}"); x.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"); x.WriteAttributeString("Target", "styles.xml"); x.WriteEndElement(); x.WriteEndElement();
             });
             Write(archive, "xl/styles.xml", x => {
                 x.WriteStartElement("styleSheet", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
@@ -65,8 +69,7 @@ namespace QCS
                 CellStyle(x, 0, 0, 0, false); // fallback
                 x.WriteEndElement(); x.WriteEndElement();
             });
-            Sheet(archive, 1, results);
-            Sheet(archive, 2, logs);
+            for(int i=0;i<sheets.Count;i++) Sheet(archive,i+1,sheets[i].Rows);
         }
         private static void Fill(XmlWriter x, string? color)
         {

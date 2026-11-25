@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -31,6 +31,28 @@ namespace QCS
 {
  public partial class MsdsManagementView : UserControl
  {
+  private MsdsAnalysisReviewWindow? _analysisReview;
+  private bool _reviewRefreshPending;
+  internal void CloseAnalysisReview() => _analysisReview?.Close();
+  private void QueueAnalysisReviewRefresh() {
+   if(_analysisReview==null||_reviewRefreshPending) return; _reviewRefreshPending=true;
+   Dispatcher.BeginInvoke(new Action(()=>{_reviewRefreshPending=false;RefreshAnalysisReview();}),System.Windows.Threading.DispatcherPriority.Background);
+  }
+  private void RefreshAnalysisReview() {
+   if(_analysisReview==null) return;
+   if (_editing || MasterGrid.SelectedItems.Count != 1 || MasterGrid.SelectedItem is not DataRowView master || !_detailId.HasValue) { _analysisReview.SetData(null,notice:_editing?"편집 종료 후 저장본을 조회합니다.":"조회할 MSDS 한 건을 선택하세요."); return; }
+   try {
+    using var db=OpenReadOnly();
+    var memory=MsdsAnalysisReviewWindow.ReadStored(db,_detailId.Value,master.Row,_detailTable);
+    _analysisReview.SetData(memory,Value(master,"msds_graco_code")+" / "+Value(master,"msds_product_name"),true,materialType:Value(master,"msds_material_type"),gracoCode:Value(master,"msds_graco_code"));
+   } catch(Exception ex) { _analysisReview.SetData(null,notice:"분석결과 조회 실패: "+ex.Message); PublishStatus("분석결과 조회 실패: "+ex.Message); }
+  }
+  private void ReviewAnalysis_Click(object sender,RoutedEventArgs e) {
+   if(_analysisReview!=null) { RefreshAnalysisReview(); if(_analysisReview.WindowState==WindowState.Minimized) _analysisReview.WindowState=WindowState.Normal; _analysisReview.Activate(); return; }
+   if(_editing||MasterGrid.SelectedItems.Count!=1||!_detailId.HasValue) { PublishStatus("조회할 MSDS 한 건을 선택하고 편집을 종료하세요."); return; }
+   var window=new MsdsAnalysisReviewWindow(new MsdsUnifiedMemory(),"",null) { Owner=Window.GetWindow(this) }; _analysisReview=window; window.BeforeExport=RefreshAnalysisReview;
+   window.Closed+=(_,_)=>{if(ReferenceEquals(_analysisReview,window)) _analysisReview=null;}; RefreshAnalysisReview(); window.Show();
+  }
   private static bool IsLatest(DataRowView row)
   {
    var value = Value(row, "msds_is_latest");
@@ -76,6 +98,7 @@ namespace QCS
    private long? _detailId;
    private readonly Dictionary<long, string> _componentSearch = new();
   private int _previewRequest;
+  private readonly string _previewHost = "qcs-msds-" + Guid.NewGuid().ToString("N") + ".example";
    private bool _editing;
    private bool _restoringSelection;
    private DataTable? _detailTable;
@@ -270,6 +293,7 @@ namespace QCS
   {
    if (_editing) return;
     _detailId = null;
+    _detailTable=null; QueueAnalysisReviewRefresh();
    foreach(var box in BasicTextBoxes()) box.Text="";
    DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 (0건)";
    _selectedPdfPath=""; PdfFileName.Text="선택된 PDF 없음";
@@ -306,6 +330,7 @@ namespace QCS
       }
       return;
     }
+   QueueAnalysisReviewRefresh();
    UpdateSelectionUi();
    if(MasterGrid.SelectedItem is not DataRowView row || !long.TryParse(Value(row,"msds_msds_id"),out long id)) { ClearDetails(); return; }
    if (_detailId == id) return;
@@ -322,7 +347,7 @@ namespace QCS
     AddEffectiveColumns(detail, ComponentAiFields);
     _detailTable=detail; detail.AcceptChanges(); DetailGrid.ItemsSource=detail.DefaultView; DetailCount.Text=$"구성성분 ({detail.Rows.Count}건) — MSDS ID: {id}";
    }
-   catch(Exception ex) { DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 조회 실패"; StatusText.Text="구성성분 조회 실패: "+ex.Message; }
+   catch(Exception ex) { _detailTable=null; DetailGrid.ItemsSource=null; DetailCount.Text="구성성분 조회 실패"; StatusText.Text="구성성분 조회 실패: "+ex.Message; }
   }
   private static readonly string[] CasReferenceTypes = { "인체", "사고", "제한", "중점", "잔류", "배출량" };
   private TextBox[] ReferenceBoxes => new[] { HumanReferenceBox, AccidentReferenceBox, RestrictReferenceBox, PriorityReferenceBox, PersistReferenceBox, EmissionReferenceBox };
@@ -382,7 +407,21 @@ namespace QCS
    {
     await PdfBrowser.EnsureCoreWebView2Async();
     if(request != _previewRequest || !_previewExpanded) return;
-    PdfBrowser.CoreWebView2.Navigate(new Uri(Path.GetFullPath(_selectedPdfPath)).AbsoluteUri);
+    string fullPath = Path.GetFullPath(_selectedPdfPath);
+    var uri = new Uri(fullPath);
+    if (uri.IsUnc)
+    {
+     // 기존 공유폴더 경로 처리 유지.
+     PdfBrowser.CoreWebView2.Navigate(uri.AbsoluteUri);
+    }
+    else
+    {
+     // 로컬/OneDrive 한글 경로를 file URI 대신 가상 HTTPS 주소로 제공.
+     string folder = Path.GetDirectoryName(fullPath) ?? throw new IOException("PDF 폴더를 확인할 수 없습니다.");
+     PdfBrowser.CoreWebView2.SetVirtualHostNameToFolderMapping(_previewHost, folder,
+      Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Deny);
+     PdfBrowser.CoreWebView2.Navigate("https://" + _previewHost + "/" + Uri.EscapeDataString(Path.GetFileName(fullPath)));
+    }
     PreviewFallback.Visibility=Visibility.Collapsed;
    }
    catch(Exception ex) { PreviewMessage.Text="PDF 미리보기 오류: " + ex.Message; PreviewFallback.Visibility=Visibility.Visible; }
@@ -454,6 +493,7 @@ namespace QCS
    private void SetEditMode(bool enabled)
    {
      _editing = enabled;
+     QueueAnalysisReviewRefresh();
      EditButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
      SaveEditButton.Visibility = CancelEditButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
      AddDetailButton.IsEnabled = RemoveDetailButton.IsEnabled = enabled;
@@ -774,7 +814,7 @@ namespace QCS
     { PublishStatus("MSDS 삭제 제한: 유효하지 않은 ID가 있습니다."); return; }
     if (MessageBox.Show($"선택한 MSDS {selected.Count}건을 DB에서 영구 삭제하시겠습니까?\n\n" +
       "관련 구성성분·규제·추출 결과 및 등록 이력도 삭제됩니다.\n" +
-      "AI 학습·적용이력 또는 다른 MSDS에서 참조하는 PDF는 보존합니다. 미참조 PDF만 삭제를 시도합니다.",
+      "등록 PDF 및 AI 교정학습·적용 이력은 보존합니다.",
       "MSDS 일괄 삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
     { PublishStatus($"MSDS {selected.Count}건 삭제 취소"); return; }
     try
@@ -788,8 +828,8 @@ namespace QCS
      using (var transaction = connection.BeginTransaction())
      {
       string[] statements = {
-       "DELETE FROM ai_applyd_det WHERE ai_applyd_apply_id IN (SELECT ai_apply_id FROM ai_apply_mstr WHERE ai_apply_msds_id=$id)",
-       "DELETE FROM ai_apply_mstr WHERE ai_apply_msds_id=$id",
+       // 적용 이력은 독립 보존하고 삭제 대상 MSDS의 FK 연결만 해제한다.
+       "UPDATE ai_apply_mstr SET ai_apply_msds_id=NULL WHERE ai_apply_msds_id=$id",
        "DELETE FROM reg_result_dtl WHERE reg_result_msds_id=$id",
        "DELETE FROM extract_result_dtl WHERE extract_result_msds_id=$id",
        "DELETE FROM msds_comp_dtl WHERE msds_comp_parent_msds_id=$id",
@@ -813,27 +853,10 @@ namespace QCS
       }
       transaction.Commit();
      }
-     var warnings = new List<string>();
-     int preserved = 0;
-     foreach (var path in selected.Select(row => row.Path).Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
-     {
-      try {
-       // Fail closed when reference lookup fails. Hold the write reservation during the physical deletion.
-       using var guard = connection.BeginTransaction();
-       using var check = connection.CreateCommand(); check.Transaction = guard;
-       check.CommandText = @"SELECT EXISTS(SELECT 1 FROM ai_correctionh_hist WHERE ai_correctionh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_applyh_hist WHERE ai_applyh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_apply_mstr WHERE ai_apply_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM msds_mstr WHERE msds_file_path=$path COLLATE NOCASE)";
-       check.Parameters.AddWithValue("$path",path);
-       if (Convert.ToInt64(check.ExecuteScalar()) != 0) preserved++;
-       else if (File.Exists(path)) File.Delete(path);
-       guard.Commit();
-      }
-      catch (Exception ex) { warnings.Add(Path.GetFileName(path) + ": " + ex.Message); }
-     }
      RefreshData();
-     string message = $"MSDS {selected.Count}건 삭제 완료 (PDF 보존 {preserved}건)" + (warnings.Count > 0 ? $" (PDF 삭제 실패 {warnings.Count}건)" : "");
+     string message = $"MSDS {selected.Count}건 삭제 완료 (PDF 및 AI 교정 적용 이력 보존)";
      StatusText.Text = message;
      PublishStatus(message);
-     if (warnings.Count > 0) MessageBox.Show(string.Join("\n", warnings), "PDF 삭제 안내", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
     catch (Exception ex)
     {

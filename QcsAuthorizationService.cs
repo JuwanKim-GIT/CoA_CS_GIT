@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
@@ -11,14 +11,9 @@ namespace QCS
         internal const int LevelSystemOperator = 8;
         internal const int LevelUser = 1;
         internal const int LevelInactive = 0;
-        internal const string AiCorrectionProgramId = "MsdsAiCorrectionWindow.cs";
-
-        internal const string LearningDiagnosticProgramId = "MsdsLearningDiagnosticWindow.xaml.cs";
-        internal static readonly (string ParentId, string Id, string Name)[] SubPrograms =
-        {
-            ("MsdsRegistrationView.xaml.cs", AiCorrectionProgramId, "MSDS AI 교정"),
-            ("MsdsLearningManagementView.xaml.cs", LearningDiagnosticProgramId, "AI 학습 진단")
-        };
+        internal const string FgRegistrationProgramId = "MsdsRegistrationView.xaml.cs#FG";
+        internal const string RmRegistrationProgramId = "MsdsRegistrationView.xaml.cs#RM";
+        internal static readonly (string ParentId, string Id, string Name)[] SubPrograms = Array.Empty<(string, string, string)>();
 
         internal static bool IsAdmin(int level) => level == LevelAdmin;
         internal static bool IsSystemOperator(int level) => level == LevelSystemOperator;
@@ -79,26 +74,6 @@ WHERE zx_code_fldname='QCS_APPLICATIONS'";
                 defaults.ExecuteNonQuery();
             }
 
-            using (var ai = conn.CreateCommand())
-            {
-                ai.Transaction = tx;
-                ai.CommandText = @"INSERT INTO zx_code_mstr
-(zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
-SELECT 'QCS_APPLICATIONS',$id,'MSDS AI 교정','MSDS 등록 > AI 교정','','Y','SUB'
-WHERE NOT EXISTS (SELECT 1 FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$id)";
-                ai.Parameters.AddWithValue("$id", AiCorrectionProgramId);
-                ai.ExecuteNonQuery();
-            }
-            using (var aiDefaults = conn.CreateCommand())
-            {
-                aiDefaults.Transaction = tx;
-                aiDefaults.CommandText = @"UPDATE zx_code_mstr
-SET zx_code_char1 = CASE WHEN zx_code_char1 IS NULL OR TRIM(zx_code_char1)='' THEN 'Y' ELSE zx_code_char1 END,
-    zx_code_char2 = CASE WHEN zx_code_char2 IS NULL OR TRIM(zx_code_char2)='' THEN 'SUB' ELSE zx_code_char2 END
-WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$id";
-                aiDefaults.Parameters.AddWithValue("$id", AiCorrectionProgramId);
-                aiDefaults.ExecuteNonQuery();
-            }
             using (var seed = conn.CreateCommand())
             {
                 seed.Transaction = tx;
@@ -115,14 +90,16 @@ WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value=$id";
 VALUES ('QCS_APPLICATIONS','MsdsLearningManagementView.xaml.cs','AI 교정학습 관리','MSDS > AI 교정학습 관리','','N','MENU')";
                 learning.ExecuteNonQuery();
             }
-            using (var diagnostic = conn.CreateCommand())
+            // Preserve existing registration access on first initialization of each split menu.
+            foreach (var entry in new[] { (FgRegistrationProgramId, "제품 MSDS 등록"), (RmRegistrationProgramId, "원료 MSDS 등록") })
             {
-                diagnostic.Transaction = tx;
-                diagnostic.CommandText = @"INSERT OR IGNORE INTO zx_code_mstr
+                using var cmd = conn.CreateCommand(); cmd.Transaction = tx;
+                cmd.CommandText = @"INSERT OR IGNORE INTO zx_code_mstr
 (zx_code_fldname,zx_code_value,zx_code_desc1,zx_code_desc2,zx_code_cmmt,zx_code_char1,zx_code_char2)
-VALUES ('QCS_APPLICATIONS',$id,'AI 학습 진단','MSDS > AI 교정학습 관리 > AI 학습 진단','*','N','SUB')";
-                diagnostic.Parameters.AddWithValue("$id", LearningDiagnosticProgramId);
-                diagnostic.ExecuteNonQuery();
+SELECT 'QCS_APPLICATIONS',$id,$name,'MSDS > ' || $name,
+COALESCE((SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value='MsdsRegistrationView.xaml.cs'),''),
+COALESCE((SELECT zx_code_char1 FROM zx_code_mstr WHERE zx_code_fldname='QCS_APPLICATIONS' AND zx_code_value='MsdsRegistrationView.xaml.cs'),'N'),'MENU'";
+                cmd.Parameters.AddWithValue("$id",entry.Item1); cmd.Parameters.AddWithValue("$name",entry.Item2); cmd.ExecuteNonQuery();
             }
             tx.Commit();
         }

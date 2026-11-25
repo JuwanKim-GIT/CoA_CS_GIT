@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+﻿<?xml version='1.0' encoding='UTF-8'?>
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" x:Class="QCS.MsdsRegistrationView" Background="#F0F4F9" FontFamily="Malgun Gothic" FontSize="12">
 
     <UserControl.Resources>
@@ -540,8 +540,8 @@
 
                 <TextBlock Text="현재 PDF 검토 결과를 저장하면 확인완료로 표시됩니다." Foreground="#788AA2" FontSize="11"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="ExportAnalysisButton" Content="분석결과 출력" Width="130" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="ExportAnalysis_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="AiCorrectionButton" Content="AI 교정" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="AiCorrection_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="ExportAnalysisButton" Content="분석결과 조회" Width="130" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="ExportAnalysis_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="AiCorrectionButton" Content="항목값 검색" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="AiCorrection_Click" Margin="0,0,8,0"/>
                     <Button x:Name="SaveCurrentButton" Content="저장" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="SaveCurrent_Click" Margin="0,0,8,0"/>
                     <Button x:Name="DbSaveButton" IsEnabled="False" Content="선택 DB 저장" Width="145" Click="DbSave_Click" Margin="0,0,8,0"/>
                     <Button x:Name="BottomClearButton" Content="✕  목록 초기화" Click="Clear_Click" Margin="0"/>

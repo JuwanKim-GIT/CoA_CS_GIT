@@ -81,7 +81,7 @@
    <Border Grid.Column="2" Style="{StaticResource Card}">
     <Grid><Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Grid.Row="0" Background="#E2EAF5" LastChildFill="False">
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"><Button x:Name="EditButton" Content="수정" Click="Edit_Click" Style="{StaticResource ActionButton}"/><Button x:Name="SaveEditButton" Content="저장" Click="SaveEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/><Button x:Name="CancelEditButton" Content="취소" Click="CancelEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/></StackPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"><Button Content="분석결과 조회" Click="ReviewAnalysis_Click" Style="{StaticResource ActionButton}"/><Button x:Name="EditButton" Content="수정" Click="Edit_Click" Style="{StaticResource ActionButton}"/><Button x:Name="SaveEditButton" Content="저장" Click="SaveEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/><Button x:Name="CancelEditButton" Content="취소" Click="CancelEdit_Click" Visibility="Collapsed" Style="{StaticResource ActionButton}"/></StackPanel>
      </DockPanel>
      <TabControl Grid.Row="1">
       <TabItem Header="기본정보">

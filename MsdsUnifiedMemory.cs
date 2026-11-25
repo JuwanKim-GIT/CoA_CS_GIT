@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -31,6 +31,7 @@ namespace QCS
             public string Verification { get; set; } = "미검증";
             public int? SourcePage { get; set; }
             public string SourceEvidence { get; set; } = "";
+            internal Row CopyForReview() => (Row)MemberwiseClone();
         }
 
         // An ingredient is a computed view over nine rows, never a second store.
@@ -42,7 +43,7 @@ namespace QCS
             public string CasNumber => _rows[0].CasNumber;
             public string Name => _rows[0].IngredientName;
             public string Ai(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index])?.ValueAi ?? "";
-            public string OriginalForStorage(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index]) is { } row ? (row.AiApplied ? row.ValueAi : row.FinalValue) : "";
+            public string OriginalForStorage(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index]) is { } row ? row.ValueAi : "";
             public string Final(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index])?.FinalValue ?? "";
         }
 
@@ -57,6 +58,12 @@ namespace QCS
         public IEnumerable<IngredientView> Ingredients => Rows.Where(r => r.Category == "구성성분")
             .GroupBy(r => r.Order).OrderBy(g => g.Key)
             .Select(g => new IngredientView(g.ToList()));
+        internal MsdsUnifiedMemory CopyForReview() {
+            var copy=new MsdsUnifiedMemory(); var map=Rows.ToDictionary(r=>r,r=>r.CopyForReview());
+            copy.Rows.AddRange(Rows.Select(r=>map[r]));
+            foreach(var step in NaturalHistory) if(map.TryGetValue(step.Target,out var target)) copy.NaturalHistory.Add(step with { Target=target });
+            return copy;
+        }
         public void Clear() { Rows.Clear(); NaturalHistory.Clear(); NaturalActor = ""; Confirmed = false; DisplayInitialized = false; }
         public Row? Basic(string key) => Basics.FirstOrDefault(r => r.FieldCode == key);
         public Dictionary<string, string> FinalBasics() => Basics.ToDictionary(r => r.FieldCode, r => r.FinalValue, StringComparer.Ordinal);

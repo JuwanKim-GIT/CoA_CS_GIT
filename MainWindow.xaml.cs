@@ -1,4 +1,4 @@
-﻿// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
+// 🎯 [WPF 전용 매싱 완벽 잠금] 파일 다이얼로그 모호성 해결을 위한 별칭 선언
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 using System;
@@ -31,7 +31,7 @@ namespace QCS
             ["CoA 발행"] = "CoARegistryView.xaml.cs", ["CoA 조회"] = "MainWindow.xaml.cs#Menu_CoaInq_Click",
             ["아이템 목록 관리"] = "ItemListView.xaml.cs", ["Test Result 목록 관리"] = "TestResultListView.xaml.cs",
             ["AI 교정학습 관리"] = "MsdsLearningManagementView.xaml.cs",
-            ["MSDS 등록"] = "MsdsRegistrationView.xaml.cs", ["MSDS 조회/관리"] = "MsdsManagementView.xaml.cs",
+            ["제품 MSDS 등록"] = QcsAuthorizationService.FgRegistrationProgramId, ["원료 MSDS 등록"] = QcsAuthorizationService.RmRegistrationProgramId, ["MSDS 조회/관리"] = "MsdsManagementView.xaml.cs",
             ["MSDS 대장출력"] = "MsdsInventoryExportView.xaml.cs", ["대장 개정관리"] = "AuditHistoryView.xaml.cs",
             ["참조자료 관리"] = "ReferenceDataView.xaml.cs", ["공통코드 관리"] = "CodeListView.xaml.cs", ["업무코드 관리"] = "UserCodeListView.xaml.cs",
             ["DB 스키마 조회"] = "DatabaseSchemaView.xaml.cs", ["Data Import"] = "MainWindow.xaml.cs#MenuDataImport_Click",
@@ -224,6 +224,8 @@ namespace QCS
                 e.Handled = true;
                 if (newTab.Content is UserCodeListView view && !view.CanDiscardChanges()) return;
                 if (newTab.Content is MsdsLearningManagementView learning) learning.CloseDiagnostic();
+                if (newTab.Content is MsdsRegistrationView registration) registration.CloseAnalysisReview();
+                if (newTab.Content is MsdsManagementView management) management.CloseAnalysisReview();
                 MainTabControl.Items.Remove(newTab);
             };
 
@@ -295,7 +297,12 @@ namespace QCS
 
         private void Menu_MsdsReg_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("MSDS 등록", new MsdsRegistrationView());
+            if (RequireProgramAccess("제품 MSDS 등록")) AddOrSelectTab("제품 MSDS 등록", new MsdsRegistrationView("FG"));
+        }
+
+        private void Menu_MsdsRawReg_Click(object sender, RoutedEventArgs e)
+        {
+            if (RequireProgramAccess("원료 MSDS 등록")) AddOrSelectTab("원료 MSDS 등록", new MsdsRegistrationView("RM"));
         }
 
         private void Menu_MsdsManage_Click(object sender, RoutedEventArgs e)

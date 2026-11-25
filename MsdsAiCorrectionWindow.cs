@@ -54,6 +54,7 @@ namespace QCS
             public string Value { get; init; } = "";
             public string Source { get; init; } = "";
             public int Page { get; init; }
+            public int Line { get; init; } = -1;
             public int Rank { get; init; }
             public string Label { get; init; } = "미확인";
             public string Context { get; init; } = "";
@@ -99,6 +100,7 @@ namespace QCS
         private string _appliedFieldQuery = "";
         private readonly TextBox _editor = new();
         private string _highlightSource = "";
+        private List<(int Page,string Source)> _highlightTargets = new();
         private string _fallbackText = "";
         private WpfButton? _fallbackButton;
         private readonly WebView2 _viewer = new();
@@ -109,17 +111,18 @@ namespace QCS
         private readonly TextBlock _notice = new();
         private readonly CheckBox _more = new() { Content = "추가 후보 보기 (전체 파싱 원문)", Margin = new Thickness(0,8,0,5) };
         private bool _changing;
-        private readonly CheckBox _approve = new() { Content = "원문과 최종값 검증 완료 (동일 PDF 학습 허용)" };
+        private readonly Func<bool> _allowed;
+        private readonly TextBox _sourceSelection = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Height = 110 };
         private readonly List<string> _previewFiles = new();
         public Dictionary<string, string> CorrectedValues { get; } = new();
-        internal List<MsdsLearningEntry> PendingLearning { get; } = new();
+
 
         public MsdsAiCorrectionWindow(string fileName, string filePath, MsdsPdfTextResult pdf,
             MsdsAnalysisResult analysis, Dictionary<string,string> currentValues, IEnumerable<string> keys,
-            IReadOnlyDictionary<string,string>? originalAiValues = null)
+            IReadOnlyDictionary<string,string>? originalAiValues, Func<bool> allowed)
         {
-            _fileName = fileName; _filePath = filePath; _pdf = pdf; _analysis = analysis;
-            Title = "QCS - AI 분석 교정: " + fileName;
+            _fileName = fileName; _filePath = filePath; _pdf = pdf; _analysis = analysis; _allowed = allowed;
+            Title = "QCS - MSDS 항목값 검색: " + fileName;
             Width = 1380; Height = 830; MinWidth = 1000; MinHeight = 620;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = Brushes.White;
@@ -233,7 +236,7 @@ namespace QCS
             var footer = new DockPanel { Height = 55, LastChildFill = true };
             DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            actions.Children.Add(Button("교정값 적용", Apply, true));
+            actions.Children.Add(Button("저장", Apply, true));
             actions.Children.Add(Button("취소", (s,e)=>Close()));
             DockPanel.SetDock(actions, Dock.Right); footer.Children.Add(actions);
             _notice.VerticalAlignment = VerticalAlignment.Center;
@@ -267,7 +270,7 @@ namespace QCS
             AddSplitter(columns,1);AddSplitter(columns,3);
             var center = new DockPanel { Margin = new Thickness(12,0,12,0) };
             Grid.SetColumn(center,2);columns.Children.Add(center);
-            var title = Text("교정값 검색 및 선택",15,true);
+            var title = Text("항목값 검색 및 선택",15,true);
             DockPanel.SetDock(title,Dock.Top);center.Children.Add(title);
             var centerGrid = new Grid();
             centerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -279,22 +282,17 @@ namespace QCS
             centerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             center.Children.Add(centerGrid);
             var originalPanel = new StackPanel(); Grid.SetRow(originalPanel,0);centerGrid.Children.Add(originalPanel);
-            originalPanel.Children.Add(Text("최초 AI 추출값 (학습 적용 전)",13,true));
+            originalPanel.Children.Add(Text("현재 항목값",13,true));
             _original.TextWrapping=TextWrapping.Wrap;
             _original.MaxHeight=68;
             _original.Margin=new Thickness(0,0,0,4);
             originalPanel.Children.Add(_original);
-            var candidateLabel=Text("원문 근거 / 추천 후보",13,true);
+            var candidateLabel=Text("원문 검색 결과",13,true);
             Grid.SetRow(candidateLabel,1);centerGrid.Children.Add(candidateLabel);
             ConfigureGrid(_candidates, ("원문 항목명","Label",1), ("후보값","Value",2), ("페이지","Page",0.65));
             Grid.SetRow(_candidates,2);centerGrid.Children.Add(_candidates);
-            _candidates.SelectionChanged += (_,__) =>
-            {
-                if (_changing || _candidates.SelectedItem is not Candidate candidate) return;
-                if (_fields.SelectedItem is FieldRow selected) { selected.Evidence = candidate; selected.Approved=false; _approve.IsChecked=false; }
-                _editor.Text = candidate.Value;
-                ShowEvidence(candidate.Page, candidate.Source);
-            };
+            _candidates.SelectionMode=DataGridSelectionMode.Extended;
+            _candidates.SelectionChanged += (_,__) => { if (!_changing) ShowSelectedCandidates(); };
             _more.Content="추가 후보 보기";
             _more.Margin=new Thickness(0,5,0,3);
             _more.Checked += (_,__)=>RefreshCandidates();
@@ -306,27 +304,26 @@ namespace QCS
             _search.Height=32;_search.TextChanged += (_,__)=>RefreshCandidates();searchPanel.Children.Add(_search);
             Grid.SetRow(searchPanel,4);centerGrid.Children.Add(searchPanel);
             var editorPanel=new DockPanel { Margin=new Thickness(0,2,0,5) };
-            var editorLabel=Text("교정값",13,true);editorLabel.Width=65;
+            var editorLabel=Text("수정값",13,true);editorLabel.Width=65;
             DockPanel.SetDock(editorLabel,Dock.Left);editorPanel.Children.Add(editorLabel);
             _editor.Height=62;_editor.AcceptsReturn=true;_editor.TextWrapping=TextWrapping.Wrap;
             _editor.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;
             _editor.TextChanged += (_,__) =>
             {
                 if (_changing || _fields.SelectedItem is not FieldRow row) return;
-                row.Value=_editor.Text;row.Approved=false;_approve.IsChecked=false;
+                row.Value=_editor.Text;
             };
             editorPanel.Children.Add(_editor);
             Grid.SetRow(editorPanel,5);centerGrid.Children.Add(editorPanel);
-            _approve.Margin=new Thickness(0,4,0,3);
-            _approve.Checked += (_,__) =>
-            {
-                if (_changing || _fields.SelectedItem is not FieldRow row) return;
-                if (row.Key=="GracoCodeBox") { _approve.IsChecked=false;return; }
-                // 후보 선택은 필수가 아닙니다. 공란 삭제 교정도 사용자 검증을 허용합니다.
-                row.Approved=true;
-            };
-            _approve.Unchecked += (_,__) => { if (!_changing && _fields.SelectedItem is FieldRow r) r.Approved=false; };
-            Grid.SetRow(_approve,6);centerGrid.Children.Add(_approve);
+            var sourcePanel = new StackPanel();
+            sourcePanel.Children.Add(Text("원문 텍스트 (드래그 선택)",13,true));
+            sourcePanel.Children.Add(_sourceSelection);
+            sourcePanel.Children.Add(Button("선택값 적용", (_,__) => {
+                if (_fields.SelectedItem is FieldRow && _sourceSelection.SelectionLength > 0)
+                    _editor.Text = _sourceSelection.SelectedText;
+                else _notice.Text = "원문에서 적용할 텍스트를 선택하세요.";
+            }, true));
+            Grid.SetRow(sourcePanel,6);centerGrid.Children.Add(sourcePanel);
             var right = new DockPanel { Margin = new Thickness(10,0,0,0) };
             Grid.SetColumn(right,4);columns.Children.Add(right);
             var rightTitle=Text("PDF 원본 / 근거 확인",15,true);
@@ -355,7 +352,7 @@ namespace QCS
                 bool marked=false;
                 if (!string.IsNullOrWhiteSpace(_highlightSource))
                 {
-                    try { marked=MsdsPdfHighlightPreview.TryCreate(_filePath,path,_page,_highlightSource); }
+                    try { marked=MsdsPdfHighlightPreview.TryCreateMany(_filePath,path,_highlightTargets); }
                     catch { marked=false; }
                 }
                 if (!marked) System.IO.File.Copy(_filePath,path,true);
@@ -388,7 +385,7 @@ namespace QCS
                 grid.Columns.Add(new DataGridTextColumn { Header=c.Header, Binding=new Binding(c.Path), Width=new DataGridLength(c.Weight,DataGridLengthUnitType.Star), ElementStyle=style });
             }
         }
-        private void EvidenceText(string value) { _pdfStatus.Text=value; _highlightSource=""; _fallbackText=""; if(_fallbackButton!=null) _fallbackButton.Visibility=Visibility.Collapsed; }
+        private void EvidenceText(string value) { _pdfStatus.Text=value; _highlightSource=""; _highlightTargets.Clear(); _fallbackText=""; if(_fallbackButton!=null) _fallbackButton.Visibility=Visibility.Collapsed; }
         private static void AddSplitter(Grid grid,int col)
         {
             var splitter = new GridSplitter { ResizeBehavior=GridResizeBehavior.PreviousAndNext, Width=5,Background=new SolidColorBrush(Color.FromRgb(226,234,245)),
@@ -399,8 +396,8 @@ namespace QCS
         {
             if (_fields.SelectedItem is not FieldRow row) return;
             _changing=true;
-            _original.Text=string.IsNullOrWhiteSpace(row.Extracted)?"(추출값 없음)":row.Extracted;
-            _editor.Text=row.Value; _approve.IsChecked=row.Approved; _approve.IsEnabled=row.Key!="GracoCodeBox";
+            _original.Text=string.IsNullOrWhiteSpace(row.Original)?"(추출값 없음)":row.Original;
+            _editor.Text=row.Value; _sourceSelection.Clear();
             _search.Text="";
             _more.IsChecked=false;
             _changing=false;
@@ -426,26 +423,29 @@ namespace QCS
                 {
                     var line=lines[i].Trim();
                     if (line.Length<2)continue;
-                    var matched=hints.Any(x=>line.Contains(x,StringComparison.OrdinalIgnoreCase));
-                    if (!string.IsNullOrEmpty(query) && !line.Contains(query,StringComparison.OrdinalIgnoreCase))continue;
-                    if (string.IsNullOrEmpty(query) && !matched && _more.IsChecked!=true)continue;
-                    string candidate=line;
-                    if (matched)
+                    int first=i;
+                    var cut=line.IndexOfAny(new[]{':','：'});
+                    bool heading=cut>0 && cut<=60 && !Regex.IsMatch(line[..cut], @"\d$");
+                    // Join only clearly indented continuation lines, never unrelated adjacent items.
+                    if (heading)
                     {
-                        var cut=line.IndexOf(':');
-                        if (cut<0)cut=line.IndexOf('：');
-                        if (cut>=0 && cut<line.Length-1)candidate=line[(cut+1)..].Trim();
-                        if (candidate.Length<2 && i+1<lines.Length)candidate=lines[i+1].Trim();
+                        int indent=lines[i].TakeWhile(char.IsWhiteSpace).Count();
+                        while(i+1<lines.Length && lines[i+1].TakeWhile(char.IsWhiteSpace).Count()>indent
+                            && !Regex.IsMatch(lines[i+1].Trim(), @"^(?:[가-하]\.|\d+[.)]|[-•]|.{1,60}[:：])")) i++;
                     }
-                    if (candidate.Length>220)candidate=candidate[..220];
-                    if (string.IsNullOrWhiteSpace(candidate))continue;
-                    result.Add(new Candidate {Value=candidate,Source=line,Page=page.PageNumber,Rank=matched?70:20, Label=matched && (line.IndexOf(':') > 0 || line.IndexOf('：') > 0) ? line.Split(new[]{':','：'},2)[0].Trim() : "미확인", Context=string.Join("\n",lines.Skip(Math.Max(0,i-2)).Take(Math.Min(5,lines.Length-Math.Max(0,i-2))))});
+                    var source=string.Join("\n",lines.Skip(first).Take(i-first+1).Select(x=>x.Trim()));
+                    var matched=hints.Any(x=>source.Contains(x,StringComparison.OrdinalIgnoreCase));
+                    if (query.Length>0 && !source.Contains(query,StringComparison.OrdinalIgnoreCase))continue;
+                    if (query.Length==0 && !matched && _more.IsChecked!=true)continue;
+                    var candidate=heading?source[(cut+1)..].Trim():source;
+                    if (candidate.Length==0)continue;
+                    result.Add(new Candidate {Value=candidate,Source=source,Page=page.PageNumber,Line=first,Rank=matched?70:20,Label=heading?line[..cut].Trim():"미확인",Context=source});
                     if (result.Count>=400)break;
                 }
                 if (result.Count>=400)break;
             }
             var sorted=result.OrderByDescending(c=>c.Rank).ThenBy(c=>c.Page)
-                .GroupBy(c=>c.Value,StringComparer.OrdinalIgnoreCase).Select(g=>g.First()).Take(150).ToList();
+                .GroupBy(c=>(c.Page,c.Source,c.Value)).Select(g=>g.First()).Take(150).ToList();
             if (row.Evidence is Candidate saved && !sorted.Any(c=>c.Value==saved.Value && c.Source==saved.Source && c.Page==saved.Page) && query.Length==0) sorted.Insert(0,saved);
             if (string.IsNullOrEmpty(query) && _more.IsChecked!=true)
                 sorted=sorted.Where(c=>c==row.Evidence || IsRecommended(row,c)).Take(5).ToList();
@@ -455,7 +455,8 @@ namespace QCS
             _candidates.ItemsSource=sorted;
             _candidates.SelectedItem=match;
             _changing=false;
-            if(match!=null) { if(row.Evidence==null && row.Value==row.Original) row.Evidence=match; ShowEvidence(match.Page,match.Source); }
+            _sourceSelection.Text = match?.Source ?? "";
+            if(match!=null) { if(row.Evidence==null && row.Value==row.Original) row.Evidence=match; ShowSelectedCandidates(); }
             else { EvidenceText(sorted.Count==0?"추천 후보 없음. 추가 후보 또는 원문 검색으로 확인하세요.":"후보를 선택하면 원문을 표시합니다."); NavigatePdf(); }
         }
         private static string Normalize(string value) => Regex.Replace(value, @"\s+", "").Trim().ToUpperInvariant();
@@ -497,61 +498,26 @@ namespace QCS
             "msds_moel_submission_no"=>"MoelSubmissionBox", "msds_graco_code"=>"GracoCodeBox",
             "msds_molecular_formula"=>"MolecularFormulaBox", "msds_physical_state"=>"PhysicalStateBox", "msds_hazardous_goods_class"=>"HazardousGoodsBox", "msds_reactivity"=>"ReactivityBox", _=>""
         };
-        private void ShowEvidence(int page,string source)
+        private void ShowSelectedCandidates()
         {
-            _highlightSource=source??"";
-            _fallbackText=$"페이지: {page}\n선택 원문: {_highlightSource}";
-            if(page>0) { _page=page; NavigatePdf(); }
-            else { _highlightSource=""; _pdfStatus.Text="원문 페이지 미확인"; if(_fallbackButton!=null) _fallbackButton.Visibility=Visibility.Visible; NavigatePdf(); }
+            var selected=_candidates.SelectedItems.Cast<Candidate>().OrderBy(c=>c.Page).ThenBy(c=>c.Line).ToList();
+            if(selected.Count==0) { _sourceSelection.Clear(); EvidenceText("후보를 선택하세요."); NavigatePdf(); return; }
+            if (_fields.SelectedItem is FieldRow row) row.Evidence=selected[0];
+            _sourceSelection.Text=string.Join("\n",selected.Select(c=>string.IsNullOrWhiteSpace(c.Source)?c.Value:c.Source).Distinct());
+            _sourceSelection.SelectAll();
+            _highlightTargets=selected.Where(c=>c.Page>0 && !string.IsNullOrWhiteSpace(c.Source)).Select(c=>(c.Page,c.Source)).Distinct().ToList();
+            _highlightSource=string.Join("\n",_highlightTargets.Select(c=>c.Source));
+            _fallbackText=_sourceSelection.Text;
+            if(_highlightTargets.Count>0) _page=_highlightTargets[0].Page;
+            NavigatePdf();
         }
         private void Apply(object sender,RoutedEventArgs e)
         {
-            var user = (Owner as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
-            if (!QcsAuthorizationService.CanAccessProgram(user, QcsAuthorizationService.AiCorrectionProgramId))
-            {
-                WpfMessageBox.Show("AI 교정 및 학습데이터 저장 권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            var changed=_rows.Where(r=>r.Value!=r.Original || r.Approved).ToList();
-            if (changed.Count==0) { DialogResult=true;return; }
-            if (WpfMessageBox.Show($"변경된 {changed.Count}개 항목을 등록 화면에 적용하시겠습니까?",
-                "AI 교정 확인",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
-            try
-            {
-                CollectCorrections(changed);
-                foreach(var row in changed)CorrectedValues[row.Key]=row.Value;
-                DialogResult=true;
-            }
-            catch(Exception ex)
-            {
-                WpfMessageBox.Show("교정 정보 준비에 실패하여 적용하지 않았습니다.\n"+ex.Message,
-                    "AI 교정 오류",MessageBoxButton.OK,MessageBoxImage.Error);
-            }
-        }
-        private void CollectCorrections(List<FieldRow> changed)
-        {
-            using var stream = System.IO.File.OpenRead(_filePath);
-            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
-            foreach (var row in changed.Where(r => r.Approved))
-            {
-                if (MsdsIngredientLearningKey.Parse(row.Key, out var validationCas, out var validationField) &&
-                    (validationField == "Twa" || validationField == "Stel") &&
-                    !MsdsSimilarDocumentLearning.ExposureEquivalent(row.Original, row.Value))
-                    throw new InvalidOperationException($"'{row.Name}'의 교정값에서 농도 또는 노출시간이 변경·누락되었습니다. 원문 수치와 시간을 확인해 주세요.");
-                var originalField = _analysis.Fields.FirstOrDefault(f=>MapField(f.FieldKey)==row.Key);
-                MsdsIngredient? ingredient=null;
-                if (MsdsIngredientLearningKey.Parse(row.Key,out var cas,out _))
-                    ingredient=_analysis.Ingredients.FirstOrDefault(x=>x.CasNumber?.Trim()==cas);
-                var source=row.Evidence?.Source ?? originalField?.SourceText ?? ingredient?.SourceText;
-                var page=row.Evidence?.Page ?? originalField?.SourcePage ?? ingredient?.SourcePage;
-                if (string.IsNullOrWhiteSpace(source) || page is null or <=0)
-                    throw new InvalidOperationException($"'{row.Name}'의 PDF 원문 근거가 없어 학습을 승인할 수 없습니다.");
-                PendingLearning.Add(new MsdsLearningEntry { Key=row.Key, Before=row.Original, After=row.Value,
-                    Hash=hash, Label=row.Evidence?.Label, Text=source, Context=row.Evidence?.Context ?? source,
-                    Page=page, Candidate=row.Evidence?.Value,
-                    Method=row.Evidence==null?"MANUAL":row.Value==row.Evidence.Value?"SELECTED":"EDITED",
-                    User=Environment.UserName, At=DateTimeOffset.Now.ToString("O") });
-            }
+            if (!_allowed()) { _notice.Text = "MSDS 등록 권한이 없습니다."; return; }
+            var changed = _rows.Where(r => r.Value != r.Original).ToList();
+            if (changed.Count > 0 && WpfMessageBox.Show($"변경된 {changed.Count}개 항목을 등록 화면에 적용하시겠습니까?", "항목값 검색", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            foreach (var row in changed) CorrectedValues[row.Key] = row.Value;
+            DialogResult = true;
         }
     }
 }
