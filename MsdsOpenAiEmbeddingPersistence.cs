@@ -17,13 +17,13 @@ namespace QCS
     internal static class MsdsOpenAiEmbeddingPersistence
     {
         internal const string ModelId = "AE_OPENAI_TEXT_EMBEDDING_3_LARGE_3072_V1";
-        private const string ModelName = "text-embedding-3-large";
         private const int Dimensions = 3072;
         private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(2) };
 
         internal static async Task<int> SyncAsync(string apiKey, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentException("OpenAI API 키가 없습니다.");
+            string modelName = EmbeddingModelSettings.GetModelName();
             var pending = new List<(string CorrectionId, string Type, string Text, string Hash)>();
             using (var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds")))
             {
@@ -55,7 +55,7 @@ namespace QCS
             foreach (var item in pending)
             {
                 ct.ThrowIfCancellationRequested();
-                var body = JsonSerializer.Serialize(new { model = ModelName, input = item.Text, encoding_format = "float" });
+                var body = JsonSerializer.Serialize(new { model = modelName, input = item.Text, encoding_format = "float" });
                 using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
                 request.Content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -92,7 +92,7 @@ namespace QCS
                          ai_embedding_dimensions,ai_embedding_metric,ai_embedding_normalized,ai_embedding_created_at)
                         VALUES ($id,$name,'1',3072,'COSINE',1,$at)";
                     model.Parameters.AddWithValue("$id", ModelId);
-                    model.Parameters.AddWithValue("$name", ModelName);
+                    model.Parameters.AddWithValue("$name", modelName);
                     model.Parameters.AddWithValue("$at", DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture));
                     model.ExecuteNonQuery();
                 }

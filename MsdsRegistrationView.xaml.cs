@@ -112,8 +112,11 @@ namespace QCS
         private void UpdateActionButtons()
         {
             if (DbSaveButton == null || AddIngredientButton == null || RemoveIngredientButton == null) return;
+            bool typeEditable = !_isAnalyzing && _displayedItem?.Parsed == null && _displayedItem?.AnalysisStarted == null;
+            MaterialTypeRaw.IsEnabled = typeEditable;
+            MaterialTypeProduct.IsEnabled = typeEditable;
             if (ExportAnalysisButton != null) ExportAnalysisButton.IsEnabled = !_isAnalyzing && _files.Any(v => v.Parsed != null);
-            DbSaveButton.IsEnabled = !_isAnalyzing && FilesGrid != null && FilesGrid.SelectedItems.Cast<PdfItem>().Any(v => v.Unified.Confirmed);
+            DbSaveButton.IsEnabled = !_isSavingDb && !_isAnalyzing && FilesGrid != null && FilesGrid.SelectedItems.Cast<PdfItem>().Any(v => v.Unified.Confirmed);
             bool canEditIngredients = !_isAnalyzing && _displayedItem?.Parsed != null;
             AddIngredientButton.IsEnabled = canEditIngredients;
             RemoveIngredientButton.IsEnabled = canEditIngredients && IngredientsGrid?.SelectedItem != null;
@@ -210,9 +213,11 @@ namespace QCS
         }
         private void SaveCurrent_Click(object sender, RoutedEventArgs e) => SaveDisplayed();
 
+        private bool _isSavingDb;
+
         private async void DbSave_Click(object sender, RoutedEventArgs e)
         {
-            if (_isAnalyzing) return;
+            if (_isAnalyzing || _isSavingDb) return;
             // 현재 편집 중인 셀까지 반영한다.
             IngredientsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             IngredientsGrid.CommitEdit(DataGridEditingUnit.Row, true);
@@ -233,10 +238,28 @@ namespace QCS
                 PublishStatus("MSDS DB 저장 취소");
                 return;
             }
+            _isSavingDb = true;
             DbSaveButton.IsEnabled = false;
-            int success = 0, failed = 0, embeddingFailed = 0;
+            int success = 0, failed = 0;
             try
             {
+                string pdfFolder = MsdsDbRegistration.PdfFolder;
+                bool networkAvailable = await Task.Run(() => Directory.Exists(pdfFolder));
+                if (!networkAvailable)
+                {
+                    var dialog = new Microsoft.Win32.OpenFolderDialog
+                    {
+                        Title = "네트워크 PDF 저장 경로에 접근할 수 없습니다. 대체 저장 폴더를 선택하세요.",
+                        Multiselect = false
+                    };
+                    if (dialog.ShowDialog() != true)
+                    {
+                        PublishStatus("MSDS DB 저장 취소: PDF 저장 폴더 선택 취소");
+                        return;
+                    }
+                    pdfFolder = dialog.FolderName;
+                    PublishStatus($"PDF 대체 저장 경로: {pdfFolder}");
+                }
                 foreach (var item in targets)
                 {
                     var values = item.Unified.FinalBasics();
@@ -247,14 +270,15 @@ namespace QCS
                         OralLd50 = v.Final(6), DermalLd50 = v.Final(7),
                         InhalationLc50 = v.Final(8), SortOrder = v.Order ?? 0,
                         Original = new MsdsDbRegistration.Ingredient { SortOrder = v.Order ?? 0, Name = v.Name, CasNumber = v.CasNumber,
-                            ConcentrationRaw = v.Final(0), Twa = v.Final(4), Stel = v.Final(5),
-                            OralLd50 = v.Final(6), DermalLd50 = v.Final(7), InhalationLc50 = v.Final(8) }
+                            ConcentrationRaw = v.OriginalForStorage(0), Twa = v.OriginalForStorage(4), Stel = v.OriginalForStorage(5),
+                            OralLd50 = v.OriginalForStorage(6), DermalLd50 = v.OriginalForStorage(7), InhalationLc50 = v.OriginalForStorage(8) }
                     }).ToList();
                     var snapshot = new MsdsDbRegistration.Document
                     {
-                        FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, OriginalValues = new Dictionary<string, string>(values, StringComparer.Ordinal), Ingredients = ingredients, Learning = item.SavedLearning.Values.ToList(), Applied = item.Applied.ToList()
+                        NaturalHistory = item.Unified.NaturalHistory.ToList(), NaturalActor = item.Unified.NaturalActor,
+                        FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, OriginalValues = item.Unified.Basics.ToDictionary(r => r.FieldCode, r => r.AiApplied ? r.ValueAi : r.FinalValue, StringComparer.Ordinal), Ingredients = ingredients, Learning = item.SavedLearning.Values.ToList(), Applied = item.Applied.ToList()
                     };
-                    var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot));
+                    var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot, pdfFolder));
                     if (result.Duplicate)
                     {
                         item.RegistrationKind = "중복";
@@ -263,18 +287,6 @@ namespace QCS
                     }
                     else if (result.Success)
                     {
-                        // Semantic vectors are generated after the MSDS transaction commits.
-                        // An API failure must never roll back an already saved MSDS.
-                        try
-                        {
-                            string embeddingKey = GetAiSetting("MSDS_API_KEY");
-                            await MsdsOpenAiEmbeddingPersistence.SyncAsync(embeddingKey);
-                        }
-                        catch (Exception embeddingError)
-                        {
-                            embeddingFailed++;
-                            PublishStatus("MSDS 저장 완료 / AI 의미 임베딩 미완료: " + embeddingError.Message);
-                        }
                         if (ReferenceEquals(_displayedItem, item)) _displayedItem = null;
                         _files.Remove(item);
                         success++;
@@ -290,12 +302,12 @@ namespace QCS
             }
             finally
             {
+                _isSavingDb = false;
                 FilesGrid.Items.Refresh();
                 UpdateCount();
                 UpdateActionButtons();
             }
-            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건" +
-                (embeddingFailed > 0 ? $" / AI 의미 임베딩 실패 {embeddingFailed}건 (다음 저장 시 재시도)" : ""));
+            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건");
             System.Windows.MessageBox.Show($"DB 저장 완료: 성공 {success}건 / 실패 {failed}건", "DB 저장 결과");
         }
 
@@ -747,6 +759,14 @@ namespace QCS
             if (_displayedItem == null) { UpdateMaterialTypeDisplay(); return; }
             var selected = MaterialTypeRaw.IsChecked == true ? "RM" : "FG";
             if (_displayedItem.MaterialType == selected) { UpdateMaterialTypeDisplay(); return; }
+            if (_isAnalyzing || _displayedItem.Parsed != null || _displayedItem.AnalysisStarted != null)
+            {
+                _restoringMaterialType = true;
+                try { MaterialTypeRaw.IsChecked = _displayedItem.MaterialType == "RM"; MaterialTypeProduct.IsChecked = _displayedItem.MaterialType == "FG"; }
+                finally { _restoringMaterialType = false; }
+                PublishStatus("분석 시작 후 원료/제품 구분은 변경할 수 없습니다.");
+                return;
+            }
             _displayedItem.MaterialType = selected;
             UpdateMaterialTypeDisplay();
             _displayedItem.Unified.Confirmed = false; // Reconfirm before DB save after classification change.
@@ -851,10 +871,34 @@ namespace QCS
                 { SelectFile(index); FileSearchBox.Dispatcher.BeginInvoke(new Action(() => FileSearchBox.Focus()), System.Windows.Threading.DispatcherPriority.Input); return; }
             }
         }
+        private async Task ApplyNaturalInstructionsAsync(PdfItem item, string key, string model, CancellationToken ct)
+        {
+            try
+            {
+                int count = await MsdsNaturalInstructionEngine.ApplyAsync(item.Unified, item.FullPath, item.MaterialType, key, model,
+                    ((Window.GetWindow(this) as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser())?.WindowsId ?? Environment.UserName,
+                    UnifiedFields.ToDictionary(x => x.Ui, x => x.Field), CanUseAiCorrection,
+                    message => LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {message}"), ct);
+                if (count > 0) LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 자연어 교정 {count}건 (검증 필요)");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: 자연어 교정 실패 - {ex.Message}");
+                PublishStatus("자연어 교정 실패: 원본 분석 결과 확인 필요");
+            }
+        }
+
+        private static bool IsNaturalTargetEnabled(string type)
+        {
+            try { return MsdsNaturalInstructionEngine.Enabled(type); }
+            catch { return false; }
+        }
+
         private bool CanApplyAiLearning()
         {
             var user = (Window.GetWindow(this) as MainWindow)?.GetCurrentUser() ?? StartupUserService.FindCurrentUser();
-            return user?.UserLevel == QcsAuthorizationService.LevelAdmin;
+            return false; // Legacy learning disabled until the natural-language engine is approved.
         }
 
         private bool CanUseAiCorrection()
@@ -884,9 +928,9 @@ namespace QCS
             foreach (var check in FindVisualChildren<System.Windows.Controls.CheckBox>(this)) check.IsEnabled = !analyzing;
             foreach (var box in FindVisualChildren<System.Windows.Controls.TextBox>(this))
                 if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox) && !ReferenceEquals(box, GracoCodeBox))
-                    box.IsReadOnly = analyzing;
+                    box.IsReadOnly = analyzing || ReferenceEquals(box, MaterialTypeDisplay);
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
-            AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null && CanUseAiCorrection();
+            AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null && CanUseAiCorrection() && IsNaturalTargetEnabled(_displayedItem.MaterialType);
             RefreshAiModelAvailability();
             UpdateCount();
             UpdateNavigation();
@@ -1034,7 +1078,7 @@ namespace QCS
             }
             UpdateNavigation();
             UpdateActionButtons();
-            if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); return; }
+            if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); UpdateActionButtons(); return; }
             _displayedItem = item;
             _restoringMaterialType = true;
             try
@@ -1234,7 +1278,7 @@ namespace QCS
                                 ApplySameDocumentLearning(item, aiResult);
                                 await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             }
-                            await ApplySemanticCorrectionsAsync(item, aiResult, apiKey, _analysisCts!.Token);
+                            await ApplyNaturalInstructionsAsync(item, apiKey, model, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1262,6 +1306,7 @@ namespace QCS
                 finally
                 {
                     FinishCancelledAnalysis();
+                    SaveAutomaticAnalysisText();
                     SetAnalysisUi(false);
                     _analysisCts?.Dispose();
                     _analysisCts = null;
@@ -1315,7 +1360,7 @@ namespace QCS
                                 ApplySameDocumentLearning(item, aiResult);
                                 await ApplySimilarDocumentLearningAsync(item, aiResult, _analysisCts!.Token);
                             }
-                            await ApplySemanticCorrectionsAsync(item, aiResult, apiKey, _analysisCts!.Token);
+                            await ApplyNaturalInstructionsAsync(item, apiKey, model, _analysisCts!.Token);
                             MsdsAiResultFiles.Save(item.FullPath, aiResult);
                             SetAnalysisResult(item, aiResult);
                             if (ReferenceEquals(FilesGrid.SelectedItem, item)) ShowExtractedFields(item);
@@ -1343,6 +1388,7 @@ namespace QCS
                 finally
                 {
                     FinishCancelledAnalysis();
+                    SaveAutomaticAnalysisText();
                     SetAnalysisUi(false);
                     _analysisCts?.Dispose();
                     _analysisCts = null;
@@ -1412,6 +1458,7 @@ namespace QCS
             finally
             {
                 FinishCancelledAnalysis();
+                SaveAutomaticAnalysisText();
                 SetAnalysisUi(false);
                 _analysisCts?.Dispose();
                 _analysisCts = null;
@@ -1436,7 +1483,7 @@ namespace QCS
         private async void AiCorrection_Click(object sender, RoutedEventArgs e)
         {
             if (_isAnalyzing || _displayedItem?.Parsed == null) return;
-            if (!CanUseAiCorrection())
+            if (!CanUseAiCorrection() || !IsNaturalTargetEnabled(_displayedItem.MaterialType))
             {
                 PublishStatus("AI 교정 접근 제한: 프로그램 사용권한이 없습니다.");
                 System.Windows.MessageBox.Show("AI 교정 기능의 사용권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1474,7 +1521,7 @@ namespace QCS
                 }
                 finally { _loadingFields = false; }
                 foreach (var key in window.CorrectedValues.Keys) item.Pending.Remove(key);
-                foreach (var entry in window.PendingLearning) item.Pending[entry.Key]=entry;
+                // Legacy learning candidate collection disabled.
                 MarkDirty();
                 PublishStatus($"AI 교정값 {window.CorrectedValues.Count}개 항목 적용: {item.FileName} (DB 저장 전)");
             }
@@ -1513,9 +1560,8 @@ namespace QCS
             ToxicityBox.Text = Get("msds_toxicity");
             ReactivityBox.Text = Get("msds_reactivity");
 
-            if (item.Unified.DisplayInitialized)
-                foreach (var entry in item.Unified.FinalBasics())
-                    if (FindName(entry.Key) is System.Windows.Controls.TextBox box) box.Text = entry.Value;
+            foreach (var row in item.Unified.Basics.Where(r => item.Unified.DisplayInitialized || r.AiApplied))
+                if (FindName(row.FieldCode) is System.Windows.Controls.TextBox box) box.Text = row.FinalValue;
             if (item.Parsed != null)
             {
                 try
@@ -1537,14 +1583,14 @@ namespace QCS
                 foreach (var field in CaptureFields())
                 {
                     var row = item.Unified.Basic(field.Key);
-                    if (row != null) row.ValueAi = field.Value;
+                    if (row != null && !row.AiApplied) row.ValueAi = field.Value;
                 }
                 item.Unified.DisplayInitialized = true;
             }
             _loadingFields = false;
             LoadCasReferences();
             SaveCurrentButton.IsEnabled = !_isAnalyzing && item.Parsed != null;
-            AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null && CanUseAiCorrection();
+            AiCorrectionButton.IsEnabled = !_isAnalyzing && item.Parsed != null && CanUseAiCorrection() && IsNaturalTargetEnabled(_displayedItem.MaterialType);
             UpdateActionButtons();
         }
 
@@ -1603,6 +1649,42 @@ namespace QCS
             return new[] { time, file, stage, result, message };
         }
 
+        private void SaveAutomaticAnalysisText()
+        {
+            try
+            {
+                var analyzed = _files.Where(v => v.Parsed != null).ToList();
+                if (analyzed.Count == 0) return;
+                var folder = System.IO.Path.Combine(AppContext.BaseDirectory, "Output");
+                Directory.CreateDirectory(folder);
+                var path = System.IO.Path.Combine(folder, $"QCS_MSDS_Analysis_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.txt");
+                var text = new StringBuilder();
+                text.AppendLine("QCS MSDS 분석결과 (검토용 스냅샷)");
+                foreach (var item in analyzed)
+                {
+                    text.AppendLine($"\n파일명: {item.FileName} | 구분: {item.MaterialType} | 모델: {item.AnalysisModel}");
+                    foreach (var row in item.Unified.Rows)
+                    {
+                        text.AppendLine($"[{row.Category}] {row.Order} {row.CasNumber} {row.IngredientName} {row.FieldCode} {row.FieldName}");
+                        text.AppendLine($"  ValueAi: {row.ValueAi}\n  ValueCorrection: {row.ValueCorrection}\n  ValueMod: {row.ValueMod}\n  FinalValue: {row.FinalValue}");
+                        text.AppendLine($"  AI적용: {(row.AiApplied ? "Y" : "N")} | 지침: {row.LearningNo} | 검증: {row.Verification} | 페이지: {row.SourcePage} | 근거: {row.SourceEvidence}");
+                    }
+                }
+                text.AppendLine("\n[처리 로그]");
+                foreach (var entry in LogList.Items.Cast<object>().Reverse()) text.AppendLine(entry?.ToString());
+                string output = text.ToString();
+                string secret = "";
+                try { secret = GetAiSetting("MSDS_API_KEY"); } catch { }
+                if (!string.IsNullOrEmpty(secret)) output = output.Replace(secret, "[REDACTED]", StringComparison.Ordinal);
+                System.IO.File.WriteAllText(path, output, new UTF8Encoding(true));
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  분석 결과 TXT 저장 완료: {System.IO.Path.GetFileName(path)}");
+            }
+            catch (Exception ex)
+            {
+                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  분석 결과 TXT 저장 실패: {ex.GetType().Name}");
+            }
+        }
+
         private void ExportAnalysis_Click(object sender, RoutedEventArgs e)
         {
             if (_isAnalyzing || !_files.Any(v => v.Parsed != null)) return;
@@ -1649,7 +1731,7 @@ namespace QCS
                         : "";
                     logRows.Add(new[] { item.AnalysisFinished?.ToString("yyyy-MM-dd HH:mm:ss") ?? "",
                         item.FileName, "AI 분석 요약", item.AnalysisStatus,
-                        $"모델: {item.AnalysisModel}; 시작: {item.AnalysisStarted:yyyy-MM-dd HH:mm:ss}; 종료: {item.AnalysisFinished:yyyy-MM-dd HH:mm:ss}; 소요시간: {duration}초; 구성성분: {item.Parsed?.Ingredients.Count ?? 0}건; 교정학습 적용: {item.Applied.Count}건" });
+                        $"모델: {item.AnalysisModel}; 시작: {item.AnalysisStarted:yyyy-MM-dd HH:mm:ss}; 종료: {item.AnalysisFinished:yyyy-MM-dd HH:mm:ss}; 소요시간: {duration}초; 구성성분: {item.Parsed?.Ingredients.Count ?? 0}건; 교정학습 적용: {item.Unified.Rows.Count(r => r.AiApplied)}건" });
                 }
                 foreach (var entry in LogList.Items.Cast<object>().Reverse())
                     logRows.Add(ParseFriendlyLog(entry?.ToString() ?? ""));

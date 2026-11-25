@@ -42,9 +42,14 @@ namespace QCS
             public string CasNumber => _rows[0].CasNumber;
             public string Name => _rows[0].IngredientName;
             public string Ai(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index])?.ValueAi ?? "";
+            public string OriginalForStorage(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index]) is { } row ? (row.AiApplied ? row.ValueAi : row.FinalValue) : "";
             public string Final(int index) => _rows.FirstOrDefault(r => r.FieldCode == IngredientCodes[index])?.FinalValue ?? "";
         }
 
+        internal sealed record NaturalStep(Row Target, string RuleId, int Version, string Instruction, string Kind, int Sequence,
+            string Before, string After, int? Page, string Evidence, string Status, string? Error, DateTime At);
+        internal List<NaturalStep> NaturalHistory { get; } = new();
+        internal string NaturalActor { get; set; } = "";
         public List<Row> Rows { get; } = new();
         public bool Confirmed { get; set; }
         public bool DisplayInitialized { get; set; }
@@ -52,7 +57,7 @@ namespace QCS
         public IEnumerable<IngredientView> Ingredients => Rows.Where(r => r.Category == "구성성분")
             .GroupBy(r => r.Order).OrderBy(g => g.Key)
             .Select(g => new IngredientView(g.ToList()));
-        public void Clear() { Rows.Clear(); Confirmed = false; DisplayInitialized = false; }
+        public void Clear() { Rows.Clear(); NaturalHistory.Clear(); NaturalActor = ""; Confirmed = false; DisplayInitialized = false; }
         public Row? Basic(string key) => Basics.FirstOrDefault(r => r.FieldCode == key);
         public Dictionary<string, string> FinalBasics() => Basics.ToDictionary(r => r.FieldCode, r => r.FinalValue, StringComparer.Ordinal);
         public void SaveBasic(string key, string value)

@@ -12,7 +12,7 @@ namespace QCS
 {
     internal static class MsdsDbRegistration
     {
-        private const string PdfFolder = @"\\zcnpo0317vn0001\IPK_PROG\QCS\PDFFiles";
+        internal const string PdfFolder = @"\\zcnpo0317vn0001\IPK_PROG\QCS\PDFFiles";
         internal sealed class Ingredient
         {
             public int SortOrder { get; set; }
@@ -34,6 +34,8 @@ namespace QCS
             public Dictionary<string, string> Values { get; set; } = new();
             public Dictionary<string, string> OriginalValues { get; set; } = new();
             public List<Ingredient> Ingredients { get; set; } = new();
+            public List<MsdsUnifiedMemory.NaturalStep> NaturalHistory { get; set; } = new();
+            public string NaturalActor { get; set; } = "";
             public List<MsdsLearningEntry> Learning { get; set; } = new();
             public List<MsdsLearningEntry> Applied { get; set; } = new();
         }
@@ -206,6 +208,18 @@ namespace QCS
             return next;
         }
 
+        private static void RequireMatchingMaterialType(SqliteConnection db, SqliteTransaction? tx, string type, string code)
+        {
+            using var cmd = db.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = @"SELECT COUNT(*) FROM msds_mstr WHERE msds_graco_code=$code
+                AND COALESCE(msds_is_deleted,0)=0 AND msds_material_type IN ('FG','RM') AND msds_material_type<>$type";
+            cmd.Parameters.AddWithValue("$code", code);
+            cmd.Parameters.AddWithValue("$type", type);
+            if (Convert.ToInt64(cmd.ExecuteScalar()) > 0)
+                throw new InvalidOperationException("기존 등록 건의 원료/제품 구분과 일치하지 않습니다.");
+        }
+
         internal static string GetRegistrationStatus(string materialType, string gracoCode, string revisionNo = "", string revisionDate = "")
         {
             if (materialType != "RM" && materialType != "FG") throw new ArgumentException("원료/제품 구분을 선택해 주세요.");
@@ -215,6 +229,7 @@ namespace QCS
             using var db = new SqliteConnection(cs);
             db.Open();
             EnsureRegistrationColumns(db);
+            RequireMatchingMaterialType(db, null, materialType, gracoCode.Trim());
             using var cmd = db.CreateCommand();
             cmd.CommandText = @"SELECT COALESCE(msds_revision_no_mod,msds_revision_no_ai), COALESCE(msds_revision_date_mod,msds_revision_date_ai) FROM msds_mstr
                 WHERE msds_material_type=$type AND msds_graco_code=$code AND COALESCE(msds_is_deleted,0)=0";
@@ -235,7 +250,47 @@ namespace QCS
             return exists ? "개정" : "신규";
         }
 
-        internal static Result Save(Document doc)
+        private static void SaveNaturalHistory(SqliteConnection db, SqliteTransaction tx, Document doc,
+            long parentId, string graco, string path, string hash, string now)
+        {
+            if (doc.NaturalHistory.Count == 0) return;
+            void Insert(string table, Dictionary<string, object?> values)
+            {
+                using var cmd = db.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = $"INSERT INTO {table} ({string.Join(",",values.Keys)}) VALUES ({string.Join(",",values.Keys.Select(k=>"$"+k))})";
+                foreach(var pair in values) cmd.Parameters.AddWithValue("$"+pair.Key,pair.Value ?? DBNull.Value);
+                cmd.ExecuteNonQuery();
+            }
+            using var next = db.CreateCommand();
+            next.Transaction = tx;
+            next.CommandText = "SELECT COALESCE(MAX(CAST(substr(ai_apply_id,3) AS INTEGER)),0)+1 FROM ai_apply_mstr";
+            long number = Convert.ToInt64(next.ExecuteScalar());
+            if(number > 99999999) throw new InvalidOperationException("적용사례 ID 범위 초과");
+            string id = "AA" + number.ToString("D8",CultureInfo.InvariantCulture);
+            Insert("ai_apply_mstr",new() {
+                ["ai_apply_id"]=id,["ai_apply_msds_id"]=parentId,["ai_apply_graco_code"]=graco,
+                ["ai_apply_material_type"]=doc.MaterialType,["ai_apply_product_name"]=Value(doc,"ProductNameBox"),
+                ["ai_apply_supplier_name"]=Value(doc,"SupplierNameBox"),["ai_apply_pdf_path"]=path,
+                ["ai_apply_pdf_hash"]=hash,["ai_apply_applied_at"]=doc.NaturalHistory[0].At.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture),["ai_apply_applied_by"]=doc.NaturalActor
+            });
+            int order=0;
+            foreach(var step in doc.NaturalHistory)
+            {
+                var r=step.Target;
+                Insert("ai_applyd_det",new() {
+                    ["ai_applyd_apply_id"]=id,["ai_applyd_learning_id"]=step.RuleId,["ai_applyd_learning_version"]=step.Version,
+                    ["ai_applyd_instruction"]=step.Instruction,["ai_applyd_rule_type"]=step.Kind,["ai_applyd_field_code"]=r.FieldCode,
+                    ["ai_applyd_target_item_key"]=$"{r.Category}:{r.Order}:{r.FieldCode}",["ai_applyd_cas_no"]=r.CasNumber,
+                    ["ai_applyd_ingredient_name"]=r.IngredientName,["ai_applyd_sequence"]=step.Sequence,["ai_applyd_execution_order"]=++order,
+                    ["ai_applyd_value_ai"]=r.ValueAi,["ai_applyd_value_before"]=step.Before,["ai_applyd_value_after"]=step.After,
+                    ["ai_applyd_value_final"]=doc.NaturalHistory.Last(x=>ReferenceEquals(x.Target,r)).After,["ai_applyd_source_page"]=step.Page,["ai_applyd_source_text"]=step.Evidence,
+                    ["ai_applyd_applied_at"]=step.At.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture),["ai_applyd_status"]=step.Status,["ai_applyd_error"]=step.Error
+                });
+            }
+        }
+
+        internal static Result Save(Document doc, string? pdfFolder = null)
         {
             string stage = "DB";
             string? copiedPath = null;
@@ -263,6 +318,7 @@ namespace QCS
                 var revisionDate = Value(doc, "RevisionDateBox").Trim();
                 var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(doc.FilePath)));
                 using var tx = db.BeginTransaction();
+                RequireMatchingMaterialType(db, tx, doc.MaterialType, gracoCode);
                 var pendingRevision = GetPendingRevision(db, tx);
                 bool hasExisting = false;
                 var changes = new List<object>();
@@ -285,10 +341,10 @@ namespace QCS
                             return new Result { Duplicate = true, Message = "동일한 개정번호와 개정일자가 등록되어 있습니다." };
                     }
                 }
-                // Keep the complete original PDF base name, including any internal punctuation.
-                var baseName = Path.GetFileNameWithoutExtension(doc.FilePath);
+                // Use the canonical Graco code for newly registered PDFs.
+                var baseName = gracoCode;
                 var fileName = baseName + "-" + DateTime.Now.ToString("yyMMddHHmmss", CultureInfo.InvariantCulture) + ".pdf";
-                var destination = Path.Combine(PdfFolder, fileName);
+                var destination = Path.Combine(pdfFolder ?? PdfFolder, fileName);
                 if (File.Exists(destination)) throw new IOException("저장할 PDF 파일명이 이미 존재합니다. 잠시 후 다시 시도해 주세요.");
                 if (hasExisting)
                 {
@@ -379,7 +435,8 @@ namespace QCS
                         var childId = Convert.ToInt64(child.ExecuteScalar());
                         AddChanges(changes, "msds_comp_dtl", childId, componentFields);
                     }
-                    MsdsLearningPersistence.Save(db, tx, doc, parentId, destination, hash);
+                    SaveNaturalHistory(db, tx, doc, parentId, gracoCode, destination, hash, now);
+                    // Legacy AI correction learning persistence remains disabled.
                     // One DB save operation creates exactly one audit record.
                     // Registration of a new MSDS revision is an INSERT, not an UPDATE.
                     using var audit = db.CreateCommand();
@@ -402,7 +459,7 @@ namespace QCS
                     audit.ExecuteNonQuery();
                 }
                 stage = "PDF";
-                Directory.CreateDirectory(PdfFolder);
+                Directory.CreateDirectory(pdfFolder ?? PdfFolder);
                 File.Copy(doc.FilePath, destination, false);
                 copiedPath = destination;
                 copiedByUs = true;

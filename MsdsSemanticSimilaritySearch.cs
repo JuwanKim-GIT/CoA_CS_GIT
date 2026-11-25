@@ -148,7 +148,7 @@ namespace QCS
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
             request.Content = new StringContent(JsonSerializer.Serialize(new
             {
-                model = "text-embedding-3-large", input = text, encoding_format = "float"
+                model = EmbeddingModelSettings.GetModelName(), input = text, encoding_format = "float"
             }), Encoding.UTF8, "application/json");
             using var response = await Client.SendAsync(request, ct);
             string body = await response.Content.ReadAsStringAsync(ct);

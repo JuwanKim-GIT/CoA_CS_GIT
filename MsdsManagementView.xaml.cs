@@ -788,6 +788,8 @@ namespace QCS
      using (var transaction = connection.BeginTransaction())
      {
       string[] statements = {
+       "DELETE FROM ai_applyd_det WHERE ai_applyd_apply_id IN (SELECT ai_apply_id FROM ai_apply_mstr WHERE ai_apply_msds_id=$id)",
+       "DELETE FROM ai_apply_mstr WHERE ai_apply_msds_id=$id",
        "DELETE FROM reg_result_dtl WHERE reg_result_msds_id=$id",
        "DELETE FROM extract_result_dtl WHERE extract_result_msds_id=$id",
        "DELETE FROM msds_comp_dtl WHERE msds_comp_parent_msds_id=$id",
@@ -819,7 +821,7 @@ namespace QCS
        // Fail closed when reference lookup fails. Hold the write reservation during the physical deletion.
        using var guard = connection.BeginTransaction();
        using var check = connection.CreateCommand(); check.Transaction = guard;
-       check.CommandText = @"SELECT EXISTS(SELECT 1 FROM ai_correctionh_hist WHERE ai_correctionh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_applyh_hist WHERE ai_applyh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM msds_mstr WHERE msds_file_path=$path COLLATE NOCASE)";
+       check.CommandText = @"SELECT EXISTS(SELECT 1 FROM ai_correctionh_hist WHERE ai_correctionh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_applyh_hist WHERE ai_applyh_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM ai_apply_mstr WHERE ai_apply_pdf_path=$path COLLATE NOCASE UNION ALL SELECT 1 FROM msds_mstr WHERE msds_file_path=$path COLLATE NOCASE)";
        check.Parameters.AddWithValue("$path",path);
        if (Convert.ToInt64(check.ExecuteScalar()) != 0) preserved++;
        else if (File.Exists(path)) File.Delete(path);

@@ -285,7 +285,12 @@ namespace QCS
 
         private void Menu_MsdsLearning_Click(object sender, RoutedEventArgs e)
         {
-            AddOrSelectTab("AI 교정학습 관리", new MsdsLearningManagementView());
+            if (GetCurrentUser()?.UserLevel != QcsAuthorizationService.LevelAdmin)
+            {
+                SetRunStatus("AI 교정학습 관리: Admin 전용입니다.");
+                return;
+            }
+            AddOrSelectTab("AI 교정학습 관리", new MsdsNaturalInstructionView());
         }
 
         private void Menu_MsdsReg_Click(object sender, RoutedEventArgs e)
