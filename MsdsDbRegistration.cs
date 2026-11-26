@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -285,7 +285,9 @@ namespace QCS
                     ["ai_applyd_ingredient_name"]=r.IngredientName,["ai_applyd_sequence"]=step.Sequence,["ai_applyd_execution_order"]=++order,
                     ["ai_applyd_value_ai"]=r.ValueAi,["ai_applyd_value_before"]=step.Before,["ai_applyd_value_after"]=step.After,
                     ["ai_applyd_value_final"]=doc.NaturalHistory.Last(x=>ReferenceEquals(x.Target,r)).After,["ai_applyd_source_page"]=step.Page,["ai_applyd_source_text"]=step.Evidence,
-                    ["ai_applyd_applied_at"]=step.At.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture),["ai_applyd_status"]=step.Status,["ai_applyd_error"]=step.Error
+                    ["ai_applyd_applied_at"]=step.At.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture),
+                    ["ai_applyd_status"]=step.Status switch { "SKIPPED" => "UNCHANGED", "INSUFFICIENT" => "FAILED", _ => step.Status },
+                    ["ai_applyd_error"]=step.Status is "SKIPPED" or "INSUFFICIENT" ? $"[{step.Status}] {step.Error}" : step.Error
                 });
             }
         }

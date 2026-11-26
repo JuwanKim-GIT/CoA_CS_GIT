@@ -1,0 +1,15 @@
+{
+  "NetworkDbFolder": "\\\\zcnpo0317vn0001\\IPK_DBs\\SQL_DBs\\QCS",
+  "Databases": {
+    "msds": "qcs_msds.db",
+    "coa": "qcs_coa.db",
+    "quality": "qcs_quality.db",
+    "reference": "qcs_reference.db",
+    "common": "qcs_common.db",
+    "message": "qcs_message.db"
+  },
+  "Connection": {
+    "DefaultTimeout": 10,
+    "Pooling": true
+  }
+}

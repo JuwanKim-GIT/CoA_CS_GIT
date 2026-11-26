@@ -1,0 +1,177 @@
+{
+  "fields": [
+    {
+      "key": "msds_product_name",
+      "section": 1,
+      "patterns": [
+        "(?:^|\\s)(?:[가-하]\\s*[.)]\\s*)?(?:제품명|제품\\s*이름|제품의\\s*명칭|Product\\s*name|Trade\\s*name)\\s*[:：]?\\s*(.*)$",
+        "제품\\s*식별명\\s*[:：]?\\s*(.*)$",
+        "(?:^|\\s)(?:상품명|상표명)\\s*[:：]?\\s*(.*)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "화학물질명",
+        "제품번호",
+        "제품\\s*식별명",
+        "공급자",
+        "제조자"
+      ],
+      "allowNextLine": true
+    },
+    {
+      "key": "msds_supplier_name",
+      "section": 1,
+      "patterns": [
+        "(?:^|\\s)(?:등록회사명|공급업체명|제조자명|Supplier\\s*name|Manufacturer\\s*name|회사명)\\s*[:：]?\\s*(.*)$",
+        "(?:^|\\s)(?:Manufacturer\\s*/\\s*유통업자|제조업자\\s*/\\s*유통업자|Manufacturer\\s*/\\s*Distributor)\\s*[:：]?\\s*(.*)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "주소",
+        "전화",
+        "Tel",
+        "Fax"
+      ],
+      "allowNextLine": true
+    },
+    {
+      "key": "msds_sds_code",
+      "section": 1,
+      "patterns": [
+        "(?:SDS|MSDS)\\s*code\\s*[:：]?\\s*([A-Z0-9-]{3,})"
+      ],
+      "kind": "text",
+      "stopLabels": [],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_supplier_phone",
+      "section": 1,
+      "patterns": [
+        "(?:긴급\\s*전화번호|긴급전화번호)\\s*[:：]?\\s*(\\+?[0-9() -]{7,})",
+        "(?:Tel(?:ephone)?|전화번호|전화)\\s*[:：]?\\s*(\\+?[0-9() -]{7,})",
+        "(?:^|\\s)Phone\\s*[:：]\\s*(\\+?[0-9() -]{7,})"
+      ],
+      "kind": "text",
+      "stopLabels": [],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_supplier_address",
+      "section": 1,
+      "patterns": [
+        "(?:^|\\s)(?:주소|Address)\\s*[:：]?\\s*(.+)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "전화",
+        "Tel",
+        "Fax"
+      ],
+      "allowNextLine": true
+    },
+    {
+      "key": "msds_revision_date",
+      "section": 0,
+      "patterns": [
+        "(?:개정일|최종\\s*개정일자|Revision\\s*date)\\s*[:：]?\\s*(\\d{1,4}[-./]\\d{1,2}[-./]\\d{1,4})"
+      ],
+      "kind": "date",
+      "stopLabels": [],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_revision_number",
+      "section": 0,
+      "patterns": [
+        "(?:버전|버젼|Version)\\s*[:：]?\\s*([0-9.]+)"
+      ],
+      "kind": "text",
+      "stopLabels": [],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_un_number",
+      "section": 14,
+      "patterns": [
+        "(?:UN(?:/ID)?\\s*(?:번호|number|No\\.?)|유엔\\s*번호)\\s*[:：]?\\s*(?:UN\\s*)?(\\d{4})",
+        "(?:유엔번호|UN\\s*No\\.?|UN\\s*번호)\\s*[:：]?\\s*(?:UN\\s*)?(\\d{4})"
+      ],
+      "kind": "text",
+      "stopLabels": [],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_flash_point",
+      "section": 9,
+      "patterns": [
+        "(?:인화점|Flash\\s*point)\\s*[:：]?\\s*(.+)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "자료\\s*없음$"
+      ],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_autoignition",
+      "section": 9,
+      "patterns": [
+        "(?:자연발화점|Autoignition)\\s*[:：]?\\s*(.+)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "자료\\s*없음$"
+      ],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_vapor_pressure",
+      "section": 9,
+      "patterns": [
+        "(?:증기압|Vapor\\s*pressure)\\s*[:：]?\\s*(.+)$"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "자료\\s*없음$"
+      ],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_lel",
+      "section": 9,
+      "patterns": [
+        "(?:폭발하한계|LEL)\\s*[:：]?\\s*(.+)$",
+        "(?:폭발\\s*하한(?:계)?|인화\\s*하한(?:계)?|Lower\\s*(?:explosive|flammable)\\s*limit)\\s*[:：]?\\s*(\\d+(?:\\.\\d+)?\\s*%?)"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "자료\\s*없음$"
+      ],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_uel",
+      "section": 9,
+      "patterns": [
+        "(?:폭발상한계|UEL)\\s*[:：]?\\s*(.+)$",
+        "(?:폭발\\s*상한(?:계)?|인화\\s*상한(?:계)?|Upper\\s*(?:explosive|flammable)\\s*limit)\\s*[:：]?\\s*(\\d+(?:\\.\\d+)?\\s*%?)"
+      ],
+      "kind": "text",
+      "stopLabels": [
+        "자료\\s*없음$"
+      ],
+      "allowNextLine": false
+    },
+    {
+      "key": "msds_hazard_codes",
+      "section": 2,
+      "patterns": [
+        "\\bH\\d{3}\\b"
+      ],
+      "kind": "hazard_codes",
+      "stopLabels": [],
+      "allowNextLine": false
+    }
+  ]
+}

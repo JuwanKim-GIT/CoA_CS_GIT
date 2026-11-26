@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -15,7 +15,33 @@ namespace QCS;
 internal static class MsdsNaturalInstructionEngine
 {
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromMinutes(6) };
-    private sealed record Rule(string Id, string Field, string Kind, string Text, string Scope, string Supplier, string Product, string Material, string Graco, string Condition, int Sequence, int Version);
+    internal sealed record Rule(string Id, string Field, string Kind, string Text, string Scope, string Supplier, string Product, string Material, string Graco, string Condition, int Sequence, int Version, string? ReplacesId = null)
+    {
+        public string ScopeLabel => Scope switch
+        {
+            "GROUP" => $"GROUP · {Material}",
+            "PRODUCT" => $"PRODUCT · {(Graco.Length > 0 ? Graco : $"{Supplier} / {Product}")}",
+            "SUPPLIER" => $"SUPPLIER · {Supplier}",
+            _ => Scope
+        };
+    }
+    internal static int SequenceFor(string kind) => kind switch
+    {
+        "EXTRACTION" => 1,
+        "NORMALIZATION" => 2,
+        "FORMAT" => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    private static int ScopePriority(Rule rule) => rule.Scope switch
+    {
+        "PRODUCT" when rule.Graco.Length > 0 => 4,
+        "PRODUCT" => 3,
+        "GROUP" => 2,
+        "SUPPLIER" => 1,
+        _ => 0
+    };
+
     internal static bool Enabled(string type)
     {
         if (type != "FG" && type != "RM") return false;
@@ -38,11 +64,19 @@ internal static class MsdsNaturalInstructionEngine
         return rules;
     }
     private static bool Eq(string a,string b) => string.Equals(a.Trim(),b.Trim(),StringComparison.OrdinalIgnoreCase);
-    internal static async Task<int> ApplyAsync(MsdsUnifiedMemory memory, string pdfPath, string type, string key, string model, string actor,
-        IReadOnlyDictionary<string,string> aliases, Func<bool> authorized, Action<string> log, CancellationToken ct)
+    internal static Task<int> ApplyAsync(MsdsUnifiedMemory memory, string pdfPath, string type, string key, string model, string actor,
+        IReadOnlyDictionary<string,string> aliases, Func<bool> authorized, Action<string> log, CancellationToken ct) =>
+        ApplyCoreAsync(memory, pdfPath, type, key, model, actor, aliases, authorized, log, ct, null);
+
+    internal static Task<int> TrialAsync(MsdsUnifiedMemory memory, string pdfPath, string type, string key, string model,
+        IReadOnlyDictionary<string,string> aliases, Func<bool> authorized, Rule draft, bool selectedOnly, CancellationToken ct) =>
+        ApplyCoreAsync(memory, pdfPath, type, key, model, "", aliases, authorized, _ => { }, ct, draft, selectedOnly);
+
+    private static async Task<int> ApplyCoreAsync(MsdsUnifiedMemory memory, string pdfPath, string type, string key, string model, string actor,
+        IReadOnlyDictionary<string,string> aliases, Func<bool> authorized, Action<string> log, CancellationToken ct, Rule? trial, bool selectedOnly = false)
     {
         if (!authorized()) { log("자연어 교정 미적용: MSDS 등록 권한 없음"); return 0; }
-        bool enabled = Enabled(type);
+        bool enabled = trial != null || Enabled(type);
         log($"AI 교정 적용 설정: {type} / {(enabled ? "YES" : "NO 또는 미등록")}");
         if (!enabled) return 0;
         log("자연어 교정 시작");
@@ -50,28 +84,54 @@ internal static class MsdsNaturalInstructionEngine
         var product = memory.Basic("ProductNameBox")?.ValueAi ?? "";
         var graco = MsdsDbRegistration.GracoCode(pdfPath);
         memory.NaturalActor = actor;
-        var rules = ReadRules().Where(r => r.Scope == "GLOBAL" ||
+        IEnumerable<Rule> candidates = selectedOnly && trial != null ? new[] { trial } : ReadRules();
+        string CanonicalField(string field) =>
+            aliases.FirstOrDefault(x => Eq(x.Key, field)).Value ?? field.Trim();
+        if (trial != null && !selectedOnly)
+        {
+            string target = CanonicalField(trial.Field);
+            candidates = candidates.Where(r => !Eq(r.Id, trial.Id) && r.Id != trial.ReplacesId &&
+                Eq(CanonicalField(r.Field), target)).Append(trial);
+        }
+        var rules = candidates.Where(r => selectedOnly || r.Scope == "GLOBAL" ||
             (r.Scope == "GROUP" && Eq(r.Material,type)) ||
             (r.Scope == "SUPPLIER" && r.Supplier.Length > 0 && Eq(r.Supplier,supplier)) ||
-            (r.Scope == "PRODUCT" && (r.Graco.Length > 0 ? Eq(r.Graco,graco) : r.Supplier.Length > 0 && r.Product.Length > 0 && Eq(r.Supplier,supplier) && Eq(r.Product,product)))).ToList();
+            (r.Scope == "PRODUCT" && (r.Graco.Length > 0 ? Eq(r.Graco,graco) : r.Supplier.Length > 0 && r.Product.Length > 0 && Eq(r.Supplier,supplier) && Eq(r.Product,product))))
+            .GroupBy(r => (Field: CanonicalField(r.Field).ToUpperInvariant(), r.Kind))
+            .Select(group => group.OrderByDescending(ScopePriority)
+                .ThenByDescending(r => ReferenceEquals(r, trial))
+                .ThenBy(r => r.Id, StringComparer.Ordinal).First())
+            .OrderBy(r => SequenceFor(r.Kind))
+            .ThenBy(r => CanonicalField(r.Field), StringComparer.OrdinalIgnoreCase)
+            .Select(r => r with { Sequence = SequenceFor(r.Kind) })
+            .ToList();
         log($"적용 범위에 해당하는 승인 지침: {rules.Count}건");
         int changed = 0; byte[]? pdf = null;
         foreach (var rule in rules)
         {
             ct.ThrowIfCancellationRequested();
-            if (!authorized() || !Enabled(type)) break;
+            if (!authorized() || (trial == null && !Enabled(type))) break;
             bool extract = rule.Kind == "EXTRACTION";
             if (!extract && rule.Kind != "NORMALIZATION" && rule.Kind != "FORMAT") continue;
-            var rows = memory.Rows.Where(r => (r.Category == "구성성분" || aliases.ContainsKey(r.FieldCode)) && r.FieldCode != "GracoCodeBox" &&
-                (Eq(r.FieldCode,rule.Field) || (aliases.TryGetValue(r.FieldCode,out var alias) && Eq(alias,rule.Field))) &&
-                (rule.Condition == "ALWAYS" || (rule.Condition == "EMPTY" && string.IsNullOrWhiteSpace(r.FinalValue)) || (rule.Condition == "NOT_EMPTY" && !string.IsNullOrWhiteSpace(r.FinalValue))) &&
+            var targets = memory.Rows.Where(r => (r.Category == "구성성분" || aliases.ContainsKey(r.FieldCode)) &&
+                r.FieldCode != "GracoCodeBox" &&
+                (Eq(r.FieldCode, rule.Field) || (aliases.TryGetValue(r.FieldCode, out var alias) && Eq(alias, rule.Field)))).ToArray();
+            var rows = targets.Where(r => (rule.Condition == "ALWAYS" ||
+                (rule.Condition == "EMPTY" && string.IsNullOrWhiteSpace(r.FinalValue)) ||
+                (rule.Condition == "NOT_EMPTY" && !string.IsNullOrWhiteSpace(r.FinalValue))) &&
                 (extract || !string.IsNullOrWhiteSpace(r.FinalValue))).ToArray();
+            foreach (var row in targets.Except(rows))
+                memory.NaturalHistory.Add(new MsdsUnifiedMemory.NaturalStep(row, rule.Id, rule.Version, rule.Text, rule.Kind,
+                    rule.Sequence, row.FinalValue, row.FinalValue, null, "", "SKIPPED",
+                    $"실행 조건({rule.Condition}) 또는 기존값 요건을 충족하지 않았습니다.", DateTime.Now, rule.ScopeLabel));
             if (rows.Length == 0) { log($"지침 {rule.Field}: 대상 값 없음"); continue; }
             int before = changed;
             log($"지침 {rule.Field} ({rule.Kind}) 시작: {rows.Length}건");
             var prior = rows.Select(r => r.FinalValue).ToArray();
             var outcomes = new string[rows.Length];
             var errors = new string?[rows.Length];
+            var sourcePages = new int?[rows.Length];
+            var sourceQuotes = new string?[rows.Length];
             Array.Fill(outcomes,"FAILED");
             Array.Fill(errors,"응답 대상 누락");
             try
@@ -106,21 +166,27 @@ internal static class MsdsNaturalInstructionEngine
                 int id=p.GetProperty("id").GetInt32();
                 if(id<0 || id>=rows.Length || !seen.Add(id)) throw new InvalidOperationException("교정 응답 대상 오류");
             }
-            if (!authorized() || !Enabled(type)) break;
+            if (!authorized() || (trial == null && !Enabled(type))) break;
             foreach(var p in proposals)
             {
                 int index=p.GetProperty("id").GetInt32();
                 var row=rows[index];
                 errors[index]=p.TryGetProperty("reason",out var reason) && reason.ValueKind==JsonValueKind.String && !string.IsNullOrWhiteSpace(reason.GetString()) ? reason.GetString() : "AI가 유효한 교정값을 반환하지 않았습니다.";
-                if(!p.TryGetProperty("value",out var v) || v.ValueKind!=JsonValueKind.String) continue;
+                if (!p.TryGetProperty("value", out var v)) continue;
+                if (v.ValueKind == JsonValueKind.Null) { outcomes[index] = "INSUFFICIENT"; continue; }
+                if (v.ValueKind != JsonValueKind.String) continue;
                 string value=v.GetString()?.Trim() ?? "";
                 if(value.Length==0) continue;
                 if(!extract && Eq(rule.Field,"twa") && System.Text.RegularExpressions.Regex.IsMatch(value,@"\d\s*(?:hr|hours?|시간|h)\b",System.Text.RegularExpressions.RegexOptions.IgnoreCase) && !System.Text.RegularExpressions.Regex.IsMatch(prior[index],@"\d\s*(?:hr|hours?|시간|h)\b",System.Text.RegularExpressions.RegexOptions.IgnoreCase)) { errors[index]="기존 추출값에 없는 노출시간이 추가되어 교정을 거부했습니다."; continue; }
-                if(value==row.FinalValue) { outcomes[index]="UNCHANGED"; errors[index]=null; continue; }
+                bool unchanged = value == row.FinalValue;
+                if (unchanged && !extract) { outcomes[index]="UNCHANGED"; errors[index]=null; continue; }
                 if(extract)
                 {
                     if(!p.TryGetProperty("evidence",out var e) || e.ValueKind!=JsonValueKind.String || string.IsNullOrWhiteSpace(e.GetString()) ||
-                       !p.TryGetProperty("page",out var page) || page.ValueKind!=JsonValueKind.Number || !page.TryGetInt32(out int n) || n<1) continue;
+                       !p.TryGetProperty("page",out var page) || page.ValueKind!=JsonValueKind.Number || !page.TryGetInt32(out int n) || n<1) { outcomes[index]=unchanged ? "UNCHANGED" : "INSUFFICIENT"; errors[index]="원문 근거 또는 페이지가 누락되었습니다."; continue; }
+                    sourcePages[index] = n;
+                    sourceQuotes[index] = e.GetString();
+                    if (unchanged) { outcomes[index]="UNCHANGED"; errors[index]=null; continue; }
                     row.ValueCorrection=value; row.AiApplied=true; row.SourcePage=n; row.SourceEvidence=e.GetString()!;
                 }
                 else { row.ValueCorrection=value; row.AiApplied=true; }
@@ -136,7 +202,7 @@ internal static class MsdsNaturalInstructionEngine
             }
             for(int i=0;i<rows.Length;i++)
                 memory.NaturalHistory.Add(new MsdsUnifiedMemory.NaturalStep(rows[i],rule.Id,rule.Version,rule.Text,rule.Kind,rule.Sequence,
-                    prior[i],rows[i].FinalValue,rows[i].SourcePage,rows[i].SourceEvidence,outcomes[i],errors[i],DateTime.Now));
+                    prior[i],rows[i].FinalValue,sourcePages[i],sourceQuotes[i] ?? "",outcomes[i],errors[i],DateTime.Now,rule.ScopeLabel));
             log($"자연어 지침 {rule.Field} ({rule.Kind}) 실행 완료: {changed-before}건 변경");
         }
         log($"자연어 교정 종료: {changed}건 변경");

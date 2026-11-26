@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -11,7 +11,7 @@ using Microsoft.Data.Sqlite;
 
 namespace QCS;
 
-// Generates vectors for approved natural-language instructions only.
+// Generates vectors for saved natural-language instructions.
 // OpenAI calls are made outside SQLite transactions (SMB shared DB).
 internal static class MsdsNaturalInstructionEmbedding
 {
@@ -47,34 +47,23 @@ WHERE ai_instruction_vector_embedding_id=$model AND ai_instruction_vector_text_h
         return cmd.ExecuteNonQuery() == 1;
     }
 
-    internal static async Task<string> GenerateAsync(string instructionId, CancellationToken ct = default)
+    internal static async Task<string> GenerateAsync(string instructionId, string description, CancellationToken ct = default)
     {
-        // Read and close the DB before contacting the embedding service.
-        string description;
-        using (var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds")))
-        {
-            await db.OpenAsync(ct);
-            using var cmd = db.CreateCommand();
-            cmd.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id AND ai_learning_status='APPROVED'";
-            cmd.Parameters.AddWithValue("$id", instructionId);
-            description = Convert.ToString(await cmd.ExecuteScalarAsync(ct))?.Trim() ?? "";
-            if (description.Length == 0) throw new InvalidOperationException("승인된 자연어 지침을 선택하세요.");
-        }
-        string model = ReadSetting("API_EMBEDDING");
-        if (!string.Equals(model, "text-embedding-3-large", StringComparison.Ordinal))
-            throw new InvalidOperationException("현재 임베딩 저장 구조는 text-embedding-3-large만 지원합니다. 모델 전환은 전체 재임베딩 절차가 필요합니다.");
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(description)));
         using (var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds")))
         {
             await db.OpenAsync(ct);
             using var tx = db.BeginTransaction();
             using var verify = db.CreateCommand(); verify.Transaction = tx;
-            verify.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id AND ai_learning_status='APPROVED'";
+            verify.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id";
             verify.Parameters.AddWithValue("$id",instructionId);
-            if ((Convert.ToString(verify.ExecuteScalar()) ?? "").Trim() != description) throw new InvalidOperationException("지침이 변경되었습니다.");
+            if (!string.Equals(Convert.ToString(verify.ExecuteScalar())?.Trim(), description, StringComparison.Ordinal)) throw new InvalidOperationException("지침이 변경되었습니다.");
             bool reused = Reconnect(db,tx,instructionId,description); tx.Commit();
             if (reused) return "기존 임베딩 연결 완료";
         }
+        string model = ReadSetting("API_EMBEDDING");
+        if (!string.Equals(model, "text-embedding-3-large", StringComparison.Ordinal))
+            throw new InvalidOperationException("현재 임베딩 저장 구조는 text-embedding-3-large만 지원합니다. 모델 전환은 전체 재임베딩 절차가 필요합니다.");
         string key = ReadSetting("MSDS_API_KEY");
         string payload = JsonSerializer.Serialize(new { model, input = description, encoding_format = "float" });
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/embeddings");
@@ -112,7 +101,7 @@ WHERE ai_instruction_vector_embedding_id=$model AND ai_instruction_vector_text_h
             using (var verify = db.CreateCommand())
             {
                 verify.Transaction = tx;
-                verify.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id AND ai_learning_status='APPROVED'";
+                verify.CommandText = "SELECT ai_learning_description FROM ai_learning_mstr WHERE ai_learning_id=$id";
                 verify.Parameters.AddWithValue("$id", instructionId);
                 string latest = Convert.ToString(verify.ExecuteScalar())?.Trim() ?? "";
                 if (latest != description) throw new InvalidOperationException("임베딩 처리 중 지침이 변경되었습니다. 다시 실행하세요.");

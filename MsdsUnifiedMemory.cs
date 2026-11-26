@@ -48,7 +48,7 @@ namespace QCS
         }
 
         internal sealed record NaturalStep(Row Target, string RuleId, int Version, string Instruction, string Kind, int Sequence,
-            string Before, string After, int? Page, string Evidence, string Status, string? Error, DateTime At);
+            string Before, string After, int? Page, string Evidence, string Status, string? Error, DateTime At, string ScopeLabel = "");
         internal List<NaturalStep> NaturalHistory { get; } = new();
         internal string NaturalActor { get; set; } = "";
         public List<Row> Rows { get; } = new();

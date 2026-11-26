@@ -556,81 +556,6 @@ namespace QCS
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) { LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: S03 학습 실패 (기존 분석 유지) - {ex.Message}"); }
         }
-        private async Task ApplySemanticCorrectionsAsync(PdfItem item, MsdsAnalysisResult result, string apiKey, CancellationToken ct)
-        {
-            var diagnostics = new List<string>();
-            void Trace(string message)
-            {
-                var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {message}";
-                diagnostics.Add(line);
-                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: {message}");
-            }
-            Trace($"AI 교정 진단 시작 | 파일={item.FileName} | 성분={result.Ingredients.Count}건");
-            if (!CanApplyAiLearning())
-            {
-                Trace("교정 단계 건너뜀 | 사유=현재 사용자에게 Admin 권한 없음");
-                SaveAiCorrectionDiagnostic(item, diagnostics);
-                return;
-            }
-            try
-            {
-                var proposals = await MsdsSemanticCorrectionApplication.ProposeAsync(apiKey, result, ct,
-                    message => Trace(message));
-                foreach (var proposal in proposals)
-                {
-                    var row = item.Unified.IngredientField(proposal.Order, proposal.Property switch
-                    {
-                        "Twa" => "twa", "Stel" => "stel", "OralLd50" => "oral_ld50",
-                        "DermalLd50" => "dermal_ld50", "InhalationLc50" => "inhalation_lc50", _ => ""
-                    });
-                    if (row == null || row.CasNumber != proposal.Cas || row.ValueAi.Trim() != proposal.Before)
-                    {
-                        Trace($"교정 반영 제외 CAS={proposal.Cas} 항목={proposal.Property}: 결과 행 매핑 불일치");
-                        continue;
-                    }
-                    Trace($"교정 반영 성공 CAS={proposal.Cas} 항목={proposal.Property} | 학습번호={proposal.CorrectionId} | 유사도={proposal.Similarity:F3} | 이전값={proposal.Before} | 교정값={proposal.After}");
-                    row.ValueCorrection = proposal.After;
-                    row.AiApplied = true;
-                    row.LearningNo = proposal.CorrectionId;
-                    item.Applied.Add(new MsdsLearningEntry
-                    {
-                        Id = proposal.CorrectionId, Key = MsdsIngredientLearningKey.Key(proposal.Cas, proposal.Property),
-                        Before = proposal.Before, After = proposal.After,
-                        Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(item.FullPath))),
-                        At = DateTimeOffset.Now.ToString("O"), Type = "SIMILAR", Subtype = "SEMANTIC"
-                    });
-                }
-                Trace($"OpenAI 의미 검색 교정 {item.Applied.Count(x => x.Subtype == "SEMANTIC")}건 (저장 전 검증 필요)");
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (Exception ex)
-            {
-                Trace($"의미 검색 교정 미적용 | {ex.GetType().Name}: {ex.Message}");
-            }
-            finally
-            {
-                Trace("AI 교정 진단 종료");
-                SaveAiCorrectionDiagnostic(item, diagnostics);
-            }
-        }
-
-        private void SaveAiCorrectionDiagnostic(PdfItem item, List<string> diagnostics)
-        {
-            try
-            {
-                var outputFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Output");
-                Directory.CreateDirectory(outputFolder);
-                var path = System.IO.Path.Combine(outputFolder,
-                    $"QCS_AI_Correction_Diagnostic_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.txt");
-                File.WriteAllLines(path, diagnostics, new System.Text.UTF8Encoding(false));
-                PublishStatus("AI 교정 진단 로그 저장: " + System.IO.Path.GetFileName(path));
-            }
-            catch (Exception ex)
-            {
-                LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {item.FileName}: AI 교정 진단 로그 저장 실패 - {ex.Message}");
-            }
-        }
-
         private void SetAnalysisResult(PdfItem item, MsdsAnalysisResult result)
         {
             item.Parsed = result;
@@ -653,7 +578,7 @@ namespace QCS
             public string Description { get; set; } = "";
         }
 
-        private void LoadAiModels()
+        private static List<AiModelOption> ReadAiModels()
         {
             using var conn = new SqliteConnection(
                 DatabaseManager.GetConnectionString("common"));
@@ -676,11 +601,22 @@ namespace QCS
             }
             if (options.Count == 0)
                 throw new InvalidOperationException("API_model 공통코드가 등록되어 있지 않습니다.");
-            AiModelComboBox.ItemsSource = options;
+            return options;
+        }
+
+        private static string ResolveDefaultAiModel(List<AiModelOption> options)
+        {
             var defaultModel = GetAiSetting("MSDS_AI_Model", required: false);
             if (string.IsNullOrWhiteSpace(defaultModel)) defaultModel = "gpt-4.1-mini";
-            AiModelComboBox.SelectedValue = options.Any(o => o.Value == defaultModel)
+            return options.Any(o => o.Value == defaultModel)
                 ? defaultModel : options[0].Value;
+        }
+
+        private void LoadAiModels()
+        {
+            var options = ReadAiModels();
+            AiModelComboBox.ItemsSource = options;
+            AiModelComboBox.SelectedValue = ResolveDefaultAiModel(options);
         }
 
         private string GetSelectedAiModel()
@@ -1188,6 +1124,20 @@ namespace QCS
         }
 
         // 공통코드의 Comment 컬럼에서 AI 설정값을 조회한다.
+        internal static async Task<MsdsUnifiedMemory> TrialNaturalInstructionAsync(string path, string type,
+            MsdsNaturalInstructionEngine.Rule draft, bool selectedOnly, Func<bool> authorized, CancellationToken ct)
+        {
+            if (!authorized()) throw new InvalidOperationException("Admin 권한이 필요합니다.");
+            var key = GetAiSetting("MSDS_API_KEY");
+            var model = ResolveDefaultAiModel(ReadAiModels());
+            var item = new PdfItem { FileName = Path.GetFileName(path), FullPath = path, MaterialType = type };
+            var analyzer = new MsdsAiPdfAnalyzer(key, model);
+            BuildUnifiedMemory(item, await analyzer.AnalyzeAsync(path, ct));
+            var aliases = UnifiedFields.ToDictionary(x => x.Ui, x => x.Field, StringComparer.OrdinalIgnoreCase);
+            await MsdsNaturalInstructionEngine.TrialAsync(item.Unified, path, type, key, model, aliases, authorized, draft, selectedOnly, ct);
+            return item.Unified;
+        }
+
         private static string GetAiSetting(string fieldName, bool required = true)
         {
             using var conn = new SqliteConnection(

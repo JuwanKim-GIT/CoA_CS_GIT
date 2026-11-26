@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -19,7 +19,16 @@ namespace QCS;
 internal sealed class MsdsApplicationCasesWindow : Window
 {
     public sealed record Case(string Id,string Graco,string Product,string Material,string Date,string Path,string Hash);
-    public sealed record Detail(string Cas,string Ingredient,string Field,string Before,string After,string Final,string Status,string Page,string Evidence,string Error,string Instruction) { public string CasDisplay => string.IsNullOrEmpty(Cas) ? Ingredient : $"{Cas}({Ingredient})"; public string StatusLabel => Status == "FAILED" ? "실패" : Status == "APPLIED" ? "성공" : Status == "UNCHANGED" ? "변경 없음" : Status; }
+    public sealed record Detail(string Cas,string Ingredient,string Field,string Before,string After,string Final,string Status,string Page,string Evidence,string Error,string Instruction,string Version,string Scope) { public string CasDisplay => string.IsNullOrEmpty(Cas) ? Ingredient : $"{Cas}({Ingredient})"; public string StatusLabel => FormatStatus(Status); }
+    internal static string FormatStatus(string status) => status switch
+    {
+        "APPLIED" => "변경됨",
+        "UNCHANGED" => "변경 없음",
+        "SKIPPED" => "조건 불충족",
+        "INSUFFICIENT" => "근거·판단 부족",
+        "FAILED" => "실패",
+        _ => status
+    };
     private readonly string _rule;
     private readonly DataGrid _cases = MakeGrid();
     private readonly Dictionary<string,List<Detail>> _detailsByCase = new();
@@ -96,7 +105,7 @@ internal sealed class MsdsApplicationCasesWindow : Window
         _cases.AreRowDetailsFrozen=true;
         var host=new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentControl));
         _cases.RowDetailsTemplate=new System.Windows.DataTemplate { VisualTree=host };
-        _cases.LoadingRowDetails+=(_,e)=> { if(e.Row.Item is Case c && e.DetailsElement is System.Windows.Controls.ContentControl content && _visible.TryGetValue(c.Id,out var rows)) { var detail=MakeGrid(); detail.Margin=new Thickness(12,2,2,4); detail.MaxHeight=350; detail.MinHeight=80; Column(detail,"항목명","Field",15); Column(detail,"CAS No(성분명)","CasDisplay",25); Column(detail,"변경전","Before",30); Column(detail,"변경후","After",30); BindDetailWidth(detail,content); detail.ItemsSource=rows; _detailGrids[c.Id]=detail; detail.SelectionChanged+=async (_,args)=> { args.Handled=true; if(detail.SelectedItem is Detail d) { if(_selectedDetailGrid!=null && _selectedDetailGrid!=detail) _selectedDetailGrid.SelectedItem=null; _selectedDetailGrid=detail; _activeCase=c; _activeDetail=d; _cases.SelectedItem=c; await Preview(); } }; content.Content=detail; } };
+        _cases.LoadingRowDetails+=(_,e)=> { if(e.Row.Item is Case c && e.DetailsElement is System.Windows.Controls.ContentControl content && _visible.TryGetValue(c.Id,out var rows)) { var detail=MakeGrid(); detail.Margin=new Thickness(12,2,2,4); detail.MaxHeight=350; detail.MinHeight=80; Column(detail,"항목명","Field",15); Column(detail,"CAS No(성분명)","CasDisplay",25); Column(detail,"변경전","Before",30); Column(detail,"변경후","After",30); Column(detail,"결과","StatusLabel",20); BindDetailWidth(detail,content); detail.ItemsSource=rows; _detailGrids[c.Id]=detail; detail.SelectionChanged+=async (_,args)=> { args.Handled=true; if(detail.SelectedItem is Detail d) { if(_selectedDetailGrid!=null && _selectedDetailGrid!=detail) _selectedDetailGrid.SelectedItem=null; _selectedDetailGrid=detail; _activeCase=c; _activeDetail=d; _cases.SelectedItem=c; await Preview(); } }; content.Content=detail; } };
         _cases.LoadingRow+=(_,e)=>e.Row.DetailsVisibility=e.Row.Item is Case c && _expanded.Contains(c.Id)?Visibility.Visible:Visibility.Collapsed;
         _cases.UnloadingRowDetails+=(_,e)=> { if(e.Row.Item is Case c) _detailGrids.Remove(c.Id); };
         _cases.SelectionChanged+=(_,e)=> { if(e.OriginalSource!=_cases)return; if(_cases.SelectedItem is Case c && _activeCase?.Id!=c.Id && _selectedDetailGrid!=null && (!_detailGrids.TryGetValue(c.Id,out var g)||g!=_selectedDetailGrid)) { _selectedDetailGrid.SelectedItem=null; _selectedDetailGrid=null; ++_request; _activeCase=null; _activeDetail=null; _before.Text=_after.Text=_info.Text=""; _pdf.CoreWebView2?.Navigate("about:blank"); } };
@@ -108,20 +117,20 @@ internal sealed class MsdsApplicationCasesWindow : Window
     }
     private void LoadCases()
     {
-        try { using var db=Open(); using var cmd=db.CreateCommand(); cmd.CommandText="SELECT a.ai_apply_id,a.ai_apply_graco_code,a.ai_apply_product_name,a.ai_apply_material_type,a.ai_apply_applied_at,a.ai_apply_pdf_path,a.ai_apply_pdf_hash FROM ai_apply_mstr a WHERE EXISTS (SELECT 1 FROM ai_applyd_det d WHERE d.ai_applyd_apply_id=a.ai_apply_id AND d.ai_applyd_learning_id=$rule) ORDER BY a.ai_apply_applied_at DESC"; cmd.Parameters.AddWithValue("$rule",_rule); using var r=cmd.ExecuteReader(); _all.Clear(); while(r.Read()) _all.Add(new Case(Read(r,0),Read(r,1),Read(r,2),Read(r,3),Read(r,4),Read(r,5),Read(r,6))); r.Close(); _detailsByCase.Clear(); foreach(var c in _all) _detailsByCase[c.Id]=LoadDetails(c); Filter(); } catch(Exception ex){_status.Text="조회 실패: "+ex.Message;}
+        try { using var db=Open(); using var cmd=db.CreateCommand(); cmd.CommandText="SELECT a.ai_apply_id,a.ai_apply_graco_code,a.ai_apply_product_name,a.ai_apply_material_type,a.ai_apply_applied_at,a.ai_apply_pdf_path,a.ai_apply_pdf_hash FROM ai_apply_mstr a WHERE EXISTS (SELECT 1 FROM ai_applyd_det d WHERE d.ai_applyd_apply_id=a.ai_apply_id AND d.ai_applyd_learning_id IN (SELECT $rule UNION SELECT ai_instruction_versionh_id FROM ai_instruction_versionh_hist WHERE ai_instruction_versionh_family_id=$rule)) ORDER BY a.ai_apply_applied_at DESC"; cmd.Parameters.AddWithValue("$rule",_rule); using var r=cmd.ExecuteReader(); _all.Clear(); while(r.Read()) _all.Add(new Case(Read(r,0),Read(r,1),Read(r,2),Read(r,3),Read(r,4),Read(r,5),Read(r,6))); r.Close(); _detailsByCase.Clear(); foreach(var c in _all) _detailsByCase[c.Id]=LoadDetails(c); Filter(); } catch(Exception ex){_status.Text="조회 실패: "+ex.Message;}
     }
     private void Filter()
     {
         ++_request; _activeCase=null; _activeDetail=null; _before.Text=_after.Text=_info.Text=""; _pdf.CoreWebView2?.Navigate("about:blank");
         _selectedDetailGrid=null; _detailGrids.Clear(); _expanded.Clear(); _cases.ItemsSource=null; _visible.Clear();
         var terms=_search.Text.Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries);
-        foreach(var c in _all) { string master=$"{c.Id} {c.Graco} {c.Product} {c.Material} {c.Date}"; var rows=_detailsByCase[c.Id].Where(d=>terms.All(t=>$"{master} {d.Field} {d.Cas} {d.Ingredient} {d.Before} {d.After}".Contains(t,StringComparison.OrdinalIgnoreCase))).ToList(); if(rows.Count>0)_visible[c.Id]=rows; }
+        foreach(var c in _all) { string master=$"{c.Id} {c.Graco} {c.Product} {c.Material} {c.Date}"; var rows=_detailsByCase[c.Id].Where(d=>terms.All(t=>$"{master} {d.Field} {d.Cas} {d.Ingredient} {d.Before} {d.After} {d.StatusLabel} {d.Error}".Contains(t,StringComparison.OrdinalIgnoreCase))).ToList(); if(rows.Count>0)_visible[c.Id]=rows; }
         if(terms.Length>0) foreach(var id in _visible.Keys) _expanded.Add(id);
         _cases.ItemsSource=_all.Where(c=>_visible.ContainsKey(c.Id)).ToList(); _status.Text=$"적용 이력 {_visible.Count}건 / 교정 {_visible.Values.Sum(x=>x.Count)}건";
     }
     private List<Detail> LoadDetails(Case c)
     {
-        using var db=Open(); using var cmd=db.CreateCommand(); cmd.CommandText="SELECT ai_applyd_cas_no,ai_applyd_ingredient_name,ai_applyd_field_code,ai_applyd_value_before,ai_applyd_value_after,ai_applyd_value_final,ai_applyd_status,ai_applyd_source_page,ai_applyd_source_text,ai_applyd_error,ai_applyd_instruction FROM ai_applyd_det WHERE ai_applyd_apply_id=$id AND ai_applyd_learning_id=$rule ORDER BY ai_applyd_execution_order,ai_applyd_id"; cmd.Parameters.AddWithValue("$id",c.Id); cmd.Parameters.AddWithValue("$rule",_rule); using var r=cmd.ExecuteReader(); var rows=new List<Detail>(); while(r.Read())rows.Add(new Detail(Read(r,0),Read(r,1),Read(r,2),Read(r,3),Read(r,4),Read(r,5),Read(r,6),Read(r,7),Read(r,8),Read(r,9),Read(r,10))); return rows;
+        using var db=Open(); using var cmd=db.CreateCommand(); cmd.CommandText="SELECT ai_applyd_cas_no,ai_applyd_ingredient_name,ai_applyd_field_code,ai_applyd_value_before,ai_applyd_value_after,ai_applyd_value_final,CASE WHEN ai_applyd_error LIKE '[SKIPPED] %' THEN 'SKIPPED' WHEN ai_applyd_error LIKE '[INSUFFICIENT] %' THEN 'INSUFFICIENT' ELSE ai_applyd_status END,ai_applyd_source_page,ai_applyd_source_text,CASE WHEN ai_applyd_error LIKE '[SKIPPED] %' OR ai_applyd_error LIKE '[INSUFFICIENT] %' THEN substr(ai_applyd_error,instr(ai_applyd_error,'] ')+2) ELSE ai_applyd_error END,ai_applyd_instruction,ai_applyd_learning_version, CASE WHEN m.ai_learning_version=ai_applyd_learning_version THEN CASE m.ai_learning_scope WHEN 'GROUP' THEN 'GROUP · ' || m.ai_learning_material_type WHEN 'PRODUCT' THEN 'PRODUCT · ' || COALESCE(m.ai_learning_graco_code,m.ai_learning_supplier_name || ' / ' || m.ai_learning_product_name) WHEN 'SUPPLIER' THEN 'SUPPLIER · ' || m.ai_learning_supplier_name ELSE m.ai_learning_scope END ELSE '' END FROM ai_applyd_det LEFT JOIN ai_learning_mstr m ON m.ai_learning_id=ai_applyd_learning_id WHERE ai_applyd_apply_id=$id AND ai_applyd_learning_id IN (SELECT $rule UNION SELECT ai_instruction_versionh_id FROM ai_instruction_versionh_hist WHERE ai_instruction_versionh_family_id=$rule) ORDER BY ai_applyd_execution_order,ai_applyd_id"; cmd.Parameters.AddWithValue("$id",c.Id); cmd.Parameters.AddWithValue("$rule",_rule); using var r=cmd.ExecuteReader(); var rows=new List<Detail>(); while(r.Read())rows.Add(new Detail(Read(r,0),Read(r,1),Read(r,2),Read(r,3),Read(r,4),Read(r,5),Read(r,6),Read(r,7),Read(r,8),Read(r,9),Read(r,10),Read(r,11),Read(r,12))); return rows;
     }
     private static string Compact(string value) => new string(value.Where(ch=>!char.IsWhiteSpace(ch)).Select(char.ToUpperInvariant).ToArray());
     private async System.Threading.Tasks.Task Preview()
@@ -130,7 +139,7 @@ internal sealed class MsdsApplicationCasesWindow : Window
         _pdf.CoreWebView2?.Navigate("about:blank");
         if(_activeCase is not Case c || _activeDetail is not Detail d)return;
         _before.Text=d.Before; _after.Text=d.After; 
-        _info.Text=$"최종값: {d.Final}\n상태: {d.StatusLabel}\n실패 사유: {(d.Status == "FAILED" ? (string.IsNullOrWhiteSpace(d.Error) ? "기록된 사유 없음" : d.Error) : "해당 없음")}\n지침: {d.Instruction}\n원문 페이지: {d.Page}\n근거: {d.Evidence}";
+        _info.Text=$"최종값: {d.Final}\n상태: {d.StatusLabel}\n사유: {(string.IsNullOrWhiteSpace(d.Error) ? "—" : d.Error)}\n적용 범위: {(string.IsNullOrEmpty(d.Scope) ? "기록 없음" : d.Scope)} · 버전 v{d.Version}\n지침: {d.Instruction}\n원문 페이지: {d.Page}\n근거: {d.Evidence}";
         try { if(!File.Exists(c.Path)){_pdf.CoreWebView2?.Navigate("about:blank"); _status.Text="PDF 파일을 찾을 수 없습니다: "+c.Path; return;}
             int page=int.TryParse(d.Page,out int n)&&n>0?n:1; string path=c.Path; bool marked=false; double scrollY=0;
             string evidence=string.IsNullOrWhiteSpace(d.Evidence)?d.Before:d.Evidence;
