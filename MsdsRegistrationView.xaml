@@ -123,7 +123,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="TabHeader" Property="Background" Value="#2563EB"/>
-                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="Foreground" Value="#1E3A5F"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -415,6 +415,8 @@
                                         <TextBlock Text="구성성분 정보" Style="{StaticResource SubTitle}"/>
 
                                         <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <CheckBox Content="함량(원문) 보기" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                      Checked="RawConcentrationVisibility_Changed" Unchecked="RawConcentrationVisibility_Changed"/>
 
                                             <Button x:Name="AddIngredientButton" IsEnabled="False" Content="⊕ 행 추가" Click="AddIngredient_Click"/>
 
@@ -423,17 +425,29 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <DataGrid x:Name="IngredientsGrid" Height="260" RowHeight="NaN" MinRowHeight="27" FrozenColumnCount="3" ColumnHeaderHeight="38" IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False" SelectionChanged="IngredientsGrid_SelectionChanged">
+                                    <DataGrid x:Name="IngredientsGrid" Height="260" RowHeight="NaN" MinRowHeight="27" FrozenColumnCount="2" ColumnHeaderHeight="38" IsReadOnly="False" CellEditEnding="IngredientsGrid_CellEditEnding" AutoGenerateColumns="False" SelectionChanged="IngredientsGrid_SelectionChanged">
                                         <DataGrid.Resources>
-                                            <Style x:Key="MsdsWrappedCell" TargetType="TextBlock" BasedOn="{StaticResource QcsGridText}"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/></Style>
+                                            <Style x:Key="MsdsWrappedCell" TargetType="TextBlock">
+                                                <Setter Property="Padding" Value="8,2"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+                                                <Setter Property="LineHeight" Value="17"/>
+                                                <Setter Property="MaxHeight" Value="38"/>
+                                                <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                            <Style x:Key="MsdsCasCell" TargetType="TextBlock" BasedOn="{StaticResource MsdsWrappedCell}">
+                                                <Setter Property="ToolTip" Value="{Binding Name}"/>
+                                            </Style>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0879D0"/>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
                                         </DataGrid.Resources>
                                         <DataGrid.Columns>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Index}" Header="No." Width="38"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Name}" Header="성분명 (국문/영문)" Width="180"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding CasNumber}" Header="CAS 번호" Width="110"/>
-                                            <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding ConcentrationRaw}" Header="함량(원문)" Width="100"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource MsdsWrappedCell}" Visibility="Collapsed" Binding="{Binding Name}" Header="성분명 (국문/영문)" Width="180"/>
+                                            <DataGridTextColumn ElementStyle="{StaticResource MsdsCasCell}" Binding="{Binding CasNumber}" Header="CAS 번호" Width="110"/>
+                                            <DataGridTextColumn x:Name="RawConcentrationColumn" Visibility="Collapsed" ElementStyle="{StaticResource MsdsWrappedCell}" Binding="{Binding ConcentrationRaw}" Header="함량(원문)" Width="100"/>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Minimum}" Header="최소(%)" IsReadOnly="True" Width="75"/>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Maximum}" Header="최대(%)" IsReadOnly="True" Width="75"/>
                                             <DataGridTextColumn ElementStyle="{StaticResource QcsGridText}" Binding="{Binding Calculated}" Header="산출값(%)" IsReadOnly="True" Width="85"/>
@@ -543,7 +557,7 @@
                     <Button x:Name="ExportAnalysisButton" Content="분석결과 조회" Width="130" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="ExportAnalysis_Click" Margin="0,0,8,0"/>
                     <Button x:Name="AiCorrectionButton" Content="항목값 검색" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="AiCorrection_Click" Margin="0,0,8,0"/>
                     <Button x:Name="SaveCurrentButton" Content="저장" Width="110" IsEnabled="False" Style="{StaticResource PrimaryButton}" Click="SaveCurrent_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="DbSaveButton" IsEnabled="False" Content="선택 DB 저장" Width="145" Click="DbSave_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="DbSaveButton" IsEnabled="False" Content="선택 DB 저장" Width="145" Style="{StaticResource PrimaryButton}" Click="DbSave_Click" Margin="0,0,8,0"/>
                     <Button x:Name="BottomClearButton" Content="✕  목록 초기화" Click="Clear_Click" Margin="0"/>
                 </StackPanel>
             </Grid>

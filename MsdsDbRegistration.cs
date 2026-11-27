@@ -12,7 +12,6 @@ namespace QCS
 {
     internal static class MsdsDbRegistration
     {
-        internal const string PdfFolder = @"\\zcnpo0317vn0001\IPK_PROG\QCS\PDFFiles";
         internal sealed class Ingredient
         {
             public int SortOrder { get; set; }
@@ -292,11 +291,10 @@ namespace QCS
             }
         }
 
-        internal static Result Save(Document doc, string? pdfFolder = null)
+        internal static Result Save(Document doc, bool allowLocalPdf)
         {
             string stage = "DB";
             string? copiedPath = null;
-            bool copiedByUs = false;
             try
             {
                 if (!File.Exists(doc.FilePath)) throw new IOException("원본 PDF 파일이 없습니다.");
@@ -346,8 +344,11 @@ namespace QCS
                 // Use the canonical Graco code for newly registered PDFs.
                 var baseName = gracoCode;
                 var fileName = baseName + "-" + DateTime.Now.ToString("yyMMddHHmmss", CultureInfo.InvariantCulture) + ".pdf";
-                var destination = Path.Combine(pdfFolder ?? PdfFolder, fileName);
-                if (File.Exists(destination)) throw new IOException("저장할 PDF 파일명이 이미 존재합니다. 잠시 후 다시 시도해 주세요.");
+                stage = "PDF";
+                var (destination, _) = QcsExportPaths.Save("MSDS_PDF", fileName,
+                    path => File.Copy(doc.FilePath, path, false), allowLocalPdf);
+                copiedPath = destination;
+                stage = "DB";
                 if (hasExisting)
                 {
                     using (var previous = db.CreateCommand())
@@ -460,24 +461,12 @@ namespace QCS
                     audit.Parameters.AddWithValue("$rev", pendingRevision);
                     audit.ExecuteNonQuery();
                 }
-                stage = "PDF";
-                Directory.CreateDirectory(pdfFolder ?? PdfFolder);
-                File.Copy(doc.FilePath, destination, false);
-                copiedPath = destination;
-                copiedByUs = true;
-                stage = "DB";
-                try { tx.Commit(); }
-                catch
-                {
-                    if (copiedByUs) try { File.Delete(copiedPath!); } catch { /* cleanup best effort */ }
-                    throw;
-                }
+                tx.Commit();
                 return new Result { Success = true };
             }
             catch (Exception ex)
             {
-                // A failed copy can leave a partial file; never remove an existing file.
-                if (copiedByUs && copiedPath != null && File.Exists(copiedPath))
+                if (copiedPath != null)
                     try { File.Delete(copiedPath); } catch { }
                 return new Result { Stage = stage, Message = ex.Message };
             }

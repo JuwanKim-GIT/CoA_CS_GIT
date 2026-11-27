@@ -222,6 +222,12 @@ namespace QCS
         private async void DbSave_Click(object sender, RoutedEventArgs e)
         {
             if (_isAnalyzing || _isSavingDb) return;
+            if (_correctionWindow?.HasChanges == true)
+            {
+                PublishStatus("항목값 검색 창의 수정값을 먼저 저장하거나 취소해 주세요.");
+                _correctionWindow.Activate();
+                return;
+            }
             if (!CanRegister()) { PublishStatus("MSDS 등록 권한이 없습니다."); return; }
             // 현재 편집 중인 셀까지 반영한다.
             IngredientsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
@@ -244,27 +250,13 @@ namespace QCS
                 return;
             }
             _isSavingDb = true;
-            DbSaveButton.IsEnabled = false;
+            var mainWindow = Window.GetWindow(this) as MainWindow;
             int success = 0, failed = 0;
             try
             {
-                string pdfFolder = MsdsDbRegistration.PdfFolder;
-                bool networkAvailable = await Task.Run(() => Directory.Exists(pdfFolder));
-                if (!networkAvailable)
-                {
-                    var dialog = new Microsoft.Win32.OpenFolderDialog
-                    {
-                        Title = "네트워크 PDF 저장 경로에 접근할 수 없습니다. 대체 저장 폴더를 선택하세요.",
-                        Multiselect = false
-                    };
-                    if (dialog.ShowDialog() != true)
-                    {
-                        PublishStatus("MSDS DB 저장 취소: PDF 저장 폴더 선택 취소");
-                        return;
-                    }
-                    pdfFolder = dialog.FolderName;
-                    PublishStatus($"PDF 대체 저장 경로: {pdfFolder}");
-                }
+                mainWindow?.SetMsdsDbSaving(true);
+                DbSaveButton.IsEnabled = false;
+                PublishStatus($"MSDS DB 저장 중 (0/{targets.Count}건 처리)");
                 foreach (var item in targets)
                 {
                     if (!CanRegister() || item.MaterialType != _registrationType) { PublishStatus("MSDS 등록 권한 또는 제품/원료 구분이 일치하지 않습니다."); break; }
@@ -284,7 +276,8 @@ namespace QCS
                         NaturalHistory = item.Unified.NaturalHistory.ToList(), NaturalActor = item.Unified.NaturalActor,
                         FilePath = item.FullPath, MaterialType = item.MaterialType, Values = values, OriginalValues = item.Unified.Basics.ToDictionary(r => r.FieldCode, r => r.ValueAi, StringComparer.Ordinal), Ingredients = ingredients, Learning = item.SavedLearning.Values.ToList(), Applied = item.Applied.ToList()
                     };
-                    var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot, pdfFolder));
+                    bool allowLocalPdf = mainWindow?.GetCurrentUser()?.UserLevel == QcsAuthorizationService.LevelAdmin;
+                    var result = await Task.Run(() => MsdsDbRegistration.Save(snapshot, allowLocalPdf));
                     if (result.Duplicate)
                     {
                         item.RegistrationKind = "중복";
@@ -301,20 +294,38 @@ namespace QCS
                     {
                         SetStatus(item, result.Stage == "PDF" ? "PDF복사실패" : "DB저장실패");
                         failed++;
-                        System.Windows.MessageBox.Show($"{item.FileName}\n{result.Message}", "DB 저장 오류",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ShowDbSaveMessage($"{item.FileName}\n{result.Message}", "DB 저장 오류", MessageBoxImage.Warning);
                     }
+                    PublishStatus($"MSDS DB 저장 중 ({success + failed}/{targets.Count}건 처리)");
                 }
+
+                var summary = $"성공 {success}건 / 실패 {failed}건 / 미처리 {targets.Count - success - failed}건";
+                PublishStatus($"MSDS DB 저장 결과: {summary}");
+                ShowDbSaveMessage(summary, "DB 저장 결과");
+            }
+            catch (Exception ex)
+            {
+                PublishStatus($"MSDS DB 저장 중단: 성공 {success}건 / 실패 {failed}건");
+                ShowDbSaveMessage($"성공 {success}건 / 실패 {failed}건\n{ex.Message}",
+                    "DB 저장 중단", MessageBoxImage.Warning);
             }
             finally
             {
                 _isSavingDb = false;
+                mainWindow?.SetMsdsDbSaving(false);
                 FilesGrid.Items.Refresh();
                 UpdateCount();
                 UpdateActionButtons();
             }
-            PublishStatus($"MSDS DB 저장 결과: 성공 {success}건 / 실패 {failed}건");
-            System.Windows.MessageBox.Show($"DB 저장 완료: 성공 {success}건 / 실패 {failed}건", "DB 저장 결과");
+
+            void ShowDbSaveMessage(string message, string title, MessageBoxImage image = MessageBoxImage.Information)
+            {
+                var registrationTitle = _registrationType == "RM" ? "원료 MSDS 등록" : "제품 MSDS 등록";
+                if (mainWindow != null)
+                    System.Windows.MessageBox.Show(mainWindow, message, $"{registrationTitle} - {title}", MessageBoxButton.OK, image);
+                else
+                    System.Windows.MessageBox.Show(message, $"{registrationTitle} - {title}", MessageBoxButton.OK, image);
+            }
         }
 
         private void AddIngredient_Click(object sender, RoutedEventArgs e)
@@ -877,6 +888,12 @@ namespace QCS
             foreach (var box in FindVisualChildren<System.Windows.Controls.TextBox>(this))
                 if (!ReferenceEquals(box, FileSearchBox) && !ReferenceEquals(box, FileNameBox) && !ReferenceEquals(box, GracoCodeBox))
                     box.IsReadOnly = analyzing || ReferenceEquals(box, MaterialTypeDisplay);
+            if (_correctionWindow is { } correction)
+            {
+                correction.IsEnabled = !analyzing;
+                if (analyzing) correction.SetDocument("분석 중");
+                else _ = RefreshCorrectionDocumentAsync();
+            }
             SaveCurrentButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null;
             AiCorrectionButton.IsEnabled = !analyzing && _displayedItem?.Parsed != null && CanRegister();
             RefreshAiModelAvailability();
@@ -1016,17 +1033,32 @@ namespace QCS
         {
             if (_revertingSelection) return;
             var incoming = FilesGrid.SelectedItem as PdfItem;
-            if (!ReferenceEquals(_displayedItem, incoming) && !ConfirmLeave())
+            bool changingDocument = !ReferenceEquals(_displayedItem, incoming);
+            if (changingDocument)
             {
                 _revertingSelection = true;
-                FilesGrid.SelectedItem = _displayedItem;
-                _revertingSelection = false;
-                UpdateNavigation();
-                return;
+                try
+                {
+                    if (!ConfirmCorrectionDocumentChange(out bool saved) || (!saved && !ConfirmLeave()))
+                    {
+                        FilesGrid.SelectedItem = _displayedItem;
+                        UpdateNavigation();
+                        return;
+                    }
+                }
+                finally { _revertingSelection = false; }
             }
             UpdateNavigation();
             UpdateActionButtons();
-            if (incoming is not PdfItem item) { _displayedItem = null; ResetPreview(); UpdateActionButtons(); return; }
+            if (incoming is not PdfItem item)
+            {
+                _displayedItem = null;
+                ResetPreview();
+                UpdateActionButtons();
+                if (changingDocument) await RefreshCorrectionDocumentAsync();
+                return;
+            }
+            if (!changingDocument) return;
             _displayedItem = item;
             _restoringMaterialType = true;
             try
@@ -1039,6 +1071,7 @@ namespace QCS
             UpdateActionButtons();
             FileNameBox.Text = item.FileName;
             ShowExtractedFields(item);
+            _ = RefreshCorrectionDocumentAsync();
             try
             {
                 // WebView2는 비동기로 초기화된다. 초기화 완료 후 선택된 PDF를 연다.
@@ -1055,6 +1088,12 @@ namespace QCS
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
+            if (_correctionWindow?.HasChanges == true)
+            {
+                PublishStatus("항목값 검색 창의 수정값을 먼저 저장하거나 취소해 주세요.");
+                _correctionWindow.Activate();
+                return;
+            }
             if (_isAnalyzing) { PublishStatus("분석 중에는 파일을 제거할 수 없습니다."); return; }
             var selected = FilesGrid.SelectedItems.Cast<PdfItem>().ToList();
             if (selected.Count == 0) { PublishStatus("제거할 PDF를 선택해 주세요."); return; }
@@ -1066,13 +1105,19 @@ namespace QCS
             for (int i = 0; i < _files.Count; i++) _files[i].Index = i + 1;
             FilesGrid.Items.Refresh();
             UpdateCount();
-            if (_files.Count == 0) ResetPreview();
+            if (_files.Count == 0) { ResetPreview(); _ = RefreshCorrectionDocumentAsync(); }
             else FilesGrid.SelectedIndex = Math.Min(selected[0].Index - 1, _files.Count - 1);
             PublishStatus($"PDF {selected.Count}건을 목록에서 제거했습니다.");
         }
 
         private void Clear_Click(object sender, RoutedEventArgs e)
         {
+            if (_correctionWindow?.HasChanges == true)
+            {
+                PublishStatus("항목값 검색 창의 수정값을 먼저 저장하거나 취소해 주세요.");
+                _correctionWindow.Activate();
+                return;
+            }
             if (_files.Any(f => f.Status != "대기") && System.Windows.MessageBox.Show(
                 "목록과 지금까지의 작업 내용을 모두 삭제하시겠습니까?", "목록 초기화",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
@@ -1080,6 +1125,7 @@ namespace QCS
             _files.Clear();
             UpdateCount();
             ResetPreview();
+            _ = RefreshCorrectionDocumentAsync();
             LogList.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  목록 초기화");
             PublishStatus("PDF 목록 초기화 완료");
         }
@@ -1187,6 +1233,12 @@ namespace QCS
         // 이 단계에서는 AI 분석, 필드 추출, DB 저장을 수행하지 않는다.
         private async void StartAnalysis_Click(object sender, RoutedEventArgs e)
         {
+            if (_correctionWindow?.HasChanges == true)
+            {
+                PublishStatus("항목값 검색 창의 수정값을 먼저 저장하거나 취소해 주세요.");
+                _correctionWindow.Activate();
+                return;
+            }
             if (_isAnalyzing || _files.Count == 0) return;
             PublishStatus($"MSDS 분석 시작: {_files.Count}건");
             // DB 설정에 따라 분석 모듈을 선택한다.
@@ -1442,20 +1494,58 @@ namespace QCS
             return item.Parsed?.Fields.FirstOrDefault(f => f.FieldKey == "msds_moel_submission_no")?.Value ?? "";
         }
 
+        private MsdsAiCorrectionWindow? _correctionWindow;
+        private int _correctionLoadVersion;
+
+        private void RawConcentrationVisibility_Changed(object sender, RoutedEventArgs e)
+        {
+            RawConcentrationColumn.Visibility =
+                sender is System.Windows.Controls.CheckBox { IsChecked: true } ? Visibility.Visible : Visibility.Collapsed;
+        }
+
         private async void AiCorrection_Click(object sender, RoutedEventArgs e)
         {
-            if (_isAnalyzing || _displayedItem?.Parsed == null) return;
+            if (_isAnalyzing || _isSavingDb || _displayedItem?.Parsed == null) return;
             if (!CanRegister())
             {
                 PublishStatus("항목값 검색 접근 제한: 프로그램 사용권한이 없습니다.");
-                System.Windows.MessageBox.Show("항목값 검색 기능의 사용권한이 없습니다.", "권한 안내", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            if (_correctionWindow != null)
+            {
+                if (_correctionWindow.WindowState == WindowState.Minimized)
+                    _correctionWindow.WindowState = WindowState.Normal;
+                _correctionWindow.Activate();
+                return;
+            }
+
+            var window = new MsdsAiCorrectionWindow(() => !_isAnalyzing && !_isSavingDb && CanRegister())
+            {
+                Owner = Window.GetWindow(this)
+            };
+            _correctionWindow = window;
+            window.Closed += (_, _) => _correctionWindow = null;
+            window.Show();
+            await RefreshCorrectionDocumentAsync();
+        }
+
+        private async Task RefreshCorrectionDocumentAsync()
+        {
+            if (_correctionWindow is not { } window) return;
+            var version = ++_correctionLoadVersion;
             var item = _displayedItem;
+            var analysis = item?.Parsed;
+            string title = item == null ? "선택된 PDF 없음" : $"{item.GracoCode} · {item.FileName}";
+            window.ApplyChanges = null;
+            window.SetDocument(title, item?.FullPath ?? "");
+            if (item == null || analysis == null) return;
+
+            bool IsCurrent() => version == _correctionLoadVersion && ReferenceEquals(window, _correctionWindow)
+                && ReferenceEquals(item, _displayedItem) && ReferenceEquals(analysis, item.Parsed);
             try
             {
                 var pdfText = await _textExtractor.ExtractAsync(item.FullPath);
-                if (!ReferenceEquals(_displayedItem, item)) return;
+                if (!IsCurrent()) return;
                 var values = CaptureFields();
                 var rows = CaptureIngredients();
                 foreach (var row in rows.Where(r => rows.Count(x => x.CasNumber.Trim() == r.CasNumber.Trim()) == 1))
@@ -1464,35 +1554,53 @@ namespace QCS
                         var key = MsdsIngredientLearningKey.Key(row.CasNumber, field);
                         if (MsdsIngredientLearningKey.Parse(key, out _, out _)) values[key] = MsdsIngredientLearningKey.Get(row, field) ?? "";
                     }
-                var window = new MsdsAiCorrectionWindow(item.FileName, item.FullPath,
-                    pdfText, item.Parsed, values, values.Keys, BuildOriginalAiSnapshot(item), CanRegister);
-                window.Owner = System.Windows.Window.GetWindow(this);
-                if (window.ShowDialog() != true) return;
-                _loadingFields = true;
-                try
-                {
-                    foreach (var entry in window.CorrectedValues)
-                        if (FindName(entry.Key) is System.Windows.Controls.TextBox box)
-                            box.Text = entry.Value;
-                        else if (MsdsIngredientLearningKey.Parse(entry.Key, out var cas, out var field))
-                        {
-                            var matches = rows.Where(r => r.CasNumber.Trim() == cas).ToList();
-                            if (matches.Count == 1) MsdsIngredientLearningKey.Set(matches[0], field, entry.Value);
-                        }
-                    IngredientsGrid.ItemsSource = rows;
-                }
-                finally { _loadingFields = false; }
-                foreach (var key in window.CorrectedValues.Keys) item.Pending.Remove(key);
-                // Legacy learning candidate collection disabled.
-                MarkDirty();
-                PublishStatus($"항목값 {window.CorrectedValues.Count}개 항목 적용: {item.FileName} (DB 저장 전)");
+                window.SetDocument(title, item.FullPath, pdfText, analysis, values, BuildOriginalAiSnapshot(item));
+                window.ApplyChanges = changes => IsCurrent() && ApplyCorrectionChanges(item, changes);
             }
             catch (Exception ex)
             {
+                if (!IsCurrent()) return;
+                window.SetDocument($"{title} — 원문 읽기 실패: {ex.Message}");
                 PublishStatus("항목값 검색 실행 실패: " + ex.Message);
-                System.Windows.MessageBox.Show("항목값 검색 화면을 열 수 없습니다.\n" + ex.Message,
-                    "항목값 검색", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private bool ApplyCorrectionChanges(PdfItem item, IReadOnlyDictionary<string, string> changes)
+        {
+            if (!ReferenceEquals(item, _displayedItem) || _isAnalyzing || _isSavingDb || !CanRegister()) return false;
+            IngredientsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            IngredientsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var rows = CaptureIngredients();
+            _loadingFields = true;
+            try
+            {
+                foreach (var entry in changes)
+                    if (FindName(entry.Key) is System.Windows.Controls.TextBox box)
+                        box.Text = entry.Value;
+                    else if (MsdsIngredientLearningKey.Parse(entry.Key, out var cas, out var field))
+                    {
+                        var matches = rows.Where(r => r.CasNumber.Trim() == cas).ToList();
+                        if (matches.Count == 1) MsdsIngredientLearningKey.Set(matches[0], field, entry.Value);
+                    }
+                IngredientsGrid.ItemsSource = rows;
+            }
+            finally { _loadingFields = false; }
+            foreach (var key in changes.Keys) item.Pending.Remove(key);
+            MarkDirty();
+            PublishStatus($"항목값 {changes.Count}개 항목 적용: {item.FileName} (DB 저장 전)");
+            return true;
+        }
+
+        private bool ConfirmCorrectionDocumentChange(out bool saved)
+        {
+            saved = false;
+            return _correctionWindow == null || _displayedItem is not { } item ||
+                _correctionWindow.ConfirmDocumentChange(changes =>
+                {
+                    if (!ApplyCorrectionChanges(item, changes)) return false;
+                    SaveDisplayed();
+                    return !item.Dirty;
+                }, out saved);
         }
 
         private void ShowExtractedFields(PdfItem item)
@@ -1649,7 +1757,11 @@ namespace QCS
 
         private MsdsAnalysisReviewWindow? _analysisReview;
         private bool _reviewRefreshPending;
-        internal void CloseAnalysisReview() => _analysisReview?.Close();
+        internal void CloseAnalysisReview()
+        {
+            _analysisReview?.Close();
+            _correctionWindow?.Close();
+        }
         private void QueueAnalysisReviewRefresh()
         {
             if (_analysisReview == null || _reviewRefreshPending) return;

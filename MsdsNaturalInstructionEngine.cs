@@ -93,10 +93,17 @@ internal static class MsdsNaturalInstructionEngine
             candidates = candidates.Where(r => !Eq(r.Id, trial.Id) && r.Id != trial.ReplacesId &&
                 Eq(CanonicalField(r.Field), target)).Append(trial);
         }
-        var rules = candidates.Where(r => selectedOnly || r.Scope == "GLOBAL" ||
+        bool MatchesScope(Rule r) => r.Scope == "GLOBAL" ||
             (r.Scope == "GROUP" && Eq(r.Material,type)) ||
             (r.Scope == "SUPPLIER" && r.Supplier.Length > 0 && Eq(r.Supplier,supplier)) ||
-            (r.Scope == "PRODUCT" && (r.Graco.Length > 0 ? Eq(r.Graco,graco) : r.Supplier.Length > 0 && r.Product.Length > 0 && Eq(r.Supplier,supplier) && Eq(r.Product,product))))
+            (r.Scope == "PRODUCT" && (r.Graco.Length > 0 ? Eq(r.Graco,graco) : r.Supplier.Length > 0 && r.Product.Length > 0 && Eq(r.Supplier,supplier) && Eq(r.Product,product)));
+        if (selectedOnly && trial != null && !MatchesScope(trial))
+        {
+            memory.TrialScopeMismatch = $"적용 범위 불일치 · 선택 지침: {trial.ScopeLabel} / 시험 문서 품목군: {type} / 문서 코드: {graco}";
+            return 0;
+        }
+
+        var rules = candidates.Where(MatchesScope)
             .GroupBy(r => (Field: CanonicalField(r.Field).ToUpperInvariant(), r.Kind))
             .Select(group => group.OrderByDescending(ScopePriority)
                 .ThenByDescending(r => ReferenceEquals(r, trial))

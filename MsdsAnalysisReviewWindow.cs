@@ -56,30 +56,37 @@ internal sealed class MsdsAnalysisReviewWindow : Window
     private static SolidColorBrush Paint(byte r,byte g,byte b)=>new(Color.FromRgb(r,g,b));
     private static string Show(string? value)=>string.IsNullOrWhiteSpace(value)?"—":value;
     private readonly TextBlock _status = new();
-    private sealed record DisplayRow(MsdsUnifiedMemory.Row Source, string Item, string Ai, string Correction, string User, string Final);
+    private sealed record DisplayRow(MsdsUnifiedMemory.Row Source, string Item, string Ai, string Correction, string User, string Final)
+    {
+        public string ItemTooltip => Source.Category == "구성성분" ? Source.IngredientName : Item;
+    }
+    private string ItemHeader => _category.SelectedIndex == 1 ? "CAS No. / 항목명" : "항목명";
     private sealed record StepRow(int Sequence, string Rule, int Version, string Kind, string Before, string After, string Status, string Instruction);
     private static DataGrid MakeGrid() => new() { AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, SelectionMode=DataGridSelectionMode.Single, SelectionUnit=DataGridSelectionUnit.FullRow };
     private void Setup(DataGrid grid, params (string Header,string Path,double Width)[] columns)
     {
-        grid.Style=TryFindResource("QcsGrid") as Style; grid.RowStyle=TryFindResource("QcsGridRow") as Style;
+        grid.Style=TryFindResource("QcsGrid") as Style; 
         grid.RowHeight=double.NaN; grid.MinRowHeight=38;
         var cellStyle=new Style(typeof(DataGridCell));
         cellStyle.Setters.Add(new Setter(DataGridCell.BackgroundProperty,Brushes.Transparent));
         cellStyle.Setters.Add(new Setter(DataGridCell.BorderThicknessProperty,new Thickness(0)));
         var selected=new Trigger { Property=DataGridCell.IsSelectedProperty,Value=true };
-        selected.Setters.Add(new Setter(DataGridCell.BackgroundProperty,Paint(8,121,208)));
-        selected.Setters.Add(new Setter(DataGridCell.ForegroundProperty,Brushes.White));
+        selected.Setters.Add(new Setter(DataGridCell.BackgroundProperty,Paint(219,234,254)));
+        selected.Setters.Add(new Setter(DataGridCell.ForegroundProperty,Paint(30,58,95)));
         cellStyle.Triggers.Add(selected); grid.CellStyle=cellStyle;
-        grid.Resources[SystemColors.InactiveSelectionHighlightBrushKey]=Paint(8,121,208);
-        grid.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey]=Brushes.White;
+        grid.Resources[SystemColors.InactiveSelectionHighlightBrushKey]=Paint(219,234,254);
+        grid.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey]=Paint(30,58,95);
         foreach(var c in columns) {
-            var style=new Style(typeof(TextBlock),TryFindResource("QcsGridText") as Style);
+            var style=new Style(typeof(TextBlock));
             style.Setters.Add(new Setter(TextBlock.TextWrappingProperty,TextWrapping.Wrap));
+            style.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis));
+            style.Setters.Add(new Setter(TextBlock.LineStackingStrategyProperty,LineStackingStrategy.BlockLineHeight));
+            style.Setters.Add(new Setter(TextBlock.LineHeightProperty,17d));
+            style.Setters.Add(new Setter(FrameworkElement.MaxHeightProperty,46d));
             style.Setters.Add(new Setter(TextBlock.PaddingProperty,new Thickness(8,6,8,6)));
             if(c.Path=="Correction"||c.Path=="User") style.Setters.Add(new Setter(TextBlock.ForegroundProperty,c.Path=="Correction"?Paint(37,99,235):Paint(21,128,61)));
-            var selectedText=new DataTrigger { Binding=new Binding("IsSelected") { RelativeSource=new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor,typeof(DataGridRow),1) },Value=true };
-            selectedText.Setters.Add(new Setter(TextBlock.ForegroundProperty,Brushes.White)); style.Triggers.Add(selectedText);
-            style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(c.Path)));
+            style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty,VerticalAlignment.Center));
+            style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(c.Path == "Item" ? "ItemTooltip" : c.Path)));
             grid.Columns.Add(new DataGridTextColumn { Header=c.Header, Binding=new Binding(c.Path), Width=new DataGridLength(c.Width,DataGridLengthUnitType.Star), ElementStyle=style });
         }
     }
@@ -90,10 +97,15 @@ internal sealed class MsdsAnalysisReviewWindow : Window
         RestorePlacement(); Closing+=(_,_)=>SavePlacement();
         var root=new DockPanel { Margin=new Thickness(12) }; Content=root;
         var top=new StackPanel(); DockPanel.SetDock(top,Dock.Top); root.Children.Add(top);
-        var header=new DockPanel { Margin=new Thickness(0,0,0,8) }; top.Children.Add(header);
-        var counts=new StackPanel { Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center }; DockPanel.SetDock(counts,Dock.Right); header.Children.Add(counts);
+        var header = new Grid { Margin = new Thickness(0,0,0,8) };
+        header.ColumnDefinitions.Add(new ColumnDefinition());
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        top.Children.Add(header);
+        var counts=new StackPanel { Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center }; Grid.SetColumn(counts,1); header.Children.Add(counts);
         var identity=new StackPanel(); header.Children.Add(identity); identity.Children.Add(_heading); identity.Children.Add(_info); top.Children.Add(_notice);
-        void CountCard(string label,TextBlock value,SolidColorBrush color) { var panel=new StackPanel(); panel.Children.Add(new TextBlock { Text=label }); value.FontSize=20;value.FontWeight=FontWeights.SemiBold;value.Foreground=color;panel.Children.Add(value); counts.Children.Add(new System.Windows.Controls.Border { Background=Paint(226,234,245),CornerRadius=new CornerRadius(5),Padding=new Thickness(12,6,12,6),Margin=new Thickness(0,0,8,0),MinWidth=105,Child=panel }); }
+        void CountCard(string label,TextBlock value,SolidColorBrush color) { var panel=new StackPanel(); panel.Children.Add(new TextBlock { Text=label }); value.FontSize=20;value.FontWeight=FontWeights.SemiBold;value.Foreground=color;panel.Children.Add(value); counts.Children.Add(new System.Windows.Controls.Border { Background=Paint(241,245,249),CornerRadius=new CornerRadius(5),Padding=new Thickness(12,6,12,6),Margin=new Thickness(0,0,8,0),MinWidth=105,Child=panel }); }
         CountCard("전체 항목",_total,Paint(30,58,95)); CountCard("AI 교정 항목",_corrected,Paint(37,99,235)); CountCard("사용자 수정 항목",_modified,Paint(21,128,61));
         var filters=new DockPanel { Margin=new Thickness(0,4,0,8) }; top.Children.Add(filters);
         var filterPanel=new StackPanel { Orientation=Orientation.Horizontal }; DockPanel.SetDock(filterPanel,Dock.Right); filters.Children.Add(filterPanel);
@@ -118,18 +130,41 @@ internal sealed class MsdsAnalysisReviewWindow : Window
         instructionToggle.Collapsed+=(_,_)=>{instructionHeight=lower.RowDefinitions[1].Height;lower.RowDefinitions[1].Height=GridLength.Auto;};
         instructionToggle.Expanded+=(_,_)=>lower.RowDefinitions[1].Height=instructionHeight;
         _values.SelectionChanged+=(_,_)=> { _steps.ItemsSource=(_values.SelectedItem is DisplayRow d ? Steps(d.Source) : Enumerable.Empty<StepRow>()).ToList(); _steps.SelectedIndex=0; _instruction.Text=(_steps.SelectedItem as StepRow)?.Instruction ?? "적용 이력 없음"; };
+        root.SizeChanged += (_, _) =>
+        {
+            bool compact = root.ActualWidth < 980;
+            Grid.SetRow(counts,compact ? 1 : 0);
+            Grid.SetColumn(counts,compact ? 0 : 1);
+            counts.Margin = compact ? new Thickness(0,4,0,0) : new Thickness(8,0,0,0);
+            _filter.Width = compact ? 120 : 150;
+            foreach (Button button in actions.Children)
+            {
+                button.MinWidth = compact ? 80 : 100;
+                button.Margin = compact ? new Thickness(2) : new Thickness(4);
+            }
+            if (historyToggle.IsExpanded)
+                body.RowDefinitions[2].MinHeight = root.ActualHeight < 650 ? 110 : 150;
+        };
         _steps.SelectionChanged+=(_,_)=>_instruction.Text=(_steps.SelectedItem as StepRow)?.Instruction ?? "적용 이력 없음";
         _category.SelectionChanged+=(_,e)=>{if(ReferenceEquals(e.Source,_category)) Refresh();}; _filter.SelectionChanged+=(_,_)=>Refresh(); _category.SelectedIndex=0; _filter.SelectedIndex=0; SetData(memory,title,stored,materialType,analysisTime,gracoCode);
     }
-    private IEnumerable<StepRow> Steps(MsdsUnifiedMemory.Row r)=>_memory.NaturalHistory.Where(s=>ReferenceEquals(s.Target,r)).Select(s=>new StepRow(s.Sequence,_ruleNames.TryGetValue((s.RuleId,s.Version),out var name)?name:s.RuleId,s.Version,s.Kind,s.Before,s.After,ResultLabel(s.Status),s.Instruction));
+    private IEnumerable<StepRow> Steps(MsdsUnifiedMemory.Row r)=>_memory.NaturalHistory.Where(s=>ReferenceEquals(s.Target,r)).Select(s=>new StepRow(s.Sequence,_ruleNames.TryGetValue((s.RuleId,s.Version),out var name)?name:s.RuleId,s.Version,s.Kind,s.Before,s.After,ResultLabel(s),s.Instruction));
     private void Refresh() {
+        _values.Columns[0].Header = ItemHeader;
         var previous=(_values.SelectedItem as DisplayRow)?.Source;
         var rows=_memory.Rows.Where(r=>r.Category==(_category.SelectedIndex==1?"구성성분":"기본정보")).ToList();
         _total.Text=$"{rows.Count} 건"; _corrected.Text=$"{rows.Count(r=>r.ValueCorrection!=null)} 건"; _modified.Text=$"{rows.Count(r=>r.ValueMod!=null)} 건";
         _status.Text=$"전체 {rows.Count} / AI 교정 {rows.Count(r=>r.ValueCorrection!=null)} / 사용자 수정 {rows.Count(r=>r.ValueMod!=null)}";
-        _values.ItemsSource=rows.Where(r=>_filter.SelectedIndex switch {1=>r.ValueCorrection!=null,2=>r.ValueMod!=null,3=>r.ValueCorrection!=null||r.ValueMod!=null,_=>true}).Select(r=>new DisplayRow(r,r.Category=="구성성분"?$"{r.Order}. {r.IngredientName} ({r.CasNumber}) / {r.FieldName}":r.FieldName,r.ValueAi,r.ValueCorrection??"",r.ValueMod??"",r.FinalValue)).ToList(); var list=(List<DisplayRow>)_values.ItemsSource; _values.SelectedItem=list.FirstOrDefault(x=>previous!=null && x.Source.FieldCode==previous.FieldCode && x.Source.Order==previous.Order && x.Source.CasNumber==previous.CasNumber)??list.FirstOrDefault();
+        _values.ItemsSource=rows.Where(r=>_filter.SelectedIndex switch {1=>r.ValueCorrection!=null,2=>r.ValueMod!=null,3=>r.ValueCorrection!=null||r.ValueMod!=null,_=>true}).Select(r=>new DisplayRow(r,r.Category=="구성성분"?$"{Show(r.CasNumber)} / {r.FieldName}":r.FieldName,r.ValueAi,r.ValueCorrection??"",r.ValueMod??"",r.FinalValue)).ToList(); var list=(List<DisplayRow>)_values.ItemsSource; _values.SelectedItem=list.FirstOrDefault(x=>previous!=null && x.Source.FieldCode==previous.FieldCode && x.Source.Order==previous.Order && x.Source.CasNumber==previous.CasNumber)??list.FirstOrDefault();
     }
-    private static string ResultLabel(string status)=>status switch { "APPLIED"=>"교정 적용", "UNCHANGED"=>"변경 없음", "SKIPPED"=>"조건 불충족", "FAILED"=>"교정 실패", _=>status };
+    private static string ResultLabel(MsdsUnifiedMemory.NaturalStep step) => step.Status switch
+    {
+        "APPLIED" => "교정 적용",
+        "UNCHANGED" => "변경 없음",
+        "SKIPPED" => string.IsNullOrWhiteSpace(step.Before) ? "조건 불충족 (값 없음)" : "조건 불충족 (값 있음)",
+        "FAILED" => "교정 실패",
+        _ => step.Status
+    };
     private void LoadRuleNames() {
         try {
             using var db=new SqliteConnection(DatabaseManager.GetConnectionString("msds")); db.Open();
@@ -141,11 +176,13 @@ internal sealed class MsdsAnalysisReviewWindow : Window
         try {
             BeforeExport?.Invoke();
             if(!_hasData) return;
-            var dir=System.IO.Path.Combine(AppContext.BaseDirectory,"Output"); System.IO.Directory.CreateDirectory(dir); var path=System.IO.Path.Combine(dir,$"QCS_MSDS_Review_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.xlsx");
+            string file = $"QCS_MSDS_Review_{DateTime.Now:yyyyMMdd_HHmmss_fffffff}.xlsx";
             var rows=new List<string[]> {new[]{"MSDS ID","구분","순번","CAS No.","성분명","항목","최초 추출값","AI 교정값","사용자 수정값","최종값"}};
             rows.AddRange(_memory.Rows.OrderBy(r=>r.Category=="기본정보"?0:1).Select(r=>new[]{r.MsdsId,r.Category,r.Order?.ToString()??"",r.CasNumber,r.IngredientName,r.FieldName,r.ValueAi,r.ValueCorrection??"",r.ValueMod??"",r.FinalValue}));
-            MsdsAnalysisExcelWriter.SaveSheets(path,new (string Name,IReadOnlyList<string[]> Rows)[]{("분석결과",rows)});
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true}); _status.Text="Excel 출력 완료";
+            var output = QcsExportPaths.Save("AI_ANALYSIS_RESULTS", file, path =>
+                MsdsAnalysisExcelWriter.SaveSheets(path, new (string Name, IReadOnlyList<string[]> Rows)[] { ("분석결과", rows) }));
+            _status.Text = output.IsLocal ? $"로컬 저장: {output.Path}" : $"Excel 저장: {output.Path}";
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(output.Path) { UseShellExecute = true });
         } catch(Exception ex) { _status.Text="Excel 출력 실패: "+ex.Message; }
     }
     internal static MsdsUnifiedMemory ReadStored(SqliteConnection db,long id,DataRow master,DataTable? details) {

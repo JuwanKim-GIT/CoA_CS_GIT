@@ -26,6 +26,37 @@ namespace QCS
     public partial class MainWindow : Window
     {
         private QcsUser? _switchedUser;
+        private bool _isMsdsDbSaving;
+        private readonly List<MsdsAiCorrectionWindow> _lockedSearchWindows = new();
+
+        internal void SetMsdsDbSaving(bool saving)
+        {
+            _isMsdsDbSaving = saving;
+            MainContent.IsEnabled = !saving;
+            if (saving)
+            {
+                foreach (var window in OwnedWindows.OfType<MsdsAiCorrectionWindow>().Where(window => window.IsEnabled))
+                {
+                    window.IsEnabled = false;
+                    _lockedSearchWindows.Add(window);
+                }
+            }
+            else
+            {
+                foreach (var window in _lockedSearchWindows) window.IsEnabled = true;
+                _lockedSearchWindows.Clear();
+            }
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            if (!_isMsdsDbSaving) return;
+
+            e.Cancel = true;
+            MessageBox.Show(this, "MSDS DB 저장 작업 중입니다. 저장 결과를 확인한 후 종료해 주세요.",
+                "QCS 종료", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
         private static readonly Dictionary<string, string> ProgramIds = new(StringComparer.Ordinal)
         {
             ["CoA 발행"] = "CoARegistryView.xaml.cs", ["CoA 조회"] = "MainWindow.xaml.cs#Menu_CoaInq_Click",

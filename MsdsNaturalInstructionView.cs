@@ -319,10 +319,9 @@ public sealed class MsdsNaturalInstructionView : UserControl
         {
             ItemsSource = new[] { "RM", "FG" }, MinWidth = 70, Margin = new Thickness(8, 3, 0, 3)
         };
-        if (draft.Scope == "GROUP") material.SelectedItem = draft.Material;
         var materialLabel = new TextBlock
         {
-            Text = "시험 품목군", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0)
+            Text = "시험 문서 품목군", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0)
         };
         var context = new TextBlock
         {
@@ -331,10 +330,8 @@ public sealed class MsdsNaturalInstructionView : UserControl
         };
         void UpdateTrialOptions()
         {
-            bool selectedOnly = mode.SelectedIndex == 0;
-            material.Visibility = materialLabel.Visibility = selectedOnly ? Visibility.Collapsed : Visibility.Visible;
             context.Text = $"선택 지침: {_name.Text.Trim()} · {draft.ScopeLabel}" +
-                (selectedOnly ? "" : $"   /   시험 품목군: {material.SelectedItem ?? "선택 필요"}");
+                $"   /   시험 문서 품목군: {material.SelectedItem ?? "선택 필요"}";
             ShowMessage("시험 시작 버튼을 누르세요.");
         }
         var start = MakeButton("▶  시험 시작", (_, _) => { });
@@ -392,13 +389,12 @@ public sealed class MsdsNaturalInstructionView : UserControl
         start.Click += async (_, _) =>
         {
             bool selectedOnly = mode.SelectedIndex == 0;
-            if (!selectedOnly && material.SelectedItem == null)
+            if (material.SelectedItem is not string materialType)
             {
-                ShowMessage("시험 품목군(RM·FG)을 선택하세요.");
+                ShowMessage("시험 문서 품목군(RM·FG)을 선택하세요.");
                 return;
             }
 
-            string materialType = selectedOnly ? draft.Material : (string)material.SelectedItem!;
             start.IsEnabled = mode.IsEnabled = material.IsEnabled = false;
             status.Text = "시험 실행 중";
             scroll.ScrollToTop();
@@ -408,6 +404,13 @@ public sealed class MsdsNaturalInstructionView : UserControl
                 var memory = await MsdsRegistrationView.TrialNaturalInstructionAsync(path, materialType, draft, selectedOnly,
                     Allowed, cancellation.Token);
                 if (cancellation.IsCancellationRequested) return;
+                if (memory.TrialScopeMismatch is string mismatch)
+                {
+                    status.Text = "적용 범위 불일치";
+                    ShowMessage(mismatch);
+                    return;
+                }
+
                 status.Text = "✓  시험 완료";
                 if (memory.NaturalHistory.Count == 0)
                 {
@@ -638,50 +641,63 @@ public sealed class MsdsNaturalInstructionView : UserControl
     private void Delete()
     {
         if (!Allowed() || _mode != EditMode.View) { Notify("Admin 권한이 필요합니다."); return; }
-        _selectedId ??= (_items.SelectedItem as Instruction)?.Id;
-        if (_selectedId == null) { Notify("삭제할 지침을 선택하세요."); return; }
+        if (_items.SelectedItem is not Instruction selected) { Notify("삭제할 지침을 선택하세요."); return; }
 
-        if (MessageBox.Show("선택한 지침과 연결된 임베딩 벡터를 삭제하시겠습니까?", "지침 삭제",
-            MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) { Notify("삭제 취소"); return; }
+        if (MessageBox.Show($"'{selected.Name}' 지침의 모든 버전, 적용 이력, 임베딩을 영구 삭제하시겠습니까?",
+            "지침 영구 삭제", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            Notify("삭제 취소");
+            return;
+        }
+
         try
         {
             using var db = Open();
             using var tx = db.BeginTransaction();
-            string family = Convert.ToString(ExecuteVersionCommand(db, tx, FamilyQuery, ("$id", _selectedId))) ?? _selectedId;
-            long versions = Convert.ToInt64(ExecuteVersionCommand(db, tx, @"SELECT COUNT(*) FROM ai_learning_mstr
-                LEFT JOIN ai_instruction_versionh_hist ON ai_instruction_versionh_id=ai_learning_id
-                WHERE ai_learning_id=$family OR ai_instruction_versionh_family_id=$family", ("$family", family)));
-            long cases = Convert.ToInt64(ExecuteVersionCommand(db, tx,
-                "SELECT COUNT(*) FROM ai_applyd_det WHERE ai_applyd_learning_id=$id", ("$id", _selectedId)));
-            if (versions > 1 || cases > 0)
+            string id = selected.Id;
+            var exists = ExecuteVersionCommand(db, tx,
+                "SELECT 1 FROM ai_learning_mstr WHERE ai_learning_id=$id", ("$id", id));
+            if (exists == null)
             {
-                Notify("버전 또는 적용 이력이 있는 지침은 삭제할 수 없습니다. 비활성화를 사용하세요.");
+                Load();
+                Notify("삭제 대상이 없습니다.");
                 return;
             }
-            using (var vector = db.CreateCommand())
-            {
-                vector.Transaction = tx;
-                vector.CommandText = "DELETE FROM ai_instruction_vectord_det WHERE ai_instruction_vector_learning_id=$id";
-                vector.Parameters.AddWithValue("$id", _selectedId); vector.ExecuteNonQuery();
-            }
-            // Legacy learning candidates can have case links with ON DELETE RESTRICT.
-            // Remove only links owned by this instruction, never the correction history itself.
-            using (var links = db.CreateCommand())
-            {
-                links.Transaction = tx;
-                links.CommandText = "DELETE FROM ai_learningd_det WHERE ai_learningd_learning_id=$id";
-                links.Parameters.AddWithValue("$id", _selectedId);
-                links.ExecuteNonQuery();
-            }
-            ExecuteVersionCommand(db, tx, "DELETE FROM ai_instruction_versionh_hist WHERE ai_instruction_versionh_id=$id", ("$id", _selectedId));
-            using var cmd = db.CreateCommand(); cmd.Transaction = tx;
-            cmd.CommandText = "DELETE FROM ai_learning_mstr WHERE ai_learning_id=$id";
-            cmd.Parameters.AddWithValue("$id", _selectedId);
-            int count = cmd.ExecuteNonQuery(); tx.Commit();
-            _selectedId = null; Clear(); Load(); Notify(count == 1 ? "지침 삭제 완료" : "삭제 대상이 없습니다.");
+
+            string family = Convert.ToString(ExecuteVersionCommand(db, tx, FamilyQuery, ("$id", id))) ?? id;
+            using var cmd = db.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = @"
+CREATE TEMP TABLE instruction_delete_ids AS
+SELECT ai_learning_id AS id FROM ai_learning_mstr WHERE ai_learning_id=$family
+UNION
+SELECT ai_instruction_versionh_id FROM ai_instruction_versionh_hist WHERE ai_instruction_versionh_family_id=$family;
+
+CREATE TEMP TABLE instruction_delete_cases AS
+SELECT DISTINCT ai_applyd_apply_id AS id FROM ai_applyd_det
+WHERE ai_applyd_learning_id IN (SELECT id FROM instruction_delete_ids);
+
+DELETE FROM ai_applyd_det WHERE ai_applyd_learning_id IN (SELECT id FROM instruction_delete_ids);
+DELETE FROM ai_apply_mstr WHERE ai_apply_id IN (SELECT id FROM instruction_delete_cases)
+    AND NOT EXISTS (SELECT 1 FROM ai_applyd_det WHERE ai_applyd_apply_id=ai_apply_id);
+DELETE FROM ai_applyh_hist WHERE ai_applyh_learning_id IN (SELECT id FROM instruction_delete_ids);
+DELETE FROM ai_instruction_vectord_det WHERE ai_instruction_vector_learning_id IN (SELECT id FROM instruction_delete_ids);
+DELETE FROM ai_learningd_det WHERE ai_learningd_learning_id IN (SELECT id FROM instruction_delete_ids);
+DELETE FROM ai_instruction_versionh_hist WHERE ai_instruction_versionh_id IN (SELECT id FROM instruction_delete_ids);
+DELETE FROM ai_learning_mstr WHERE ai_learning_id IN (SELECT id FROM instruction_delete_ids);
+
+DROP TABLE instruction_delete_cases;
+DROP TABLE instruction_delete_ids;";
+            cmd.Parameters.AddWithValue("$family", family);
+            cmd.ExecuteNonQuery();
+            tx.Commit();
+            Clear();
+            Load();
+            Notify("지침과 관련 이력 삭제 완료");
         }
         catch (Exception ex) { Notify("삭제 실패: " + ex.Message); }
     }
+
     private void Clear()
     {
         _detailStatus.Text = _detailCounts.Text = _detailMetadata.Text = "";

@@ -785,33 +785,17 @@ namespace QCS
             else if (RdoRu.IsChecked == true) templateFile = "New_CoA_form_Rus.xltm";
             else if (RdoJa.IsChecked == true) templateFile = "New_CoA_form_Jpn.xltm";
 
-            // zx_code_mstr에서 CoA_CS_xltm_path 조회 (없으면 등록 요청)
-            string? xltmBaseDir = null;
-            using (var connPath = DatabaseManager.OpenConnection("coa"))
+            string templatePath;
+            try
             {
-                string queryPath = "SELECT zx_code_cmmt FROM zx_code_mstr WHERE zx_code_fldname = 'CoA_CS_xltm_path' LIMIT 1;";
-                using (var cmdPath = new SqliteCommand(queryPath, connPath))
-                {
-                    var resultPath = cmdPath.ExecuteScalar();
-                    if (resultPath != null && resultPath != DBNull.Value && !string.IsNullOrEmpty(resultPath.ToString()?.Trim()))
-                        xltmBaseDir = resultPath.ToString()?.Trim();
-                }
+                var template = QcsExportPaths.Template("COA", templateFile);
+                templatePath = template.Path;
+                if (template.IsLocal)
+                    MessageBox.Show($"CoA template (local): {templatePath}", "QCS", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-
-            if (string.IsNullOrEmpty(xltmBaseDir))
+            catch (Exception ex)
             {
-                MessageBox.Show("zx_code_mstr에 'CoA_CS_xltm_path'가 등록되지 않았습니다.\n관리자에게 문의하여 등록해 주세요.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            string templatePath = System.IO.Path.Combine(
-                System.IO.Path.GetDirectoryName(Environment.ProcessPath!)!,
-                xltmBaseDir,
-                templateFile).Replace("/", "\\");
-
-            if (!System.IO.File.Exists(templatePath))
-            {
-                MessageBox.Show($"서식파일이 존재하지 않습니다:\n{templatePath}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "CoA template", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 

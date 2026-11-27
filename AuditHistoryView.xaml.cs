@@ -7,9 +7,11 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Xml.Linq;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Data.Sqlite;
 using UserControl = System.Windows.Controls.UserControl;
@@ -19,9 +21,15 @@ namespace QCS
 {
     public partial class AuditHistoryView : UserControl
     {
-        private sealed record Revision(long Number, string Label);
-        private sealed record AuditItem(string GracoCode, string When, string User, string Action, string Product, long Rev, string Content);
-        private sealed record ChangeItem(string Table, string Field, string Old, string New);
+        private sealed record Revision(long Number, string Label, DateTime? Date = null, string CancelledOn = "", string CancelledBy = "", string CancelReason = "")
+        {
+            internal bool IsCancelled => CancelledOn.Length > 0;
+        }
+        private sealed record AuditItem(string GracoCode, string When, string User, string Action, string Product, long Rev, string Content, string MsdsId, string MsdsRevision, string Operation);
+        private sealed record DetailGroup(string RecordId, string Title);
+        private static readonly DetailGroup BasicDetailGroup = new("", "");
+        private sealed record ChangeItem(string Label, string Value, string Field, DetailGroup Group);
+        private sealed record AuditField(string Table, string RecordId, string Field, string? Value);
         private readonly List<AuditItem> _all = new();
         private bool _loading;
 
@@ -74,6 +82,7 @@ namespace QCS
                     if (string.IsNullOrEmpty(dateCol)) dateCol = cols.FirstOrDefault(c => c.Contains("date", StringComparison.OrdinalIgnoreCase) || c.Contains("일자", StringComparison.OrdinalIgnoreCase)) ?? "";
                     if (string.IsNullOrEmpty(noCol) || string.IsNullOrEmpty(dateCol))
                         throw new InvalidOperationException("rev_mstr의 개정번호/개정일자 컬럼명을 확인할 수 없습니다. 실제 스키마 확인이 필요합니다.");
+                    var cancellations = ReadCancellations(db);
                     using var cmd = db.CreateCommand();
                     cmd.CommandText = $"SELECT \"{noCol}\", \"{dateCol}\" FROM rev_mstr WHERE \"{noCol}\" IS NOT NULL ORDER BY CAST(\"{noCol}\" AS INTEGER) DESC";
                     using var reader = cmd.ExecuteReader();
@@ -82,7 +91,11 @@ namespace QCS
                         if (!long.TryParse(SqlText(reader, 0), out long number) || number == pending) continue;
                         string date = SqlText(reader, 1);
                         if (DateTime.TryParse(date, out var parsed)) date = parsed.ToString("yyyy-MM-dd");
-                        revisions.Add(new Revision(number, $"{number:D4} ({date})"));
+                        var cancelled = cancellations.GetValueOrDefault(number);
+                        string state = cancelled.When == null ? "확정" : "취소";
+                        revisions.Add(new Revision(number, $"{number:D4} ({state} · {date})",
+                            DateTime.TryParse(date, out var confirmed) ? confirmed : null,
+                            cancelled.When ?? "", cancelled.User ?? "", cancelled.Reason ?? ""));
                     }
                 }
                 RevisionCombo.ItemsSource = revisions;
@@ -97,7 +110,115 @@ namespace QCS
             LoadHistory();
         }
 
-        private void RevisionChanged(object sender, SelectionChangedEventArgs e) { if (!_loading) LoadHistory(); }
+        private void RevisionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LedgerExportButton != null && RevisionManageButton != null)
+            {
+                var revision = RevisionCombo.SelectedItem as Revision;
+                LedgerExportButton.IsEnabled = revision != null;
+                RevisionManageButton.IsEnabled = revision != null && !revision.IsCancelled &&
+                    (revision.Date == null || CanCancelRevision(revision));
+            }
+            if (!_loading) LoadHistory();
+        }
+
+        private void RefreshClick(object sender, RoutedEventArgs e) => LoadRevisions();
+
+        private bool CanCancelRevision(Revision revision) =>
+            !revision.IsCancelled && revision.Date.HasValue &&
+            (RevisionCombo.ItemsSource as IEnumerable<Revision>)?
+                .Where(item => item.Date.HasValue).Max(item => (long?)item.Number) == revision.Number;
+
+        private void RevisionManageClick(object sender, RoutedEventArgs e)
+        {
+            if (RevisionCombo.SelectedItem is not Revision revision || revision.IsCancelled) return;
+            if (revision.Date == null) ConfirmLedger(revision);
+            else if (CanCancelRevision(revision)) CancelLedgerClick(sender, e);
+        }
+
+        private bool CanUseLocalLedgerPaths =>
+            (Window.GetWindow(this) as MainWindow)?.GetCurrentUser()?.UserLevel == QcsAuthorizationService.LevelAdmin;
+
+        private void OpenSavedLedger(Revision revision, DateTime date, string material)
+        {
+            var output = QcsExportPaths.Output("MSDS_INVENTORY");
+            string name = $"MSDS_Inventory_{material}_REV{revision.Number:D4}_{date:yyyyMMdd}.xlsx";
+            string? path = output.Network == null ? null : Path.Combine(output.Network, name);
+            bool local = false;
+            if ((path == null || !File.Exists(path)) &&
+                (Window.GetWindow(this) as MainWindow)?.GetCurrentUser()?.UserLevel == QcsAuthorizationService.LevelAdmin)
+            {
+                path = Path.Combine(output.Local, name);
+                local = true;
+            }
+            if (path == null || !File.Exists(path))
+            {
+                SetStatus($"서버 미보관: {name}");
+                return;
+            }
+            if (revision.IsCancelled)
+                MessageBox.Show($"REV {revision.Number:D4} 취소본을 엽니다.", "대장 출력", MessageBoxButton.OK, MessageBoxImage.Information);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            SetStatus($"{(revision.IsCancelled ? "취소본 · " : "")}{(local ? "로컬 저장본" : "확정 대장")}: {path}");
+        }
+
+        private static Dictionary<long, (string When, string User, string Reason)> ReadCancellations(SqliteConnection db)
+        {
+            var result = new Dictionary<long, (string, string, string)>();
+            if (Columns(db, "revh_hist").Count == 0) return result;
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "SELECT revh_no, revh_cancelled_at, revh_cancelled_by, revh_cancel_reason FROM revh_hist";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read()) result[reader.GetInt64(0)] = (SqlText(reader, 1), SqlText(reader, 2), SqlText(reader, 3));
+            return result;
+        }
+
+        private void CancelLedgerClick(object sender, RoutedEventArgs e)
+        {
+            if (RevisionCombo.SelectedItem is not Revision revision || revision.Date == null || revision.IsCancelled) return;
+            var panel = new StackPanel { Margin = new Thickness(14) };
+            panel.Children.Add(new TextBlock { Text = $"REV {revision.Number:D4} · {revision.Date:yyyy-MM-dd}\n취소 사유를 입력해 주세요." });
+            var reason = new System.Windows.Controls.TextBox { Margin = new Thickness(0, 8, 0, 8), Height = 66, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true };
+            panel.Children.Add(reason);
+            var buttons = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right };
+            var accept = new System.Windows.Controls.Button { Content = "개정 확정 취소", IsEnabled = false, Padding = new Thickness(10, 5, 10, 5) };
+            var close = new System.Windows.Controls.Button { Content = "닫기", IsCancel = true, Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(10, 5, 10, 5) };
+            buttons.Children.Add(accept);
+            buttons.Children.Add(close);
+            panel.Children.Add(buttons);
+            var dialog = new Window { Owner = Window.GetWindow(this), Title = "개정 확정 취소", Width = 430,
+                SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize, Content = panel };
+            reason.TextChanged += (_, _) => accept.IsEnabled = !string.IsNullOrWhiteSpace(reason.Text);
+            accept.Click += (_, _) => dialog.DialogResult = true;
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
+                db.Open();
+                using var tx = db.BeginTransaction();
+                using var cmd = db.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = @"CREATE TABLE IF NOT EXISTS revh_hist (
+                    revh_no INTEGER PRIMARY KEY, revh_cancelled_at TEXT NOT NULL,
+                    revh_cancelled_by TEXT NOT NULL, revh_cancel_reason TEXT NOT NULL)";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = @"INSERT INTO revh_hist (revh_no, revh_cancelled_at, revh_cancelled_by, revh_cancel_reason)
+                    SELECT $rev, $date, $user, $reason WHERE $rev = (SELECT MAX(rev_no) FROM rev_mstr)
+                    AND NOT EXISTS (SELECT 1 FROM revh_hist WHERE revh_no = $rev)";
+                cmd.Parameters.AddWithValue("$rev", revision.Number);
+                cmd.Parameters.AddWithValue("$date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+                cmd.Parameters.AddWithValue("$user", (Window.GetWindow(this) as MainWindow)?.GetCurrentUser()?.WindowsId ?? Environment.UserName);
+                cmd.Parameters.AddWithValue("$reason", reason.Text.Trim());
+                if (cmd.ExecuteNonQuery() != 1) throw new InvalidOperationException("현재 취소 가능한 최신 확정 REV를 다시 확인해 주세요.");
+                tx.Commit();
+                LoadRevisions();
+                SetStatus($"REV {revision.Number:D4} 확정 취소 완료");
+            }
+            catch (Exception ex) { ShowError("개정 확정 취소 실패", ex); }
+        }
+
         private void SearchClick(object sender, RoutedEventArgs e) => ApplyFilter();
         private void SearchKeyDown(object sender, System.Windows.Input.KeyEventArgs e) { if (e.Key == Key.Enter) { ApplyFilter(); e.Handled = true; } }
 
@@ -111,14 +232,33 @@ namespace QCS
                 db.Open();
                 using var cmd = db.CreateCommand();
                 cmd.CommandText = @"SELECT audit_log_graco_code, audit_log_datetime, audit_log_user_id,
-                        audit_log_action, audit_log_product_name, audit_log_rev_no, audit_log_content
-                    FROM audit_log_hist WHERE audit_log_rev_no=$rev
+                        audit_log_action, audit_log_product_name, audit_log_rev_no, audit_log_content, audit_log_msds_id
+                    FROM audit_log_hist WHERE audit_log_rev_no BETWEEN $from AND $rev
                     ORDER BY audit_log_graco_code COLLATE NOCASE, audit_log_datetime DESC, audit_log_user_id COLLATE NOCASE";
+                long previous = FindComparisonRevision(selected.Number)?.Number ?? 0;
+                long from = ReadCancellations(db).Keys
+                    .Where(number => number > previous && number < selected.Number)
+                    .DefaultIfEmpty(selected.Number).Min();
+                cmd.Parameters.AddWithValue("$from", from);
                 cmd.Parameters.AddWithValue("$rev", selected.Number);
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
+                {
+                    string content = SqlText(reader, 6);
+                    string msdsId = SqlText(reader, 7);
+                    var (type, fields) = ReadAuditFields(content);
+                    string operation = type switch
+                    {
+                        "NEW" => "신규",
+                        "REV" => "개정",
+                        "EDIT" => "일반 수정",
+                        _ => SqlText(reader, 3) == "UPDATE" ? "일반 수정" : "미분류"
+                    };
+                    string msdsRevision = FinalAuditValue(fields.Where(field => field.Table == "msds_mstr" &&
+                        field.RecordId == msdsId), "msds_revision_no");
                     _all.Add(new AuditItem(SqlText(reader, 0), SqlText(reader, 1), SqlText(reader, 2),
-                        SqlText(reader, 3), SqlText(reader, 4), selected.Number, SqlText(reader, 6)));
+                        SqlText(reader, 3), SqlText(reader, 4), reader.GetInt64(5), content, msdsId, msdsRevision, operation));
+                }
                 ApplyFilter();
             }
             catch (Exception ex) { ShowError("Audit 이력 조회 실패", ex); }
@@ -128,7 +268,7 @@ namespace QCS
         {
             string term = SearchBox.Text.Trim();
             var filtered = _all.Where(x => term.Length == 0 ||
-                new[] { x.GracoCode, x.When, x.User, x.Action, x.Product, x.Content, x.Rev.ToString() }
+                new[] { x.GracoCode, x.When, x.User, x.Action, x.Product, x.Content, x.Rev.ToString(), x.MsdsRevision, x.Operation }
                     .Any(s => s.Contains(term, StringComparison.OrdinalIgnoreCase))).ToList();
             HistoryGrid.ItemsSource = filtered;
             CountText.Text = $"조회 결과: {filtered.Count:N0}건";
@@ -142,6 +282,86 @@ namespace QCS
             return element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.ToString();
         }
         private static string Property(JsonElement element, string name) => element.TryGetProperty(name, out var value) ? JsonValue(value) : "";
+        private static (string Type, List<AuditField> Fields) ReadAuditFields(string content)
+        {
+            var fields = new List<AuditField>();
+            try
+            {
+                using var document = JsonDocument.Parse(content);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object) return ("", fields);
+                if (root.TryGetProperty("changes", out var changes) && changes.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var entry in changes.EnumerateArray())
+                    {
+                        if (entry.ValueKind != JsonValueKind.Object) continue;
+                        fields.Add(new AuditField(Property(entry, "table"), Property(entry, "record_id"),
+                            Property(entry, "field"),
+                            entry.TryGetProperty("new", out var value) && value.ValueKind != JsonValueKind.Null
+                                ? JsonValue(value) : null));
+                    }
+                }
+                return (Property(root, "registration_type"), fields);
+            }
+            catch (JsonException) { return ("", fields); }
+        }
+
+        private static string AuditFieldName(string field) =>
+            field.EndsWith("_ai", StringComparison.Ordinal) ? field[..^3] :
+            field.EndsWith("_mod", StringComparison.Ordinal) ? field[..^4] : field;
+
+        private static string FinalAuditValue(IEnumerable<AuditField> fields, string name)
+        {
+            var matches = fields.Where(field => AuditFieldName(field.Field) == name).ToArray();
+            return matches.FirstOrDefault(field => field.Field == name + "_mod" && field.Value != null)?.Value
+                ?? matches.FirstOrDefault(field => field.Field == name || field.Field == name + "_ai")?.Value
+                ?? matches.FirstOrDefault()?.Value ?? "";
+        }
+
+        private static string AuditItemLabel(string field) => field switch
+        {
+            "msds_product_name" => "제품명",
+            "msds_supplier_name" => "공급업체",
+            "msds_supplier_phone" => "연락처",
+            "msds_supplier_address" => "주소",
+            "msds_revision_no" => "개정번호",
+            "msds_revision_date" => "개정일자",
+            "msds_material_type" => "품목구분",
+            "msds_graco_code" => "Graco Code",
+            "msds_file_path" => "파일 경로",
+            "msds_is_latest" => "최신 여부",
+            "msds_registered_at" => "등록일시",
+            "msds_updated_at" => "수정일시",
+            "msds_is_deleted" => "삭제 여부",
+            "msds_moel_submission_no" => "제출번호",
+            "msds_h_codes" => "유해·위험 문구 코드",
+            "msds_corrosive_flag" => "피부 부식성/자극성",
+            "msds_toxicity" => "독성",
+            "msds_ppe" => "보호구",
+            "msds_lel" => "폭발 하한",
+            "msds_uel" => "폭발 상한",
+            "msds_flash_point" => "인화점",
+            "msds_autoignition_temp" => "자연발화 온도",
+            "msds_vapor_pressure" => "증기압",
+            "msds_un_number" => "UN 번호",
+            "msds_molecular_formula" => "분자식",
+            "msds_physical_state" => "물리적 상태",
+            "msds_hazardous_goods_class" => "위험물 분류",
+            "msds_reactivity" => "반응성",
+            "msds_comp_name" => "성분명",
+            "msds_comp_cas_no" => "CAS No.",
+            "msds_comp_content_raw" => "함량",
+            "msds_comp_content_min" => "최소 함량",
+            "msds_comp_content_max" => "최대 함량",
+            "msds_comp_content_calculated" => "계산 함량",
+            "msds_comp_twa" => "TWA",
+            "msds_comp_stel" => "STEL",
+            "msds_comp_oral_ld50" => "경구 LD50",
+            "msds_comp_dermal_ld50" => "경피 LD50",
+            "msds_comp_inhalation_lc50" => "흡입 LC50",
+            _ => field
+        };
+
         private void HistorySelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (HistoryGrid.SelectedItem is not AuditItem item) { ClearDetail(); return; }
@@ -149,18 +369,43 @@ namespace QCS
             DetailRev.Text = item.Rev.ToString("D4");
             DetailDate.Text = item.When;
             DetailUser.Text = item.User;
-            DetailAction.Text = item.Action;
+            DetailAction.Text = item.Operation;
             DetailProduct.Text = item.Product;
+            var (_, fields) = ReadAuditFields(item.Content);
             var changes = new List<ChangeItem>();
-            try
+            foreach (var record in fields.Where(field => field.Field.Length > 0 &&
+                (field.Table != "msds_mstr" || field.RecordId == item.MsdsId))
+                .GroupBy(field => (field.Table, field.RecordId)))
             {
-                using var doc = JsonDocument.Parse(item.Content);
-                if (doc.RootElement.TryGetProperty("changes", out var entries) && entries.ValueKind == JsonValueKind.Array)
-                    foreach (var entry in entries.EnumerateArray())
-                        changes.Add(new ChangeItem(Property(entry, "table"), Property(entry, "field"), Property(entry, "old"), Property(entry, "new")));
+                var group = BasicDetailGroup;
+                if (record.Key.Table == "msds_comp_dtl")
+                {
+                    string name = FinalAuditValue(record, "msds_comp_name").Trim();
+                    string cas = FinalAuditValue(record, "msds_comp_cas_no").Trim();
+                    if (name.Length == 0)
+                        name = cas.Length == 0 && record.Key.RecordId.Length > 0
+                            ? $"구성성분 (ID {record.Key.RecordId})" : "구성성분";
+                    string title = cas.Length > 0 ? $"{name} ({cas})" : name;
+                    group = new DetailGroup(record.Key.RecordId, title);
+                }
+                foreach (string field in record.Select(entry => AuditFieldName(entry.Field)).Distinct())
+                {
+                    if (field is "msds_file_name" or "msds_file_hash" or
+                        "msds_comp_parent_msds_id" or "msds_comp_name" or
+                        "msds_comp_cas_no" or "msds_comp_sort_order") continue;
+
+                    string label = AuditItemLabel(field);
+                    if (record.Key.Table == "msds_mstr" && label != field)
+                        label = $"{label}({field})";
+                    changes.Add(new ChangeItem(label, FinalAuditValue(record, field), field, group));
+                }
             }
-            catch (JsonException) { changes.Add(new ChangeItem("", "원본 이력", "", item.Content)); }
-            ChangesGrid.ItemsSource = changes;
+            if (fields.Count == 0 && !string.IsNullOrWhiteSpace(item.Content))
+                changes.Add(new ChangeItem("원본 이력", item.Content, "", BasicDetailGroup));
+
+            var view = new ListCollectionView(changes.OrderBy(change => change.Group != BasicDetailGroup).ToList());
+            view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ChangeItem.Group)));
+            ChangesGrid.ItemsSource = view;
         }
         private void ClearDetail()
         {
@@ -175,8 +420,8 @@ namespace QCS
                 using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
                 db.Open();
                 using var cmd = db.CreateCommand();
-                cmd.CommandText = "SELECT msds_file_path FROM msds_mstr WHERE msds_graco_code=$code AND COALESCE(msds_is_deleted,0)=0 ORDER BY msds_msds_id DESC";
-                cmd.Parameters.AddWithValue("$code", item.GracoCode);
+                cmd.CommandText = "SELECT msds_file_path FROM msds_mstr WHERE msds_msds_id=$id";
+                cmd.Parameters.AddWithValue("$id", item.MsdsId);
                 using var reader = cmd.ExecuteReader();
                 var paths = new List<string>();
                 while (reader.Read()) if (!reader.IsDBNull(0)) paths.Add(reader.GetString(0));
@@ -188,7 +433,20 @@ namespace QCS
             catch (Exception ex) { ShowError("MSDS 원문 열기 실패", ex); }
         }
 
-        private sealed record InventoryLine(string[] Cells);
+        private sealed record InventoryLine(string[] Cells, decimal? AnnualQuantity, bool First);
+
+        private static Dictionary<string, decimal> ReadAnnualQuantities()
+        {
+            using var connection = DatabaseManager.OpenConnection("reference");
+            using var command = connection.CreateCommand();
+            command.CommandText = @"SELECT TRIM(pt2_mfg_part), pt2_deci1 FROM pt2_mstr
+                WHERE pt2_part_type = 'SEFI' AND TRIM(pt2_mfg_part) <> '' AND pt2_deci1 IS NOT NULL
+                ORDER BY pt2_domain, pt2_part";
+            using var reader = command.ExecuteReader();
+            var quantities = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read()) quantities.TryAdd(reader.GetString(0), reader.GetDecimal(1));
+            return quantities;
+        }
 
         private static string ReadField(SqliteDataReader reader, IReadOnlyDictionary<string, int> positions, string column)
         {
@@ -238,6 +496,7 @@ namespace QCS
         {
             var result = new List<InventoryLine>();
             var casReferences = ReadInventoryCasReferences();
+            var quantities = ReadAnnualQuantities();
             using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
             db.Open();
             using var cmd = db.CreateCommand();
@@ -310,26 +569,22 @@ namespace QCS
                 string cas = V("msds_comp_cas_no").Trim().Replace(" ", "");
                 if (casReferences.TryGetValue(cas, out var referenceValues))
                     for (int i = 0; i < 6; i++) cells[30 + i] = referenceValues[i] ?? ""; // AE:AJ
-                result.Add(new InventoryLine(cells));
+                decimal? quantity = first && quantities.TryGetValue(cells[0].Trim(), out var amount) ? amount : null;
+                result.Add(new InventoryLine(cells, quantity, first));
             }
             return result;
         }
 
-        private static string TemplatePath(string materialType)
-        {
-            string name = materialType == "RM" ? "원료 유해위험물질목록.xltm" : "제품 유해위험물질목록.xltm";
-            string exePath = Process.GetCurrentProcess().MainModule?.FileName
-                ?? throw new InvalidOperationException("QCS 실행 파일 경로를 확인할 수 없습니다.");
-            string exeDirectory = Path.GetDirectoryName(exePath)
-                ?? throw new InvalidOperationException("QCS 실행 폴더를 확인할 수 없습니다.");
-            string path = Path.Combine(exeDirectory, "QCS_xltm", name);
-            if (!File.Exists(path)) throw new FileNotFoundException("Excel 템플릿이 실행 폴더의 QCS_xltm에 없습니다.", path);
-            return path;
-        }
+        private static (string Path, bool IsLocal) TemplatePath(string materialType, bool allowLocal) =>
+            QcsExportPaths.Template("MSDS_INVENTORY", materialType == "RM"
+                ? "원료 유해위험물질목록.xltm" : "제품 유해위험물질목록.xltm", allowLocal);
 
-        private static void OpenInventoryWorkbooks(List<InventoryLine>? rm, List<InventoryLine>? fg, long revision)
+        private static bool OpenInventoryWorkbooks(List<InventoryLine>? rm, List<InventoryLine>? fg, long revision, DateTime? confirmedOn, Revision? basis, bool highlightChanges, bool allowLocal, out string? savedDirectory, out bool localOutput)
         {
-            if (rm == null && fg == null) return;
+            savedDirectory = null;
+            localOutput = false;
+            if (rm == null && fg == null) return false;
+            bool localTemplate = false;
             var excelType = Type.GetTypeFromProgID("Excel.Application")
                 ?? throw new InvalidOperationException("Microsoft Excel이 설치되어 있지 않습니다.");
             dynamic excel = Activator.CreateInstance(excelType)
@@ -342,18 +597,66 @@ namespace QCS
                 excel.AutomationSecurity = 3;
                 if (rm != null)
                 {
-                    rmBook = excel.Workbooks.Add(TemplatePath("RM"));
-                    FillInventorySheet(rmBook, rm, revision);
+                    var template = TemplatePath("RM", allowLocal);
+                    localTemplate |= template.IsLocal;
+                    rmBook = excel.Workbooks.Add(template.Path);
+                    FillInventorySheet(rmBook, rm, revision, confirmedOn);
+                    ApplyComparison(rmBook, rm, "RM", basis, highlightChanges, confirmedOn != null, allowLocal);
                 }
                 if (fg != null)
                 {
-                    fgBook = excel.Workbooks.Add(TemplatePath("FG"));
-                    FillInventorySheet(fgBook, fg, revision);
+                    var template = TemplatePath("FG", allowLocal);
+                    localTemplate |= template.IsLocal;
+                    fgBook = excel.Workbooks.Add(template.Path);
+                    FillInventorySheet(fgBook, fg, revision, confirmedOn);
+                    ApplyComparison(fgBook, fg, "FG", basis, highlightChanges, confirmedOn != null, allowLocal);
+                }
+                if (confirmedOn is DateTime date)
+                {
+                    var output = QcsExportPaths.Output("MSDS_INVENTORY");
+                    string scratch = Path.Combine(Path.GetTempPath(), "QCS-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(scratch);
+                    string rmTemp = Path.Combine(scratch, "RM.xlsx");
+                    string fgTemp = Path.Combine(scratch, "FG.xlsx");
+                    try
+                    {
+                        rmBook!.SaveAs(rmTemp, 51);
+                        fgBook!.SaveAs(fgTemp, 51);
+                        rmBook.Close(false);
+                        fgBook.Close(false);
+                        rmBook = fgBook = null;
+                        if (output.Network != null)
+                        {
+                            try
+                            {
+                                SaveInventoryPair(rmTemp, fgTemp, output.Network, revision, date);
+                                savedDirectory = output.Network;
+                            }
+                            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                        }
+                        if (savedDirectory == null)
+                        {
+                            if (!allowLocal)
+                                throw new IOException("서버 대장 저장 경로를 사용할 수 없습니다.");
+                            SaveInventoryPair(rmTemp, fgTemp, output.Local, revision, date);
+                            savedDirectory = output.Local;
+                            localOutput = true;
+                        }
+                    }
+                    finally
+                    {
+                        DeleteStagedFiles(scratch, rmTemp, fgTemp);
+                    }
+                    excel.Quit();
+                    return localTemplate;
                 }
                 excel.DisplayAlerts = true;
                 excel.Visible = true;
-                if (rmBook != null) rmBook.Worksheets[1].Activate();
-                else if (fgBook != null) fgBook.Worksheets[1].Activate();
+                dynamic firstBook = rmBook ?? fgBook!;
+                firstBook.Activate();
+                firstBook.Worksheets[1].Activate();
+                BringExcelToFront((object)excel);
+                return localTemplate;
             }
             catch
             {
@@ -364,38 +667,307 @@ namespace QCS
             }
         }
 
-        private static void FillInventorySheet(dynamic book, List<InventoryLine> lines, long revision)
+        private static void ApplyComparison(dynamic book, List<InventoryLine> current, string type,
+            Revision? basis, bool highlightChanges, bool confirm, bool allowLocal)
+        {
+            if (!confirm && !highlightChanges) return;
+            var output = QcsExportPaths.Output("MSDS_INVENTORY");
+            string? priorName = basis?.Date is DateTime date
+                ? $"MSDS_Inventory_{type}_REV{basis.Number:D4}_{date:yyyyMMdd}.xlsx" : null;
+            string? priorPath = priorName != null && output.Network != null ? Path.Combine(output.Network, priorName) : null;
+            if (allowLocal && priorName != null && (priorPath == null || !File.Exists(priorPath)))
+            {
+                var local = Path.Combine(output.Local, priorName);
+                if (File.Exists(local)) priorPath = local;
+            }
+
+            dynamic main = book.Worksheets[1];
+            if (priorPath == null || !File.Exists(priorPath))
+            {
+                main.Cells[3, 8].Value2 = basis == null
+                    ? "비교 기준 대장 없음" : $"비교 기준 REV {basis.Number:D4} 파일 없음";
+                return;
+            }
+
+            using var input = File.Open(priorPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            using var reader = ExcelDataReader.ExcelReaderFactory.CreateOpenXmlReader(input);
+            var old = new List<string[]>();
+            int rowNumber = 0;
+            while (reader.Read())
+            {
+                if (++rowNumber < 9) continue;
+                var row = new string[39];
+                for (int col = 0; col < Math.Min(reader.FieldCount, row.Length); col++)
+                    row[col] = Convert.ToString(reader.GetValue(col), CultureInfo.InvariantCulture) ?? "";
+                if (!string.IsNullOrWhiteSpace(row[0])) old.Add(row);
+            }
+
+            var previous = IndexRows(old);
+            var now = IndexRows(current.Select(line =>
+            {
+                var cells = (string[])line.Cells.Clone();
+                if (line.AnnualQuantity is decimal quantity)
+                {
+                    cells[26] = ((double)quantity).ToString("G15", CultureInfo.InvariantCulture);
+                    cells[27] = ((double)quantity / 240).ToString("G15", CultureInfo.InvariantCulture);
+                }
+                return cells;
+            }));
+            var previousItems = old.GroupBy(row => row[0].Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            var itemColumns = new HashSet<int> { 1, 2, 3, 4, 5, 6, 7, 8, 16, 17, 18, 19, 20, 21, 25, 26, 27, 28, 29, 38 };
+            var records = new List<string[]> { new[] { "Graco Code", "구분", "항목", "변경 전", "변경 후" } };
+            var newlyAdded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var changedItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var changedCells = new List<(int Row, int Column)>();
+            foreach (var entry in now)
+            {
+                var (cells, index) = entry.Value;
+                if (!previousItems.TryGetValue(cells[0].Trim(), out var previousItem))
+                {
+                    if (newlyAdded.Add(cells[0].Trim())) records.Add(new[] { cells[0], "신규", "품목", "", cells[1] ?? "" });
+                    continue;
+                }
+                bool hasComponent = previous.Remove(entry.Key, out var oldRow);
+                if (!hasComponent)
+                {
+                    records.Add(new[] { cells[0], "추가", "구성성분", "", cells[9] ?? "" });
+                    changedItems.Add(cells[0].Trim());
+                    if (highlightChanges)
+                        for (int col = 9; col < cells.Length; col++)
+                            if (!itemColumns.Contains(col) && !string.IsNullOrEmpty(cells[col]))
+                                changedCells.Add((index + 9, col + 1));
+                }
+                for (int col = 1; col < cells.Length; col++)
+                {
+                    bool itemColumn = itemColumns.Contains(col);
+                    if (itemColumn ? !current[index].First : !hasComponent) continue;
+                    string before = (itemColumn ? previousItem[col] : oldRow.Cells[col]) ?? "";
+                    string after = cells[col] ?? "";
+                    if (before == after || (col is 26 or 27 && EquivalentNumber(before, after))) continue;
+                    string column = col < 26 ? ((char)('A' + col)).ToString() : "A" + (char)('A' + col - 26);
+                    records.Add(new[] { cells[0], "수정", column, before, after });
+                    changedItems.Add(cells[0].Trim());
+                    if (highlightChanges) changedCells.Add((index + 9, col + 1));
+                }
+            }
+            var currentCodes = current.Select(line => line.Cells[0].Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var removed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in previous.Values)
+            {
+                var cells = entry.Cells;
+                bool itemExists = currentCodes.Contains(cells[0].Trim());
+                if (itemExists) changedItems.Add(cells[0].Trim());
+                if (itemExists || removed.Add(cells[0]))
+                    records.Add(new[] { cells[0], "제외", itemExists ? "구성성분" : "품목", cells[itemExists ? 9 : 1] ?? "", "" });
+            }
+
+            main.Cells[3, 8].Value2 = $"비교 기준 REV {basis!.Number:D4}";
+            if (highlightChanges)
+            {
+                ApplyInventoryHighlights(main, current, newlyAdded, changedItems, changedCells);
+                if (!confirm) return;
+            }
+
+            dynamic sheet = book.Worksheets.Add(Type.Missing, main);
+            sheet.Name = "변경내역";
+            var data = new object[records.Count, 5];
+            for (int row = 0; row < records.Count; row++)
+                for (int col = 0; col < 5; col++) data[row, col] = records[row][col];
+            dynamic range = sheet.Range[sheet.Cells[1, 1], sheet.Cells[records.Count, 5]];
+            range.NumberFormat = "@";
+            range.Value2 = data;
+            sheet.Rows[1].Font.Bold = true;
+            sheet.Columns.AutoFit();
+        }
+
+        private static void ApplyInventoryHighlights(dynamic sheet, List<InventoryLine> lines,
+            HashSet<string> newItems, HashSet<string> changedItems, List<(int Row, int Column)> changedCells)
+        {
+            const int lightGreen = 0xD9F0E2;
+            const int lightYellow = 0xCCF2FF;
+            const int darkRed = 0x0000C0;
+
+            sheet.Range["AN8"].Value2 = "변경 구분";
+            sheet.Range["AN8"].Font.Bold = true;
+            if (lines.Count == 0) return;
+
+            var statuses = new object?[lines.Count, 1];
+            for (int first = 0; first < lines.Count;)
+            {
+                int end = first + 1;
+                while (end < lines.Count && !lines[end].First) end++;
+                string code = lines[first].Cells[0].Trim();
+                bool isNew = newItems.Contains(code);
+                if (isNew || changedItems.Contains(code))
+                {
+                    sheet.Range["A" + (first + 9), "AN" + (end + 8)].Interior.Color =
+                        isNew ? lightGreen : lightYellow;
+                    for (int row = first; row < end; row++)
+                        statuses[row, 0] = isNew ? "신규" : "변경";
+                }
+                first = end;
+            }
+            foreach (var (row, column) in changedCells)
+                sheet.Cells[row, column].MergeArea.Font.Color = darkRed;
+
+            int last = lines.Count + 8;
+            sheet.Range["AN9", "AN" + last].Value2 = statuses;
+            if ((bool)sheet.AutoFilterMode) sheet.AutoFilterMode = false;
+            sheet.Range["A8", "AN" + last].AutoFilter(1, Type.Missing, 1, Type.Missing, true);
+        }
+
+        private static bool EquivalentNumber(string before, string after) =>
+            double.TryParse(before, NumberStyles.Float, CultureInfo.InvariantCulture, out double first) &&
+            double.TryParse(after, NumberStyles.Float, CultureInfo.InvariantCulture, out double second) &&
+            Math.Abs(first - second) <= Math.Max(Math.Abs(first), Math.Abs(second)) * 1e-13;
+
+        private static Dictionary<(string Code, string Component, int Occurrence), (string[] Cells, int Index)>
+            IndexRows(IEnumerable<string[]> rows)
+        {
+            var result = new Dictionary<(string, string, int), (string[], int)>();
+            var counts = new Dictionary<(string, string), int>();
+            int index = 0;
+            foreach (var row in rows)
+            {
+                string code = row[0].Trim().ToUpperInvariant();
+                string component = (row[10] ?? "").Trim().ToUpperInvariant();
+                if (component.Length == 0) component = (row[9] ?? "").Trim().ToUpperInvariant();
+                int occurrence = counts.GetValueOrDefault((code, component));
+                counts[(code, component)] = occurrence + 1;
+                result[(code, component, occurrence)] = (row, index++);
+            }
+            return result;
+        }
+
+        private static void SaveInventoryPair(string rmSource, string fgSource, string directory, long revision, DateTime date)
+        {
+            string suffix = $"REV{revision:D4}_{date:yyyyMMdd}.xlsx";
+            string rmPath = Path.Combine(directory, $"MSDS_Inventory_RM_{suffix}");
+            string fgPath = Path.Combine(directory, $"MSDS_Inventory_FG_{suffix}");
+            if (File.Exists(rmPath) || File.Exists(fgPath))
+                throw new InvalidOperationException($"REV {revision:D4} 파일이 이미 있습니다: {directory}");
+
+            string stage = Path.Combine(directory, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(stage);
+            string rmTemp = Path.Combine(stage, "RM.xlsx");
+            string fgTemp = Path.Combine(stage, "FG.xlsx");
+            bool publishedRm = false;
+            try
+            {
+                File.Copy(rmSource, rmTemp);
+                File.Copy(fgSource, fgTemp);
+                File.Move(rmTemp, rmPath);
+                publishedRm = true;
+                File.Move(fgTemp, fgPath);
+            }
+            catch (Exception original)
+            {
+                if (publishedRm)
+                {
+                    try { File.Delete(rmPath); }
+                    catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+                    {
+                        throw new InvalidOperationException($"일부 파일이 남았습니다: {rmPath}", new AggregateException(original, cleanup));
+                    }
+                }
+                if (File.Exists(rmPath) || File.Exists(fgPath))
+                    throw new InvalidOperationException($"REV {revision:D4} 파일이 이미 있습니다: {directory}", original);
+                throw;
+            }
+            finally
+            {
+                DeleteStagedFiles(stage, rmTemp, fgTemp);
+            }
+        }
+
+        private static void DeleteStagedFiles(string directory, string rm, string fg)
+        {
+            try
+            {
+                File.Delete(rm);
+                File.Delete(fg);
+                Directory.Delete(directory);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+
+        private static void FillInventorySheet(dynamic book, List<InventoryLine> lines, long revision, DateTime? confirmedOn)
         {
             dynamic sheet = book.Worksheets[1];
             int last = Math.Max(9, Convert.ToInt32(sheet.UsedRange.Row) + Convert.ToInt32(sheet.UsedRange.Rows.Count) - 1);
-            // Preserve template headers and formatting; remove only its sample/previous data.
-            sheet.Range["A9", "AM" + last].ClearContents();
+            // Also accept older server templates that still contain example rows.
+            sheet.Range["A9", "AM" + last].UnMerge();
+            sheet.Range["A9", "AM" + last].Clear();
             sheet.Range["B3"].Value2 = "개정번호 : " + revision.ToString("D4");
             // The revision date is not finalized by a simple print; do not invent it.
-            sheet.Range["B4"].Value2 = "개정일자 : (진행중)";
+            sheet.Range["B4"].Value2 = "개정일자 : " + (confirmedOn?.ToString("yyyy-MM-dd") ?? "(진행중)");
             if (lines.Count == 0) return;
             int count = lines.Count;
-            var values = new object[count, 39];
-            for (int r = 0; r < count; r++)
-                for (int c = 0; c < 39; c++) values[r, c] = lines[r].Cells[c];
+            var values = new object?[count, 39];
+            var formulas = new object?[count, 1];
+            for (int row = 0; row < count; row++)
+            {
+                for (int col = 0; col < 39; col++)
+                {
+                    string? value = lines[row].Cells[col];
+                    // Excel's text prefix preserves leading zeroes and formula-like text.
+                    if (!string.IsNullOrEmpty(value)) values[row, col] = "'" + value;
+                }
+                if (lines[row].AnnualQuantity is not decimal amount) continue;
+                values[row, 26] = (double)amount;
+                formulas[row, 0] = $"=AA{row + 9}/240";
+            }
             dynamic range = sheet.Range["A9", "AM" + (8 + count)];
-            range.NumberFormat = "@";
+            range.Font.Name = "맑은 고딕";
+            range.Font.Size = 10;
+            range.Font.Color = 0x000000;
+            range.Interior.Color = 0xFFFFFF;
+            range.WrapText = true;
+            range.ShrinkToFit = false;
+            range.Borders.LineStyle = 1; // xlContinuous
             range.Value2 = values;
+            dynamic formulaRange = sheet.Range["AB9", "AB" + (8 + count)];
+            formulaRange.Formula = formulas;
+            try
+            {
+                sheet.Range["AA9", "AB" + (8 + count)].NumberFormat = "0.##########";
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x800A03EC))
+            {
+                // The workbook can still display and calculate using the template format.
+            }
+            for (int start = 0; start < count;)
+            {
+                int end = start + 1;
+                while (end < count && !lines[end].First) end++;
+                if (end - start > 1)
+                {
+                    foreach (string column in new[] { "B","C","D","E","F","G","H","I","Q","R","S","T","U","V","Z","AA","AB","AC","AD","AM" })
+                        sheet.Range[column + (start + 9), column + (end + 8)].Merge();
+                }
+                start = end;
+            }
             // Excel constants: xlLeft = -4131, xlTop = -4160.
             // Apply to data rows only; preserve template header alignment.
             range.HorizontalAlignment = -4131;
             range.VerticalAlignment = -4160;
+            range.RowHeight = sheet.StandardHeight;
+            if ((bool)sheet.AutoFilterMode) sheet.AutoFilterMode = false;
+            sheet.Range["A8", "AL" + (8 + count)].AutoFilter(1, Type.Missing, 1, Type.Missing, true);
+            sheet.PageSetup.PrintArea = "$A$1:$AM$" + (8 + count);
         }
 
-        private sealed record ExportChoice(string Material, string Mode);
+        private sealed record ExportChoice(string Material, bool LatestOnly, bool HighlightChanges);
 
-        private ExportChoice? AskExportMode(Window? owner, long revision)
+        private ExportChoice? AskExportMode(Window? owner, Revision revision)
         {
             var dialog = new Window
             {
                 Title = "대장 출력",
-                Width = 520, Height = 350,
-                MinWidth = 520, MinHeight = 350,
+                Width = 520, Height = 400,
+                MinWidth = 520, MinHeight = 400,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = owner == null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
                 ShowInTaskbar = false,
@@ -417,7 +989,7 @@ namespace QCS
             };
             header.Child = new TextBlock
             {
-                Text = $"대장 출력  ·  REV {revision:D4} (진행중)",
+                Text = $"대장 출력  ·  REV {revision.Label}",
                 Foreground = System.Windows.Media.Brushes.White,
                 FontSize = 16,
                 FontWeight = FontWeights.SemiBold
@@ -434,35 +1006,23 @@ namespace QCS
                 Margin = new Thickness(0, 0, 0, 13)
             });
             var choices = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
-            System.Windows.Controls.RadioButton CreateChoice(string label, string tag, bool selected)
-            {
-                var option = new System.Windows.Controls.RadioButton
-                {
-                    Content = label, Tag = tag, GroupName = "LedgerExportMaterial",
-                    IsChecked = selected, Margin = new Thickness(0, 0, 22, 0),
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                choices.Children.Add(option);
-                return option;
-            }
-            var both = CreateChoice("원료 + 제품", "BOTH", true);
-            var rmOnly = CreateChoice("원료(RM)", "RM", false);
-            var fgOnly = CreateChoice("제품(FG)", "FG", false);
+            var fg = new System.Windows.Controls.RadioButton { Content = "제품(FG)", GroupName = "LedgerExportMaterial",
+                IsChecked = true, Margin = new Thickness(0, 0, 22, 0) };
+            var rm = new System.Windows.Controls.RadioButton { Content = "원료(RM)", GroupName = "LedgerExportMaterial" };
+            choices.Children.Add(fg);
+            choices.Children.Add(rm);
             body.Children.Add(choices);
-            var hint = new Border
+            var range = new System.Windows.Controls.ComboBox { Margin = new Thickness(0, 12, 0, 6) };
+            range.Items.Add("최신 MSDS만");
+            range.Items.Add("전체 MSDS(이전 개정판 포함)");
+            range.SelectedIndex = 0;
+            var changes = new System.Windows.Controls.CheckBox { Content = "바뀐 항목 강조표시" };
+            if (revision.Date == null)
             {
-                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#F0F4F9")!,
-                CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(12), Margin = new Thickness(0, 22, 0, 0)
-            };
-            hint.Child = new TextBlock
-            {
-                Text = "단순출력은 선택한 대장만 Excel에서 엽니다.\n개정 확정은 원료와 제품을 함께 출력할 때만 가능합니다.",
-                Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#52677F")!,
-                TextWrapping = TextWrapping.Wrap,
-                LineHeight = 21
-            };
-            body.Children.Add(hint);
+                body.Children.Add(range);
+                body.Children.Add(changes);
+                range.SelectionChanged += (_, _) => changes.IsEnabled = range.SelectedIndex == 0;
+            }
             root.Children.Add(body);
 
             var footer = new Border
@@ -478,7 +1038,6 @@ namespace QCS
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Right
             };
             ExportChoice? selectedChoice = null;
-            string SelectedMaterial() => rmOnly.IsChecked == true ? "RM" : fgOnly.IsChecked == true ? "FG" : "BOTH";
             System.Windows.Controls.Button CreateButton(string label, bool primary, Action action)
             {
                 var button = new System.Windows.Controls.Button
@@ -502,64 +1061,184 @@ namespace QCS
                 buttons.Children.Add(button);
                 return button;
             }
-            var revise = CreateButton("개정", true, () =>
+            CreateButton(revision.Date.HasValue ? "열기" : "출력", true, () =>
             {
-                if (SelectedMaterial() != "BOTH") return;
-                selectedChoice = new ExportChoice("BOTH", "개정");
-                dialog.DialogResult = true;
-            });
-            CreateButton("단순출력", true, () =>
-            {
-                selectedChoice = new ExportChoice(SelectedMaterial(), "단순출력");
+                selectedChoice = new ExportChoice(rm.IsChecked == true ? "RM" : "FG", range.SelectedIndex == 0,
+                    range.SelectedIndex == 0 && changes.IsChecked == true);
                 dialog.DialogResult = true;
             });
             CreateButton("취소", false, () => dialog.DialogResult = false);
-            void UpdateRevisionAvailability() => revise.IsEnabled = both.IsChecked == true;
-            both.Checked += (_, _) => UpdateRevisionAvailability();
-            rmOnly.Checked += (_, _) => UpdateRevisionAvailability();
-            fgOnly.Checked += (_, _) => UpdateRevisionAvailability();
-            UpdateRevisionAvailability();
             footer.Child = buttons;
             root.Children.Add(footer);
             dialog.Content = root;
             return dialog.ShowDialog() == true ? selectedChoice : null;
         }
 
+        private Revision? FindComparisonRevision(long revision) =>
+            (RevisionCombo.ItemsSource as IEnumerable<Revision>)?
+                .Where(item => item.Date.HasValue && !item.IsCancelled && item.Number < revision)
+                .OrderByDescending(item => item.Number).FirstOrDefault();
+
         private void LedgerExportClick(object sender, RoutedEventArgs e)
         {
             if (RevisionCombo.SelectedItem is not Revision selected) return;
             try
             {
-                long pending = ReadPendingRevision();
-                if (selected.Number != pending)
+                var choice = AskExportMode(Window.GetWindow(this), selected);
+                if (choice == null) return;
+                if (selected.Date is DateTime date)
                 {
-                    SetStatus("과거 REV의 확정 당시 대장 데이터는 별도 보관본이 필요합니다. 현재 DB로 과거 대장을 재생성하지 않습니다.");
+                    OpenSavedLedger(selected, date, choice.Material);
                     return;
                 }
-                var choice = AskExportMode(Window.GetWindow(this), selected.Number);
-                if (choice == null) { SetStatus("대장 출력을 취소했습니다."); return; }
-                if (choice.Mode == "개정")
+                if (selected.Number != ReadPendingRevision())
                 {
-                    if (MessageBox.Show("RM/FG 대장을 연 후 현재 REV를 확정하고 다음 REV로 변경합니다. 계속하시겠습니까?",
-                        "개정 확정 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                    { SetStatus("개정 작업을 취소했습니다."); return; }
-                }
-                var rm = choice.Material != "FG" ? ReadInventory("RM", LatestOnlyCheck.IsChecked == true) : null;
-                var fg = choice.Material != "RM" ? ReadInventory("FG", LatestOnlyCheck.IsChecked == true) : null;
-                OpenInventoryWorkbooks(rm, fg, selected.Number);
-                if (choice.Mode == "개정")
-                {
-                    ConfirmRevision(selected.Number);
                     LoadRevisions();
-                    SetStatus($"REV {selected.Number:D4} 개정 확정 완료. RM {rm?.Count ?? 0}행, FG {fg?.Count ?? 0}행 Excel 표시.");
+                    SetStatus("진행 중인 REV가 변경되었습니다. 다시 선택해 주세요.");
+                    return;
                 }
-                else
-                {
-                    var targets = choice.Material == "BOTH" ? "RM/FG" : choice.Material;
-                    SetStatus($"단순출력 완료: {targets} (RM {rm?.Count ?? 0}행, FG {fg?.Count ?? 0}행). 저장은 Excel에서 직접 선택하세요.");
-                }
+
+                var lines = ReadInventory(choice.Material, choice.LatestOnly);
+                bool isRm = choice.Material == "RM";
+                bool localTemplate = OpenInventoryWorkbooks(isRm ? lines : null, isRm ? null : lines,
+                    selected.Number, null, FindComparisonRevision(selected.Number), choice.HighlightChanges, CanUseLocalLedgerPaths, out _, out _);
+                SetStatus($"대장 출력 완료: {choice.Material} {lines.Count}행.{(localTemplate ? " (로컬 템플릿 사용)" : "")}");
             }
             catch (Exception ex) { ShowError("대장 출력 실패", ex); }
+        }
+
+        private void ConfirmLedger(Revision selected)
+        {
+            try
+            {
+                if (selected.Number != ReadPendingRevision())
+                {
+                    LoadRevisions();
+                    SetStatus("진행 중인 REV가 변경되었습니다. 다시 선택해 주세요.");
+                    return;
+                }
+                var rm = ReadInventory("RM", true);
+                var fg = ReadInventory("FG", true);
+                var basis = FindComparisonRevision(selected.Number);
+                if (!ConfirmExportSummary(selected.Number, basis, rm, fg)) return;
+                DateTime confirmedOn = DateTime.Today;
+                bool localTemplate = OpenInventoryWorkbooks(rm, fg, selected.Number, confirmedOn, basis,
+                    true, CanUseLocalLedgerPaths, out string? savedDirectory, out bool localOutput);
+                try { ConfirmRevision(selected.Number, confirmedOn); }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"대장 파일 저장 완료 · REV 확정 실패: {savedDirectory}\n{ex.Message}", ex);
+                }
+                LoadRevisions();
+                SetStatus($"REV {selected.Number:D4} 개정 확정 완료. RM {rm.Count}행, FG {fg.Count}행 저장." +
+                    $"{(localTemplate ? " (로컬 템플릿 사용)" : "")} {(localOutput ? "로컬 저장: " : "")}{savedDirectory}");
+            }
+            catch (Exception ex) { ShowError("개정 확정 실패", ex); }
+        }
+
+        private bool ConfirmExportSummary(long revision, Revision? basis, List<InventoryLine> rm, List<InventoryLine> fg)
+        {
+            using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
+            db.Open();
+            long? firstCancelled = ReadCancellations(db).Keys
+                .Where(number => number > (basis?.Number ?? 0) && number < revision)
+                .OrderBy(number => number).Select(number => (long?)number).FirstOrDefault();
+            var (newCodes, updatedCodes) = ReadRevisionCodes(db, firstCancelled ?? revision, revision);
+            static int Count(List<InventoryLine> lines, SortedSet<string> codes) =>
+                lines.Select(line => line.Cells[0]).Where(codes.Contains).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            var output = QcsExportPaths.Output("MSDS_INVENTORY");
+            static System.Windows.Media.SolidColorBrush Color(byte r, byte g, byte b) =>
+                new(System.Windows.Media.Color.FromRgb(r, g, b));
+
+            var ink = Color(20, 31, 48);
+            var muted = Color(75, 85, 99);
+            var line = Color(211, 218, 228);
+            var soft = Color(244, 246, 249);
+            var content = new StackPanel { Margin = new Thickness(24) };
+            content.Children.Add(new TextBlock
+            {
+                Text = $"REV {revision:D4} 개정 확정", FontSize = 24, FontWeight = FontWeights.Bold,
+                Foreground = ink
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = $"직전 유효 REV {basis?.Number.ToString("D4") ?? "없음"}",
+                Margin = new Thickness(0, 4, 0, 16), Foreground = muted
+            });
+
+            var counts = new Grid();
+            counts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+            counts.ColumnDefinitions.Add(new ColumnDefinition());
+            counts.ColumnDefinitions.Add(new ColumnDefinition());
+            void AddCountRow(string ledger, string added, string revised, bool header = false)
+            {
+                int row = counts.RowDefinitions.Count;
+                counts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                string[] values = [ledger, added, revised];
+                for (int col = 0; col < values.Length; col++)
+                {
+                    var cell = new Border
+                    {
+                        Background = header ? soft : System.Windows.Media.Brushes.White,
+                        BorderBrush = line, BorderThickness = new Thickness(col == 0 ? 0 : 1, row == 0 ? 0 : 1, 0, 0),
+                        Padding = new Thickness(10, 8, 10, 8),
+                        Child = new TextBlock { Text = values[col], Foreground = ink,
+                            FontWeight = header ? FontWeights.SemiBold : FontWeights.Normal,
+                            TextAlignment = TextAlignment.Center }
+                    };
+                    Grid.SetRow(cell, row);
+                    Grid.SetColumn(cell, col);
+                    counts.Children.Add(cell);
+                }
+            }
+            AddCountRow("대장", "신규", "개정", true);
+            AddCountRow("원료 (RM)", $"{Count(rm, newCodes)}건", $"{Count(rm, updatedCodes)}건");
+            AddCountRow("제품 (FG)", $"{Count(fg, newCodes)}건", $"{Count(fg, updatedCodes)}건");
+            content.Children.Add(new Border { BorderBrush = line, BorderThickness = new Thickness(1), Child = counts });
+
+            if (newCodes.Count + updatedCodes.Count == 0)
+            {
+                content.Children.Add(new Border
+                {
+                    Margin = new Thickness(0, 12, 0, 0), Padding = new Thickness(10, 8, 10, 8),
+                    BorderBrush = Color(246, 206, 116), BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(5), Background = Color(255, 247, 224),
+                    Child = new TextBlock { Text = "신규·개정 품목이 0건입니다.", Foreground = Color(120, 64, 10) }
+                });
+            }
+            if (firstCancelled is long cancelled)
+                content.Children.Add(new TextBlock { Text = $"REV {cancelled:D4} 취소 변경분 포함",
+                    Margin = new Thickness(0, 10, 0, 0), Foreground = muted });
+
+            content.Children.Add(new TextBlock { Text = "저장 위치", Margin = new Thickness(0, 14, 0, 5),
+                FontWeight = FontWeights.SemiBold, Foreground = ink });
+            content.Children.Add(new System.Windows.Controls.TextBox
+            {
+                Text = output.Network ?? (CanUseLocalLedgerPaths ? output.Local : "서버 경로 미설정"), IsReadOnly = true, TextWrapping = TextWrapping.Wrap,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12,
+                Padding = new Thickness(8, 6, 8, 6), Background = soft, BorderBrush = line, Foreground = ink
+            });
+            content.Children.Add(new TextBlock { Text = "MSDS 등록·관리 작업이 모두 끝났는지 확인해 주세요.",
+                Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap, Foreground = muted });
+
+            var buttons = new StackPanel { Margin = new Thickness(0, 18, 0, 0),
+                Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right };
+            var save = new System.Windows.Controls.Button { Content = "확정 저장", Width = 112, Height = 36 };
+            var cancel = new System.Windows.Controls.Button { Content = "취소", IsCancel = true, Width = 112, Height = 36,
+                Margin = new Thickness(8, 0, 0, 0), Background = System.Windows.Media.Brushes.White,
+                Foreground = ink, BorderBrush = line, BorderThickness = new Thickness(1) };
+            if (TryFindResource("QcsPrimaryButton") is Style primary) save.Style = primary;
+            if (TryFindResource("QcsActionButton") is Style secondary) cancel.Style = secondary;
+            buttons.Children.Add(save);
+            buttons.Children.Add(cancel);
+            content.Children.Add(buttons);
+            var dialog = new Window { Owner = Window.GetWindow(this), Title = "개정 확정", Width = 600,
+                FontFamily = new System.Windows.Media.FontFamily("Malgun Gothic"), FontSize = 13,
+                Background = System.Windows.Media.Brushes.White, ShowInTaskbar = false,
+                SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize, Content = content };
+            save.Click += (_, _) => dialog.DialogResult = true;
+            return dialog.ShowDialog() == true;
         }
 
         private static long ReadPendingRevision()
@@ -575,7 +1254,7 @@ namespace QCS
             return values[0];
         }
 
-        private static void ConfirmRevision(long rev)
+        private static void ConfirmRevision(long rev, DateTime date)
         {
             // Attach Common DB to the MSDS connection and keep both writes in one SQLite transaction.
             // A second confirmation is required before this method is called.
@@ -604,7 +1283,7 @@ namespace QCS
                     insert.Transaction = tx;
                     insert.CommandText = "INSERT INTO rev_mstr (rev_no,rev_date) VALUES ($rev,$date)";
                     insert.Parameters.AddWithValue("$rev", rev);
-                    insert.Parameters.AddWithValue("$date", DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    insert.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                     if (insert.ExecuteNonQuery() != 1) throw new InvalidOperationException("개정 이력 등록에 실패했습니다.");
                 }
                 using (var update = db.CreateCommand())
@@ -627,7 +1306,7 @@ namespace QCS
             if (to.Number - from.Number > 1000) { SetStatus("개정이력 출력 범위는 최대 1,000개 REV까지 지정해 주세요."); return; }
             try
             {
-                var sheets = new List<(string Name, List<string[]> Rows)>();
+                var rows = new List<string[]> { new[] { "개정번호", "개정일자", "신규(Graco Code)", "개정(Graco Code)", "상태", "취소일시", "취소자", "취소 사유", "비고" } };
                 using var db = new SqliteConnection(DatabaseManager.GetConnectionString("msds"));
                 db.Open();
                 var dateMap = new Dictionary<long, string>();
@@ -643,32 +1322,63 @@ namespace QCS
                         while (r.Read()) if (long.TryParse(SqlText(r, 0), out long rev)) dateMap[rev] = SqlText(r, 1);
                     }
                 }
-                for (long rev = from.Number; rev <= to.Number; rev++)
+                var cancellations = ReadCancellations(db);
+                var known = (RevisionCombo.ItemsSource as IEnumerable<Revision>) ?? Enumerable.Empty<Revision>();
+                foreach (var item in known.Where(item => item.Number >= from.Number && item.Number <= to.Number).OrderBy(item => item.Number))
                 {
-                    var newCodes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-                    var updatedCodes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-                    using var cmd = db.CreateCommand();
-                    cmd.CommandText = "SELECT audit_log_graco_code, audit_log_action FROM audit_log_hist WHERE audit_log_rev_no=$rev";
-                    cmd.Parameters.AddWithValue("$rev", rev);
-                    using (var r = cmd.ExecuteReader())
-                    while (r.Read())
-                    {
-                        var code = SqlText(r, 0); var action = SqlText(r, 1);
-                        if (string.IsNullOrWhiteSpace(code)) continue;
-                        if (action.Equals("INSERT", StringComparison.OrdinalIgnoreCase)) newCodes.Add(code);
-                        else if (action.Equals("UPDATE", StringComparison.OrdinalIgnoreCase)) updatedCodes.Add(code);
-                    }
-                    var rows = new List<string[]> { new[] { "개정번호", "개정일자", "신규(Graco Code)", "개정(Graco Code)" } };
+                    long rev = item.Number;
+                    long previousValid = dateMap.Keys.Where(number => number < rev && !cancellations.ContainsKey(number))
+                        .DefaultIfEmpty(0).Max();
+                    long[] carried = cancellations.Keys.Where(number => number > previousValid && number < rev).OrderBy(number => number).ToArray();
+                    long start = carried.Length == 0 ? rev : carried[0];
+                    var (newCodes, updatedCodes) = ReadRevisionCodes(db, start, rev);
+                    var cancelled = cancellations.GetValueOrDefault(rev);
+                    string state = cancelled.When != null ? "취소" : dateMap.ContainsKey(rev) ? "확정" : "진행중";
+                    string note = carried.Length == 0 ? "" : string.Join(", ", carried.Select(number => $"REV {number:D4}")) + " 취소 후 변경분 포함";
                     var ns = newCodes.ToList(); var us = updatedCodes.ToList();
                     var count = Math.Max(1, Math.Max(ns.Count, us.Count));
-                    for (int i = 0; i < count; i++) rows.Add(new[] { rev.ToString("D4"), dateMap.GetValueOrDefault(rev, ""), i < ns.Count ? ns[i] : "", i < us.Count ? us[i] : "" });
-                    sheets.Add(($"REV{rev:D4}", rows));
-                    if (rev == long.MaxValue) break;
+                    for (int i = 0; i < count; i++)
+                        rows.Add(new[] { rev.ToString("D4"), dateMap.GetValueOrDefault(rev, ""), i < ns.Count ? ns[i] : "",
+                            i < us.Count ? us[i] : "", state, cancelled.When ?? "", cancelled.User ?? "", cancelled.Reason ?? "", note });
                 }
-                OpenExcelWorkbook(sheets);
+                OpenExcelWorkbook(new() { ("개정이력", rows) });
                 SetStatus("개정이력 Excel을 열었습니다. 저장 여부는 Excel에서 직접 선택해 주세요.");
             }
             catch (Exception ex) { ShowError("개정이력 출력 실패", ex); }
+        }
+
+        private static (SortedSet<string> New, SortedSet<string> Updated) ReadRevisionCodes(SqliteConnection db, long from, long to)
+        {
+            var newCodes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var updatedCodes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = @"SELECT audit_log_graco_code, audit_log_action, audit_log_content FROM audit_log_hist
+                                WHERE audit_log_rev_no BETWEEN $from AND $to";
+            cmd.Parameters.AddWithValue("$from", from);
+            cmd.Parameters.AddWithValue("$to", to);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                string code = SqlText(reader, 0);
+                string action = SqlText(reader, 1);
+                if (string.IsNullOrWhiteSpace(code)) continue;
+                if (action.Equals("INSERT", StringComparison.OrdinalIgnoreCase))
+                {
+                    string type = "";
+                    try
+                    {
+                        using var document = JsonDocument.Parse(SqlText(reader, 2));
+                        if (document.RootElement.ValueKind == JsonValueKind.Object)
+                            type = Property(document.RootElement, "registration_type");
+                    }
+                    catch (JsonException) { }
+                    if (type.Equals("REV", StringComparison.OrdinalIgnoreCase)) updatedCodes.Add(code);
+                    else newCodes.Add(code);
+                }
+                else if (action.Equals("UPDATE", StringComparison.OrdinalIgnoreCase)) updatedCodes.Add(code);
+            }
+            updatedCodes.ExceptWith(newCodes);
+            return (newCodes, updatedCodes);
         }
 
         private static void OpenExcelWorkbook(List<(string Name, List<string[]> Rows)> sheets)
@@ -709,7 +1419,9 @@ namespace QCS
                 }
                 excel.DisplayAlerts = true;
                 excel.Visible = true;
+                workbook.Activate();
                 workbook.Worksheets[1].Activate();
+                BringExcelToFront((object)excel);
             }
             catch
             {
@@ -718,6 +1430,48 @@ namespace QCS
                 throw;
             }
         }
+
+        private static void BringExcelToFront(dynamic excel)
+        {
+            IntPtr window;
+            try { window = new IntPtr(Convert.ToInt64(excel.Hwnd)); }
+            catch (COMException) { return; }
+            if (window == IntPtr.Zero) return;
+
+            const int restore = 9;
+            if (IsIconic(window)) ShowWindow(window, restore);
+            if (SetForegroundWindow(window)) return;
+
+            IntPtr foreground = GetForegroundWindow();
+            if (foreground == IntPtr.Zero || foreground == window) return;
+            uint foregroundThread = GetWindowThreadProcessId(foreground, IntPtr.Zero);
+            uint currentThread = GetCurrentThreadId();
+            if (foregroundThread == 0 || foregroundThread == currentThread ||
+                !AttachThreadInput(currentThread, foregroundThread, true)) return;
+            try { SetForegroundWindow(window); }
+            finally { AttachThreadInput(currentThread, foregroundThread, false); }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr window);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr window, int command);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr window);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr window, IntPtr processId);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint thread, uint otherThread, bool attach);
 
         private void SetStatus(string message)
         {

@@ -37,7 +37,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <DockPanel>
+    <DockPanel x:Name="MainContent">
         <Menu DockPanel.Dock="Top" Background="White" Padding="5,2,5,2">
             <MenuItem Header="CoA">
                 <MenuItem Header="CoA 발행" Tag="CoARegistryView.xaml.cs" Click="Menu_CoaReg_Click"/>

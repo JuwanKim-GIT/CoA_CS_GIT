@@ -50,6 +50,7 @@ namespace QCS
         internal sealed record NaturalStep(Row Target, string RuleId, int Version, string Instruction, string Kind, int Sequence,
             string Before, string After, int? Page, string Evidence, string Status, string? Error, DateTime At, string ScopeLabel = "");
         internal List<NaturalStep> NaturalHistory { get; } = new();
+        internal string? TrialScopeMismatch { get; set; }
         internal string NaturalActor { get; set; } = "";
         public List<Row> Rows { get; } = new();
         public bool Confirmed { get; set; }
